@@ -1,26 +1,24 @@
 import Phaser from 'phaser';
 
 /**
- * Clase que representa el jugador del juego (el pato). El jugador se mueve por el mundo usando los cursores.
+ * Clase que representa el pato jugable. Se mueve por el mundo usando los cursores.
  * Soporta movimiento diagonal, dash y animaciones.
  */
-export default class Player extends Phaser.GameObjects.Sprite {
+export default class Duck extends Phaser.GameObjects.Sprite {
 
     /**
-     * Constructor del jugador
-     * @param {Phaser.Scene} scene Escena a la que pertenece el jugador
+     * Constructor del pato
+     * @param {Phaser.Scene} scene Escena a la que pertenece el pato
      * @param {number} x Coordenada X
      * @param {number} y Coordenada Y
+     * @param {string} texture Clave de textura (sprite key)
      */
-    constructor(scene, x, y) {
-        super(scene, x, y, null);
+    constructor(scene, x, y, texture = 'pato') {
+        super(scene, x, y, texture);
         this.scene = scene;
+        scene.add.existing(this);
 
-        // Crear sprite de rectangle (debug visual - cuadrado amarillo 32x32)
-        this.sprite = scene.add.rectangle(x, y, 32, 32, 0xFFFF00);
-        this.sprite.setOrigin(0.5);
-
-        // Propiedades del jugador
+        // Propiedades del pato
         this._speed = 160; // px/s
         this._weapon = null;
         this.dmgMult = 1;
@@ -118,11 +116,11 @@ export default class Player extends Phaser.GameObjects.Sprite {
     }
 
     /**
-     * Actualizar estado del jugador (llamado cada frame desde preUpdate)
+     * Actualizar estado del pato (llamado cada frame desde preUpdate)
      * @param {number} time Tiempo actual
      * @param {number} dt Delta time en ms
      */
-    updatePlayerState(time, dt) {
+    updateDuckState(time, dt) {
         const deltaS = dt / 1000;
 
         // Finalizar dash
@@ -140,8 +138,8 @@ export default class Player extends Phaser.GameObjects.Sprite {
 
         // Movimiento dash
         if (this.isDashing) {
-            this.sprite.x += this.dashVx * deltaS;
-            this.sprite.y += this.dashVy * deltaS;
+            this.x += this.dashVx * deltaS;
+            this.y += this.dashVy * deltaS;
             this.updateAnimation();
             return;
         }
@@ -162,8 +160,8 @@ export default class Player extends Phaser.GameObjects.Sprite {
             vx = (vx / len) * this._speed;
             vy = (vy / len) * this._speed;
 
-            this.sprite.x += vx * deltaS;
-            this.sprite.y += vy * deltaS;
+            this.x += vx * deltaS;
+            this.y += vy * deltaS;
 
             // Actualizar dirección para dash futuro
             if (vx < 0) this.direction = 'left';
@@ -184,6 +182,6 @@ export default class Player extends Phaser.GameObjects.Sprite {
      */
     preUpdate(t, dt) {
         super.preUpdate(t, dt);
-        this.updatePlayerState(t, dt);
+        this.updateDuckState(t, dt);
     }
 }

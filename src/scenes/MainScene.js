@@ -1,4 +1,6 @@
-import Player from '../player.js';
+import Phaser from 'phaser';
+import Duck from '../GameObjects/duck.js';
+import player_sprite from '../../assets/sprites/player.png';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -6,7 +8,7 @@ export default class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        // cargar assets cuando los tengas
+        this.load.image('pato', player_sprite);
     }
 
     create() {
@@ -14,11 +16,17 @@ export default class MainScene extends Phaser.Scene {
         const bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x87CEEB);
         bg.setOrigin(0);
 
-        // crear jugador (el pato)
-        this.player = new Player(this, 200, 200);
+        // crear pato con sprite
+        this.duck = new Duck(this, 200, 200, 'pato');
+
+        // instrucciones en pantalla
+        this.add.text(10, 10, 'Control: Flechas | Dash: Espacio | Pick: P', {
+            fontSize: '16px',
+            fill: '#FFFFFF'
+        });
     }
 
     update(time, delta) {
-        // Player.preUpdate se llama automáticamente
+        // Duck.preUpdate se llama automáticamente
     }
 }
