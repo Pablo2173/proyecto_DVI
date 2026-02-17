@@ -31,82 +31,47 @@
     <!-- El pato visible -->
     <div id="duck"></div>
 
+    <script src="../Scripts/Objs/gameItem.js"></script>
+    <script src="../Scripts/Objs/Duck.js"></script>
     <script>
-        // ENUM de estados
-        const StatusDuck = {
-            MAIN: 0,
-            STUNNED: 1,
-            ROLLING: 2,
-            SWIMMING: 3
-        };
-
-        // Clase Duck
-        class Duck {
-            constructor(element) {
-                this._speed = 5;
-                this._state = StatusDuck.MAIN;
-
-                // Posición inicial
-                this.x = 200;
-                this.y = 200;
-
-                // Referencia al div HTML
-                this.element = element;
-
-                // Dibujar posición inicial
-                this.render();
-            }
-
-            // Renderiza la posición en pantalla
-            render() {
-                this.element.style.left = this.x + "px";
-                this.element.style.top = this.y + "px";
-            }
-
-            // Movimiento
-            move(direction) {
-                if (this._state === StatusDuck.STUNNED) return;
-
-                switch (direction) {
-                    case "up":
-                        this.y -= this._speed;
-                        break;
-                    case "down":
-                        this.y += this._speed;
-                        break;
-                    case "left":
-                        this.x -= this._speed;
-                        break;
-                    case "right":
-                        this.x += this._speed;
-                        break;
-                }
-
-                this.render();
-            }
-        }
-
         // Crear pato
         const duckElement = document.getElementById("duck");
         const pato = new Duck(duckElement);
 
-        // Detectar teclas
+        // Rastrear teclas presionadas
+        const pressedKeys = new Set();
+
         window.addEventListener("keydown", (event) => {
-            switch (event.key) {
-                case "ArrowUp":
-                    pato.move("up");
-                    break;
-                case "ArrowDown":
-                    pato.move("down");
-                    break;
-                case "ArrowLeft":
-                    pato.move("left");
-                    break;
-                case "ArrowRight":
-                    pato.move("right");
-                    break;
-            }
+            pressedKeys.add(event.key);
         });
+
+        window.addEventListener("keyup", (event) => {
+            pressedKeys.delete(event.key);
+        });
+
+        // Bucle de juego para movimiento continuo
+        function gameLoop() {
+            if (pato._state === 1) { // STUNNED
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            let dx = 0;
+            let dy = 0;
+
+            if (pressedKeys.has("ArrowUp")) dy -= pato._speed;
+            if (pressedKeys.has("ArrowDown")) dy += pato._speed;
+            if (pressedKeys.has("ArrowLeft")) dx -= pato._speed;
+            if (pressedKeys.has("ArrowRight")) dx += pato._speed;
+
+            pato.x += dx;
+            pato.y += dy;
+            pato.render();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
     </script>
 
 </body>
