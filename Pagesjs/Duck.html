@@ -43,6 +43,17 @@
 
         window.addEventListener("keydown", (event) => {
             pressedKeys.add(event.key);
+
+            // Dash con Space
+            if (event.key === " ") {
+                event.preventDefault();
+                pato.dash(pressedKeys);  // Pasa pressedKeys
+            }
+
+            // Ejemplo: Presiona 'P' para animación de recoger (placeholder)
+            if (event.key === "p") {
+                pato.setAnimationState("picking");
+            }
         });
 
         window.addEventListener("keyup", (event) => {
@@ -51,6 +62,8 @@
 
         // Bucle de juego para movimiento continuo
         function gameLoop() {
+            pato.update(); // Actualiza estado (dash, etc.)
+
             if (pato._state === 1) { // STUNNED
                 requestAnimationFrame(gameLoop);
                 return;
@@ -58,14 +71,47 @@
 
             let dx = 0;
             let dy = 0;
+            let moved = false;
+            const speed = pato._speed;  // Normal speed for keys
 
-            if (pressedKeys.has("ArrowUp")) dy -= pato._speed;
-            if (pressedKeys.has("ArrowDown")) dy += pato._speed;
-            if (pressedKeys.has("ArrowLeft")) dx -= pato._speed;
-            if (pressedKeys.has("ArrowRight")) dx += pato._speed;
+            if (pato.isDashing) {
+                // Movimiento automático durante dash
+                pato.x += pato.dashDx;
+                pato.y += pato.dashDy;
+                moved = true;
+            } else {
+                // Movimiento normal con teclas
+                if (pressedKeys.has("ArrowUp")) {
+                    dy -= speed;
+                    pato.direction = "up";
+                    moved = true;
+                }
+                if (pressedKeys.has("ArrowDown")) {
+                    dy += speed;
+                    pato.direction = "down";
+                    moved = true;
+                }
+                if (pressedKeys.has("ArrowLeft")) {
+                    dx -= speed;
+                    pato.direction = "left";
+                    moved = true;
+                }
+                if (pressedKeys.has("ArrowRight")) {
+                    dx += speed;
+                    pato.direction = "right";
+                    moved = true;
+                }
 
-            pato.x += dx;
-            pato.y += dy;
+                pato.x += dx;
+                pato.y += dy;
+            }
+
+            pato.isMoving = moved; // Flag para idle/walking
+
+            if (moved) {
+                pato.updateAnimation();
+            }
+
             pato.render();
 
             requestAnimationFrame(gameLoop);
