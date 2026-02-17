@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-
+//no usado todavía
 
 import player from '../assets/sprites/player.png'
 /**
