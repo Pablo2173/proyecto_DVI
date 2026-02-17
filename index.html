@@ -3,38 +3,112 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Duck Slayer</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            background: lightblue;
-        }
-
-        iframe {
-            width: 100%;
-            height: 600px;
-            border: none;
-        }
-
-        /* El pato en pantalla */
-        #duck {
-            width: 32px;
-            height: 32px;
-            background: yellow;
-            position: absolute;
-            top: 200px;
-            left: 200px;
-            border-radius: 15px;
-            border: 3px solid orange;
-        }
-    </style>
+    <link rel="shortcut icon" href="assets/sprites/player.png" type="image/png" />
+    <meta name="viewport" content="width=device-width, initial-scale=2.0">
+    <link rel="stylesheet" href="./css/game.css">
+    <title>¡Juego con Phaser!</title>
 </head>
 
 <body>
-    <h1>Bienvenido a Duck Slayer</h1>
-    <p>El pato se controla con las flechas del teclado.</p>
-    <iframe src="Pagesjs/Duck.html"></iframe>
+    <h1>Juego con Phaser</h1>
+
+    <script src="./src/game.js" type="module"></script>
+
+    <!-- Phaser game parent -->
+    <div id="juego"></div>
+
+    <!-- Debug area: integrado desde index_antiguo - cuadrado amarillo (32x32) -->
+    <section id="duck-debug"
+        style="position:relative; width:100%; height:360px; background:lightblue; margin-top:12px;">
+        <h2 style="margin:8px 0;">Debug: Duck (cuadrado amarillo)</h2>
+        <div id="duck" style="
+            width:32px;
+            height:32px;
+            background:yellow;
+            position:absolute;
+            top:200px;
+            left:200px;
+            border-radius:6px;
+            border:2px solid orange;
+        "></div>
+        <p style="margin:8px 0;">Control: flechas — Dash: Barra Espaciadora</p>
+    </section>
+
+    <!-- Carga los scripts del duck debug (no interfieren con Phaser) -->
+    <script src="Scripts/Objs/gameItem.js"></script>
+    <script src="Scripts/Objs/Duck.js"></script>
+    <script>
+        // Instancia simple para debug del pato (usa el cuadrado amarillo)
+        const duckElement = document.getElementById("duck");
+        const pato = new Duck(duckElement);
+
+        // Forzar uso de cuadrado (omitimos sprites)
+        pato.render = function () {
+            GameItem.prototype.render.call(this);
+            // keep yellow square for debugging
+            this.element.style.backgroundImage = "";
+        };
+
+        const pressedKeys = new Set();
+
+        window.addEventListener("keydown", (e) => {
+            pressedKeys.add(e.key);
+            if (e.key === " ") {
+                e.preventDefault();
+                pato.dash(pressedKeys);
+            }
+            // simple pickup test
+            if (e.key === "p") pato.setAnimationState && pato.setAnimationState("picking");
+        });
+
+        window.addEventListener("keyup", (e) => pressedKeys.delete(e.key));
+
+        function gameLoop() {
+            pato.update && pato.update();
+
+            if (pato._state === 1) { // stunned
+                requestAnimationFrame(gameLoop);
+                return;
+            }
+
+            let moved = false;
+            const normalSpeed = pato._speed;
+
+            if (pato.isDashing) {
+                pato.x += pato.dashDx;
+                pato.y += pato.dashDy;
+                moved = true;
+            } else {
+                let dx = 0, dy = 0;
+                if (pressedKeys.has("ArrowUp")) { dy -= normalSpeed; pato.direction = "up"; moved = true; }
+                if (pressedKeys.has("ArrowDown")) { dy += normalSpeed; pato.direction = "down"; moved = true; }
+                if (pressedKeys.has("ArrowLeft")) { dx -= normalSpeed; pato.direction = "left"; moved = true; }
+                if (pressedKeys.has("ArrowRight")) { dx += normalSpeed; pato.direction = "right"; moved = true; }
+
+                // Normalize diagonal so diagonal speed ~= straight speed
+                if (dx !== 0 && dy !== 0) {
+                    const inv = 1 / Math.sqrt(2);
+                    dx *= inv;
+                    dy *= inv;
+                }
+
+                pato.x += dx;
+                pato.y += dy;
+            }
+
+            pato.isMoving = moved;
+            moved && pato.updateAnimation && pato.updateAnimation();
+            pato.render && pato.render();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        requestAnimationFrame(gameLoop);
+    </script>
+
+    <p>
+        <center><a href="https://github.com/cleongh/plantillaphaser">Repositorio de GitHub</a></center>
+    </p>
 </body>
 
 </html>
