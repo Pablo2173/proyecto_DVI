@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 
 /**
- * Clase que representa el jugador del juego. El jugador se mueve por el mundo usando los cursores.
- * También almacena la puntuación o número de estrellas que ha recogido hasta el momento.
+ * Clase que representa el jugador del juego (el pato). El jugador se mueve por el mundo usando los cursores.
+ * Soporta movimiento diagonal, dash y animaciones.
  */
 export default class Player extends Phaser.GameObjects.Sprite {
 
@@ -13,57 +13,177 @@ export default class Player extends Phaser.GameObjects.Sprite {
      * @param {number} y Coordenada Y
      */
     constructor(scene, x, y) {
-        super(scene, x, y, 'player');
-        this.score = 0;
+        super(scene, x, y, null);
+        this.scene = scene;
 
-        this.scene.add.existing(this);
-        this.scene.physics.add.existing(this);
-        // Queremos que el jugador no se salga de los límites del mundo
-        this.body.setCollideWorldBounds();
-        this.speed = 300;
-        this.jumpSpeed = -400;
-        // Esta label es la UI en la que pondremos la puntuación del jugador
-        this.label = this.scene.add.text(10, 10, "", { fontSize: 20 });
-        this.cursors = this.scene.input.keyboard.createCursorKeys();
-        this.updateScore();
+        // Crear sprite de rectangle (debug visual - cuadrado amarillo 32x32)
+        this.sprite = scene.add.rectangle(x, y, 32, 32, 0xFFFF00);
+        this.sprite.setOrigin(0.5);
+
+        // Propiedades del jugador
+        this._speed = 160; // px/s
+        this._weapon = null;
+        this.dmgMult = 1;
+        this.effMult = 1;
+        this._state = 0; // MAIN
+
+        // Animación
+        this.animationState = 'idle';
+        this.direction = 'right';
+        this.animationFrame = 0;
+        this.animationTimer = 0;
+        this.animationSpeed = 10;
+        this.maxFrames = { idle: 2, walking: 4, picking: 4 };
+        this.isMoving = false;
+
+        // Dash
+        this.dashSpeed = 600; // px/s
+        this.dashDuration = 200; // ms
+        this.dashCooldown = 800; // ms
+        this.isDashing = false;
+        this.dashEndTime = 0;
+        this.lastDashTime = 0;
+        this.dashVx = 0;
+        this.dashVy = 0;
+
+        // Inputs
+        this.cursors = scene.input.keyboard.createCursorKeys();
+        this.keySpace = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        this.keyP = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+
+        // Listeners para dash y acciones
+        this.keySpace.on('down', () => this.dash(this.cursors, scene.time.now));
+        this.keyP.on('down', () => this.setAnimationState('picking'));
     }
 
     /**
-     * El jugador ha recogido una estrella por lo que este método añade un punto y
-     * actualiza la UI con la puntuación actual.
+     * Cambiar estado de animación
+     * @param {string} state Estado: 'idle', 'walking', 'picking', etc.
      */
-    point() {
-        this.score++;
-        this.updateScore();
+    setAnimationState(state) {
+        if (this.maxFrames[state]) {
+            this.animationState = state;
+            this.animationFrame = 0;
+            this.animationTimer = 0;
+        }
     }
 
     /**
-     * Actualiza la UI con la puntuación actual
+     * Actualizar animación (ciclar frames)
      */
-    updateScore() {
-        this.label.text = 'Score: ' + this.score;
+    updateAnimation() {
+        this.animationTimer++;
+        if (this.animationTimer >= this.animationSpeed) {
+            this.animationFrame = (this.animationFrame + 1) % this.maxFrames[this.animationState];
+            this.animationTimer = 0;
+        }
     }
 
     /**
-     * Métodos preUpdate de Phaser. En este caso solo se encarga del movimiento del jugador.
-     * Como se puede ver, no se tratan las colisiones con las estrellas, ya que estas colisiones 
-     * ya son gestionadas por la estrella (no gestionar las colisiones dos veces)
+     * Mecánica de dash: movimiento rápido en dirección actual (diagonal incluida)
+     * @param {object} inputKeys Objeto de cursors de Phaser
+     * @param {number} time Tiempo actual de Phaser
+     */
+    dash(inputKeys, time) {
+        if (time < this.lastDashTime + this.dashCooldown) return;
+
+        // Calcular dirección en el momento del dash
+        let dx = 0, dy = 0;
+        if (inputKeys.up.isDown) dy -= 1;
+        if (inputKeys.down.isDown) dy += 1;
+        if (inputKeys.left.isDown) dx -= 1;
+        if (inputKeys.right.isDown) dx += 1;
+
+        // Si no hay dirección, mantener la anterior
+        if (dx === 0 && dy === 0) {
+            switch (this.direction) {
+                case 'up': dy = -1; break;
+                case 'down': dy = 1; break;
+                case 'left': dx = -1; break;
+                case 'right': dx = 1; break;
+            }
+        }
+
+        // Normalizar para diagonales
+        const len = Math.hypot(dx, dy) || 1;
+        dx /= len;
+        dy /= len;
+
+        this.dashVx = dx * this.dashSpeed;
+        this.dashVy = dy * this.dashSpeed;
+        this.isDashing = true;
+        this.dashEndTime = time + this.dashDuration;
+        this.lastDashTime = time;
+        this.setAnimationState('dashing');
+    }
+
+    /**
+     * Actualizar estado del jugador (llamado cada frame desde preUpdate)
+     * @param {number} time Tiempo actual
+     * @param {number} dt Delta time en ms
+     */
+    updatePlayerState(time, dt) {
+        const deltaS = dt / 1000;
+
+        // Finalizar dash
+        if (this.isDashing && time >= this.dashEndTime) {
+            this.isDashing = false;
+            this.dashVx = 0;
+            this.dashVy = 0;
+            this.setAnimationState('idle');
+        }
+
+        // Transición a idle si no se mueve
+        if (this.animationState === 'walking' && !this.isMoving) {
+            this.setAnimationState('idle');
+        }
+
+        // Movimiento dash
+        if (this.isDashing) {
+            this.sprite.x += this.dashVx * deltaS;
+            this.sprite.y += this.dashVy * deltaS;
+            this.updateAnimation();
+            return;
+        }
+
+        // Movimiento normal
+        let vx = 0, vy = 0;
+        let moved = false;
+
+        if (this.cursors.left.isDown) { vx -= 1; moved = true; }
+        if (this.cursors.right.isDown) { vx += 1; moved = true; }
+        if (this.cursors.up.isDown) { vy -= 1; moved = true; }
+        if (this.cursors.down.isDown) { vy += 1; moved = true; }
+
+        this.isMoving = moved;
+
+        if (moved) {
+            const len = Math.hypot(vx, vy) || 1;
+            vx = (vx / len) * this._speed;
+            vy = (vy / len) * this._speed;
+
+            this.sprite.x += vx * deltaS;
+            this.sprite.y += vy * deltaS;
+
+            // Actualizar dirección para dash futuro
+            if (vx < 0) this.direction = 'left';
+            else if (vx > 0) this.direction = 'right';
+            if (vy < 0) this.direction = 'up';
+            else if (vy > 0) this.direction = 'down';
+
+            this.setAnimationState('walking');
+            this.updateAnimation();
+        } else {
+            this.setAnimationState('idle');
+        }
+    }
+
+    /**
+     * preUpdate de Phaser (llamado automáticamente cada frame)
      * @override
      */
     preUpdate(t, dt) {
         super.preUpdate(t, dt);
-        if (this.cursors.up.isDown && this.body.onFloor()) {
-            this.body.setVelocityY(this.jumpSpeed);
-        }
-        if (this.cursors.left.isDown) {
-            this.body.setVelocityX(-this.speed);
-        }
-        else if (this.cursors.right.isDown) {
-            this.body.setVelocityX(this.speed);
-        }
-        else {
-            this.body.setVelocityX(0);
-        }
+        this.updatePlayerState(t, dt);
     }
-
 }
