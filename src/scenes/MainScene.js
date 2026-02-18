@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import Duck from '../GameObjects/duck.js';
+import Weapon from '../GameObjects/weapon.js';
 import Enemy from '../GameObjects/enemy.js';
 import player_sprite from '../../assets/sprites/player.png'; //la de pato_con_rama queda demasiado grande
 import enemy_sprite from '../../assets/sprites/player.png';
@@ -12,6 +13,7 @@ export default class MainScene extends Phaser.Scene {
     preload() {
         this.load.image('pato', player_sprite);
         this.load.image('enemy', enemy_sprite);
+        Weapon.preload(this);
     }
 
     create() {
@@ -19,8 +21,13 @@ export default class MainScene extends Phaser.Scene {
         const bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x87CEEB);
         bg.setOrigin(0);
 
-        // crear pato con sprite
-        this.duck = new Duck(this, 200, 200, 'pato');
+        // crear el pato con arma (si cambias el nombre cambia el arma)
+        this.duck = new Duck(this, 200, 200, 'mcuaktro');
+
+        // click para atacar con el arma del pato
+        this.input.on('pointerdown', () => {
+            if (this.duck && this.duck.weapon) this.duck.weapon.attack();
+        });
 
         // crear enemigo (uso el sprite del player porque aun no hay de enemigo xd)
         //esto es para pura prueba, en realidad habria que crear los diferentes tipos de enemigos 
@@ -32,7 +39,7 @@ export default class MainScene extends Phaser.Scene {
         this.visionGraphics = this.add.graphics();
 
         // instrucciones en pantalla
-        this.add.text(10, 10, 'Control: Flechas | Dash: Espacio | Pick: P', {
+        this.add.text(10, 10, 'Control: Flechas | Dash: Espacio | Pick: P | Atacar: Click izquierdo', {
             fontSize: '16px',
             fill: '#FFFFFF'
         });

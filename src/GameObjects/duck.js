@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import Weapon from './weapon.js';
 
 /**
  * Clase que representa el pato jugable. Se mueve por el mundo usando los cursores.
@@ -13,14 +14,17 @@ export default class Duck extends Phaser.GameObjects.Sprite {
      * @param {number} y Coordenada Y
      * @param {string} texture Clave de textura (sprite key)
      */
-    constructor(scene, x, y, texture = 'pato') {
-        super(scene, x, y, texture);
+    constructor(scene, x, y, weaponType = 'ramita') {
+        super(scene, x, y, 'pato');
         this.scene = scene;
         scene.add.existing(this);
 
         // Propiedades del pato
         this._speed = 160; // px/s
-        this._weapon = null;
+        // para poner el arma a la derecha del pato
+        this.weaponOffsetX = 36;
+        this.weaponOffsetY = -6;
+        this.weapon = new Weapon(scene, this.x + this.weaponOffsetX, this.y + this.weaponOffsetY, weaponType);
         this.dmgMult = 1;
         this.effMult = 1;
         this._state = 0; // MAIN
@@ -141,6 +145,7 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             this.x += this.dashVx * deltaS;
             this.y += this.dashVy * deltaS;
             this.updateAnimation();
+            if (this.weapon) { this.weapon.x = this.x + this.weaponOffsetX; this.weapon.y = this.y + this.weaponOffsetY; this.weapon.facing = this.direction; }
             return;
         }
 
@@ -171,8 +176,10 @@ export default class Duck extends Phaser.GameObjects.Sprite {
 
             this.setAnimationState('walking');
             this.updateAnimation();
+            if (this.weapon) { this.weapon.x = this.x + this.weaponOffsetX; this.weapon.y = this.y + this.weaponOffsetY; this.weapon.facing = this.direction; }
         } else {
             this.setAnimationState('idle');
+            if (this.weapon) { this.weapon.x = this.x + this.weaponOffsetX; this.weapon.y = this.y + this.weaponOffsetY; this.weapon.facing = this.direction; }
         }
     }
 
