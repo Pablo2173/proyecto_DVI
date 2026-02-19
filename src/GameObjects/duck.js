@@ -71,6 +71,12 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.keySpace.on('down', () => this.dash(this.cursors, scene.time.now));
         this.keyE.on('down', () => this.setAnimationState('picking'));
         this.keyC.on('down', () => this.quack()); // Hacer cuack con sonido
+
+        // Hitbox de depuración (círculo verde)
+        this.baseHitboxRadius = 40; // valor por defecto (px) - será multiplicado por la escala del sprite
+        this.showHitbox = true; // mostrar por defecto para depuración
+        this.hitboxGraphics = scene.add.graphics();
+        this.hitboxGraphics.setDepth(1000);
     }
 
     /**
@@ -154,17 +160,28 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         if (this.scene && this.scene.sound) {
             this.scene.sound.play('cuack', { volume: 1 });
         }
+        // Actualizar tiempo de fin del cuack (extiende la duración) en cada pulsación
+        this.quackEndTime = this.scene.time.now + this.quackDuration;
 
-        // Si ya está en animación de cuack, no reiniciamos frames pero extendemos la duración
-        if (this.isQuacking) {
-            this.quackEndTime = this.scene.time.now + this.quackDuration;
-            return;
+        // Si no estaba en cuack, iniciar animación/estado
+        if (!this.isQuacking) {
+            this.isQuacking = true;
+            this.quackAnimationFrame = 0;
+            this.quackAnimationTimer = 0;
         }
 
-        this.isQuacking = true;
-        this.quackEndTime = this.scene.time.now + this.quackDuration;
-        this.quackAnimationFrame = 0;
-        this.quackAnimationTimer = 0;
+        // Expandir hitbox inmediatamente en cada pulsación: guardar el radio anterior
+        // solo la primera vez que se expande y luego poner radio que cubra la pantalla
+        if (this.hitboxGraphics) {
+            if (!this.hitboxExpanded) {
+                this._prevBaseHitboxRadius = this.baseHitboxRadius;
+            }
+            const w = (this.scene && this.scene.scale) ? this.scene.scale.width : 800;
+            const h = (this.scene && this.scene.scale) ? this.scene.scale.height : 600;
+            const screenRadius = Math.ceil(Math.hypot(w, h) / 2);
+            this.baseHitboxRadius = screenRadius;
+            this.hitboxExpanded = true;
+        }
     }
 
 
@@ -175,6 +192,16 @@ export default class Duck extends Phaser.GameObjects.Sprite {
      */
     updateDuckState(time, dt) {
         const deltaS = dt / 1000;
+
+        // Finalizar quack (restaurar hitbox si fue expandida)
+        if (this.isQuacking && time >= this.quackEndTime) {
+            this.isQuacking = false;
+            if (this.hitboxExpanded) {
+                this.baseHitboxRadius = (typeof this._prevBaseHitboxRadius === 'number') ? this._prevBaseHitboxRadius : this.baseHitboxRadius;
+                this._prevBaseHitboxRadius = undefined;
+                this.hitboxExpanded = false;
+            }
+        }
 
         // Actualizar animación de quack si está activa (de forma independiente)
         if (this.isQuacking) {
@@ -247,6 +274,35 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             }
             if (this.weapon) { this.weapon.x = this.x + this.weaponOffsetX; this.weapon.y = this.y + this.weaponOffsetY; this.weapon.facing = this.direction; }
         }
+
+        // Dibujar hitbox de depuración (si está activada). El radio sigue la escala del sprite.
+        if (this.showHitbox && this.hitboxGraphics) {
+            const scaleFactor = Math.max(this.scaleX || 1, this.scaleY || 1);
+            const radius = Math.max(0, Math.round(this.baseHitboxRadius * scaleFactor));
+            this.hitboxGraphics.clear();
+            this.hitboxGraphics.fillStyle(0x00ff00, 0.08);
+            this.hitboxGraphics.fillCircle(Math.round(this.x), Math.round(this.y), radius);
+            this.hitboxGraphics.lineStyle(2, 0x00ff00, 0.9);
+            this.hitboxGraphics.strokeCircle(Math.round(this.x), Math.round(this.y), radius);
+        }
+    }
+
+    /**
+     * Ajustar radio de la hitbox en píxeles
+     * @param {number} r
+     */
+    setHitboxRadius(r) {
+        // Ajusta el radio base que luego se multiplica por la escala del sprite
+        this.baseHitboxRadius = Math.max(0, Number(r) || 0);
+    }
+
+    /**
+     * Mostrar u ocultar la hitbox de depuración
+     * @param {boolean} v
+     */
+    setShowHitbox(v) {
+        this.showHitbox = !!v;
+        if (!this.showHitbox && this.hitboxGraphics) this.hitboxGraphics.clear();
     }
 
 
