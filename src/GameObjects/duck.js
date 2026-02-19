@@ -50,6 +50,11 @@ export default class Duck extends Phaser.GameObjects.Sprite {
 
         // Inputs
         this.cursors = scene.input.keyboard.createCursorKeys();
+        // WASD keys
+        this.keyW = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+        this.keyA = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+        this.keyS = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+        this.keyD = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
         this.keySpace = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
         this.keyP = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
 
@@ -91,10 +96,10 @@ export default class Duck extends Phaser.GameObjects.Sprite {
 
         // Calcular dirección en el momento del dash
         let dx = 0, dy = 0;
-        if (inputKeys.up.isDown) dy -= 1;
-        if (inputKeys.down.isDown) dy += 1;
-        if (inputKeys.left.isDown) dx -= 1;
-        if (inputKeys.right.isDown) dx += 1;
+        if (inputKeys.up.isDown || this.keyW.isDown) dy -= 1;
+        if (inputKeys.down.isDown || this.keyS.isDown) dy += 1;
+        if (inputKeys.left.isDown || this.keyA.isDown) dx -= 1;
+        if (inputKeys.right.isDown || this.keyD.isDown) dx += 1;
 
         // Si no hay dirección, mantener la anterior
         if (dx === 0 && dy === 0) {
@@ -153,10 +158,10 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         let vx = 0, vy = 0;
         let moved = false;
 
-        if (this.cursors.left.isDown) { vx -= 1; moved = true; }
-        if (this.cursors.right.isDown) { vx += 1; moved = true; }
-        if (this.cursors.up.isDown) { vy -= 1; moved = true; }
-        if (this.cursors.down.isDown) { vy += 1; moved = true; }
+        if (this.cursors.left.isDown || this.keyA.isDown) { vx -= 1; moved = true; }
+        if (this.cursors.right.isDown || this.keyD.isDown) { vx += 1; moved = true; }
+        if (this.cursors.up.isDown || this.keyW.isDown) { vy -= 1; moved = true; }
+        if (this.cursors.down.isDown || this.keyS.isDown) { vy += 1; moved = true; }
 
         this.isMoving = moved;
 
