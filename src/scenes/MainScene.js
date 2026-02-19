@@ -4,6 +4,7 @@ import Weapon from '../GameObjects/weapon.js';
 import Enemy from '../GameObjects/enemy.js';
 import player_sprite from '../../assets/sprites/player.png'; //la de pato_con_rama queda demasiado grande
 import enemy_sprite from '../../assets/sprites/player.png';
+import cuackSound from '../../assets/sounds/cuack.mp3';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -13,6 +14,7 @@ export default class MainScene extends Phaser.Scene {
     preload() {
         this.load.image('pato', player_sprite);
         this.load.image('enemy', enemy_sprite);
+        this.load.audio('cuack', cuackSound);
         Weapon.preload(this);
     }
 
@@ -20,6 +22,9 @@ export default class MainScene extends Phaser.Scene {
         // fondo simple
         const bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x87CEEB);
         bg.setOrigin(0);
+
+        // Pre-cargar sonido de cuack para evitar input lag
+        this.cuackSound = this.sound.add('cuack', { volume: 1 });
 
         // crear el pato con arma (si cambias el nombre cambia el arma)
         this.duck = new Duck(this, 200, 200, 'mcuaktro');
@@ -39,7 +44,7 @@ export default class MainScene extends Phaser.Scene {
         this.visionGraphics = this.add.graphics();
 
         // instrucciones en pantalla
-        this.add.text(10, 10, 'Control: Flechas | Dash: Espacio | Pick: P | Atacar: Click izquierdo', {
+        this.add.text(10, 10, 'Control: Flechas | Dash: Espacio | Pick: E | Drop: Q | Atacar: Click izquierdo | Cuack: C', {
             fontSize: '16px',
             fill: '#FFFFFF'
         });

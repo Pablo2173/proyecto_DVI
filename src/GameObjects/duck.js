@@ -29,14 +29,22 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.effMult = 1;
         this._state = 0; // MAIN
 
-        // Animación
+        // Animación (falta implementar animaciones reales)
         this.animationState = 'idle';
         this.direction = 'right';
         this.animationFrame = 0;
         this.animationTimer = 0;
         this.animationSpeed = 10;
-        this.maxFrames = { idle: 2, walking: 4, picking: 4 };
+        this.maxFrames = { idle: 2, walking: 4, picking: 4, cuack: 1 };
         this.isMoving = false;
+
+        // Estado de Quack
+        this.isQuacking = false;
+        this.quackDuration = 600; // ms
+        this.quackEndTime = 0;
+        this.previousAnimationState = 'idle';
+        this.quackAnimationFrame = 0;
+        this.quackAnimationTimer = 0;
 
         // Dash
         this.dashSpeed = 600; // px/s
@@ -56,11 +64,13 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.keyS = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
         this.keyD = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
         this.keySpace = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-        this.keyP = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+        this.keyE = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+        this.keyC = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
 
         // Listeners para dash y acciones
         this.keySpace.on('down', () => this.dash(this.cursors, scene.time.now));
-        this.keyP.on('down', () => this.setAnimationState('picking'));
+        this.keyE.on('down', () => this.setAnimationState('picking'));
+        this.keyC.on('down', () => this.quack()); // Hacer cuack con sonido
     }
 
     /**
@@ -79,6 +89,14 @@ export default class Duck extends Phaser.GameObjects.Sprite {
      * Actualizar animación (ciclar frames)
      */
     updateAnimation() {
+        // Si está haciendo cuack, mantener la animación del cuack visible
+        if (this.isQuacking) {
+            // La animación del cuack se actualiza en updateDuckState
+            this.animationFrame = this.quackAnimationFrame;
+            return;
+        }
+
+        // Animación normal de movimiento
         this.animationTimer++;
         if (this.animationTimer >= this.animationSpeed) {
             this.animationFrame = (this.animationFrame + 1) % this.maxFrames[this.animationState];
@@ -124,6 +142,32 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.setAnimationState('dashing');
     }
 
+
+    /**
+     * Hacer cuack: reproducir sonido y animación sin bloquear movimiento
+     */
+    quack() {
+        // No permitir cuack durante dash, pero permitir solapamiento de sonidos al spammear
+        if (this.isDashing) return;
+
+        // Reproducir una instancia del sonido (permite solapamiento)
+        if (this.scene && this.scene.sound) {
+            this.scene.sound.play('cuack', { volume: 1 });
+        }
+
+        // Si ya está en animación de cuack, no reiniciamos frames pero extendemos la duración
+        if (this.isQuacking) {
+            this.quackEndTime = this.scene.time.now + this.quackDuration;
+            return;
+        }
+
+        this.isQuacking = true;
+        this.quackEndTime = this.scene.time.now + this.quackDuration;
+        this.quackAnimationFrame = 0;
+        this.quackAnimationTimer = 0;
+    }
+
+
     /**
      * Actualizar estado del pato (llamado cada frame desde preUpdate)
      * @param {number} time Tiempo actual
@@ -131,6 +175,16 @@ export default class Duck extends Phaser.GameObjects.Sprite {
      */
     updateDuckState(time, dt) {
         const deltaS = dt / 1000;
+
+        // Actualizar animación de quack si está activa (de forma independiente)
+        if (this.isQuacking) {
+            this.quackAnimationTimer++;
+            if (this.quackAnimationTimer >= this.animationSpeed) {
+                this.quackAnimationFrame = (this.quackAnimationFrame + 1) % this.maxFrames['cuack'];
+                this.quackAnimationTimer = 0;
+            }
+            this.animationFrame = this.quackAnimationFrame;
+        }
 
         // Finalizar dash
         if (this.isDashing && time >= this.dashEndTime) {
@@ -145,7 +199,7 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             this.setAnimationState('idle');
         }
 
-        // Movimiento dash
+        // Movimiento dash (bloquea otros movimientos)
         if (this.isDashing) {
             this.x += this.dashVx * deltaS;
             this.y += this.dashVy * deltaS;
@@ -154,7 +208,7 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             return;
         }
 
-        // Movimiento normal
+        // Movimiento normal (permitido incluso durante cuack)
         let vx = 0, vy = 0;
         let moved = false;
 
@@ -179,14 +233,22 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             if (vy < 0) this.direction = 'up';
             else if (vy > 0) this.direction = 'down';
 
-            this.setAnimationState('walking');
-            this.updateAnimation();
+            // Solo cambiar estado si NO está haciendo cuack
+            if (!this.isQuacking) {
+                this.setAnimationState('walking');
+                this.updateAnimation();
+            }
             if (this.weapon) { this.weapon.x = this.x + this.weaponOffsetX; this.weapon.y = this.y + this.weaponOffsetY; this.weapon.facing = this.direction; }
         } else {
-            this.setAnimationState('idle');
+            // Solo cambiar estado si NO está haciendo cuack
+            if (!this.isQuacking) {
+                this.setAnimationState('idle');
+                this.updateAnimation();
+            }
             if (this.weapon) { this.weapon.x = this.x + this.weaponOffsetX; this.weapon.y = this.y + this.weaponOffsetY; this.weapon.facing = this.direction; }
         }
     }
+
 
     /**
      * preUpdate de Phaser (llamado automáticamente cada frame)
