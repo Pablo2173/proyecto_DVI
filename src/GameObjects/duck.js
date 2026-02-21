@@ -1,5 +1,17 @@
 import Phaser from 'phaser';
-import Weapon from './weapon.js';
+import Arco from './Weapons/Distance/arco.js';
+import mcuaktro from './Weapons/Distance/mcuaktro.js';
+import Cuchillo from './Weapons/Melee/cuchillo.js';
+import Mazo from './Weapons/Melee/mazo.js';
+import Ramita from './Weapons/Melee/ramita.js';
+
+const WEAPON_MAP = {
+    arco:    Arco,
+    mcuaktro:      mcuaktro,
+    cuchillo: Cuchillo,
+    mazo:     Mazo,
+    ramita:   Ramita,
+};
 
 /**
  * Clase que representa el pato jugable. Se mueve por el mundo usando los cursores.
@@ -12,19 +24,28 @@ export default class Duck extends Phaser.GameObjects.Sprite {
      * @param {Phaser.Scene} scene Escena a la que pertenece el pato
      * @param {number} x Coordenada X
      * @param {number} y Coordenada Y
-     * @param {string} texture Clave de textura (sprite key)
+     * @param {string} weaponType Tipo de arma: 'arco' | 'mcuaktro' | 'melee'
      */
-    constructor(scene, x, y, weaponType = 'ramita') {
+    constructor(scene, x, y, weaponType = 'melee') {
         super(scene, x, y, 'pato');
         this.scene = scene;
         scene.add.existing(this);
 
         // Propiedades del pato
         this._speed = 160; // px/s
-        // para poner el arma a la derecha del pato
-        this.weaponOffsetX = 36;
-        this.weaponOffsetY = -6;
-        this.weapon = new Weapon(scene, this.x + this.weaponOffsetX, this.y + this.weaponOffsetY, weaponType);
+
+        // Instanciar el arma
+        const WeaponClass = WEAPON_MAP[weaponType];
+        if (!WeaponClass) {
+            console.warn(`Duck: tipo de arma desconocido '${weaponType}'`);
+            this.weapon = null;
+        } else {
+            this.weapon = new WeaponClass(scene, this.x, this.y);
+            if(this.weapon) {
+                this.weapon.owner = this; // el pato es el que lleva el arma
+            }
+        }
+
         this.dmgMult = 1;
         this.effMult = 1;
         this._state = 0; // MAIN
@@ -32,6 +53,7 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         // Animación (falta implementar animaciones reales)
         this.animationState = 'idle';
         this.direction = 'right';
+        this.facing = 1; // 1 = derecha, -1 = izquierda
         this.animationFrame = 0;
         this.animationTimer = 0;
         this.animationSpeed = 10;
@@ -231,7 +253,8 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             this.x += this.dashVx * deltaS;
             this.y += this.dashVy * deltaS;
             this.updateAnimation();
-            if (this.weapon) { this.weapon.x = this.x + this.weaponOffsetX; this.weapon.y = this.y + this.weaponOffsetY; this.weapon.facing = this.direction; }
+            if (this.weapon) { this.weapon.x = this.x; this.weapon.y = this.y; this.weapon.facing = this.direction; }
+            if (this.weapon && typeof this.weapon.update === 'function') this.weapon.update();
             return;
         }
 
@@ -255,8 +278,8 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             this.y += vy * deltaS;
 
             // Actualizar dirección para dash futuro
-            if (vx < 0) this.direction = 'left';
-            else if (vx > 0) this.direction = 'right';
+            if (vx < 0) { this.direction = 'left';  this.facing = -1; }
+            else if (vx > 0) { this.direction = 'right'; this.facing = 1;  }
             if (vy < 0) this.direction = 'up';
             else if (vy > 0) this.direction = 'down';
 
@@ -265,14 +288,16 @@ export default class Duck extends Phaser.GameObjects.Sprite {
                 this.setAnimationState('walking');
                 this.updateAnimation();
             }
-            if (this.weapon) { this.weapon.x = this.x + this.weaponOffsetX; this.weapon.y = this.y + this.weaponOffsetY; this.weapon.facing = this.direction; }
+            if (this.weapon) { this.weapon.x = this.x; this.weapon.y = this.y; this.weapon.facing = this.direction; }
+            if (this.weapon && typeof this.weapon.update === 'function') this.weapon.update();
         } else {
             // Solo cambiar estado si NO está haciendo cuack
             if (!this.isQuacking) {
                 this.setAnimationState('idle');
                 this.updateAnimation();
             }
-            if (this.weapon) { this.weapon.x = this.x + this.weaponOffsetX; this.weapon.y = this.y + this.weaponOffsetY; this.weapon.facing = this.direction; }
+            if (this.weapon) { this.weapon.x = this.x; this.weapon.y = this.y; this.weapon.facing = this.direction; }
+            if (this.weapon && typeof this.weapon.update === 'function') this.weapon.update();
         }
 
         // Dibujar hitbox de depuración (si está activada). El radio sigue la escala del sprite.
