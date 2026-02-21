@@ -79,6 +79,34 @@ class Enemy {
         }
         return false;
     }
+
+    isAlerted() {
+        return this._state === StatusEnemy.ALERTED;
+    }
+ 
+    // El target es un objeto posicion por el cual hago que el enemigo ande hacia él. 
+    // el parámetro speed se quitará porque es la del propio enemigo (pero esq aujn no estan implementados jeje)
+    // - delta: tiempo desde el último frame en ms (pasar el "delta" del update de Phaser)
+    moveTowards(target, speed = 80, delta = 16) {
+        if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') {
+            return { x: this._pos_x, y: this._pos_y };
+        }
+
+        const dt = (typeof delta === 'number' && delta > 0) ? (delta / 1000) : (16 / 1000);
+        const s = (typeof this._speed === 'number' && this._speed > 0) ? this._speed : speed;
+
+        const dx = target.x - this._pos_x;
+        const dy = target.y - this._pos_y;
+        const dist = Math.hypot(dx, dy);
+        if (dist === 0) return { x: this._pos_x, y: this._pos_y };
+
+        const maxMove = s * dt;
+        const move = Math.min(maxMove, dist);
+        this._pos_x += (dx / dist) * move;
+        this._pos_y += (dy / dist) * move;
+
+        return { x: this._pos_x, y: this._pos_y };
+    }
 }
 
 function EnemigoOld(nombre) {

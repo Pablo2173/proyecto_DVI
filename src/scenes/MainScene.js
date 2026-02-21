@@ -62,7 +62,19 @@ export default class MainScene extends Phaser.Scene {
                 this.enemySprite.clearTint();
             }
 
-            // dibujar radio de visión (para hacer nosotros las pruebas, para la version final esto se quita)
+            // Cuando el enemigo detecta al patete camina hacia él
+            if (this.enemy.isAlerted()) {
+                const pos = this.enemy.moveTowards(this.duck, 80, delta); //lo llamo con 80 de speed por probar
+                this.enemySprite.setPosition(pos.x, pos.y);               //la speed se cambiará por la del propio enemigo
+
+                if (this.enemySprite.x < this.duck.x) {
+                    this.enemySprite.setFlipX(false);
+                } else {
+                    this.enemySprite.setFlipX(true);
+                }
+            }
+
+            // dibuja el radio de visión (para hacer nosotros las pruebas, para la version final esto se quita)
             this.visionGraphics.clear();
             this.enemy.drawVision(this.visionGraphics, { color: 0xff0000, fillAlpha: 0.08 });
         }
