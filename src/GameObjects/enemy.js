@@ -1,3 +1,5 @@
+import Phaser from 'phaser';
+
 const StatusEnemy = {
     IDLE: 0,
     ALERTED: 1,
@@ -5,12 +7,35 @@ const StatusEnemy = {
     STUNNED: 3
 };
 
-class Enemy {
-    constructor(name, x, y, visionRadius) {
+export default class Enemy extends Phaser.GameObjects.Sprite {
+    /**
+     * @param {Phaser.Scene} scene
+     * @param {string} name
+     * @param {number} x
+     * @param {number} y
+     * @param {string} texture
+     * @param {any} frame
+     * @param {number} visionRadius
+     */
+    constructor(scene, name, x, y, texture = 'enemy', frame = null, visionRadius = 100) {
+        super(scene, x, y, texture, frame);
+        this.scene = scene;
+        scene.add.existing(this);
+
+        // Añade cuerpo físico si la escena tiene physics
+        if (scene.physics && scene.physics.add) {
+            scene.physics.add.existing(this);
+            if (this.body && typeof this.body.setCollideWorldBounds === 'function') {
+                this.body.setCollideWorldBounds(true);
+            }
+        }
+
         this._nombre = name;
         this._pos_x = x;
         this._pos_y = y;
-        this._visionRadius = visionRadius; 
+        this._visionRadius = visionRadius;
+        this._facingAngle = Math.PI; //Lo he puesto en Math.PI para que empiece mirando para la izquierda
+        this._visionAngle = Math.PI / 2; //Esto es un cuarto de circulo para el cono de vision
         this._speed = null;
         this._weapon = null;
         this._state = StatusEnemy.IDLE;
@@ -22,9 +47,17 @@ class Enemy {
         console.log(`Mi nombre es ${this._nombre}`);
     }
 
+    // Sobrescribimos setPosition para mantener sincronía entre sprite y lógica
     setPosition(x, y) {
+        super.setPosition(x, y);
         this._pos_x = x;
         this._pos_y = y;
+        // Mantiene el body en la misma posición si existe
+        if (this.body && this.body.position) {
+            this.body.x = x - (this.displayWidth * this.originX);
+            this.body.y = y - (this.displayHeight * this.originY);
+        }
+        return this;
     }
 
     setVisionRadius(radius) {
@@ -36,7 +69,17 @@ class Enemy {
         if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') return false;
         const dx = target.x - this._pos_x;
         const dy = target.y - this._pos_y;
-        return (dx * dx + dy * dy) <= (this._visionRadius * this._visionRadius);
+        const dist2 = (dx * dx + dy * dy);
+        if (dist2 > (this._visionRadius * this._visionRadius)) return false;
+
+        // angle to target
+        const angleToTarget = Math.atan2(dy, dx);
+        // normalize difference to [-PI, PI]
+        let diff = angleToTarget - this._facingAngle;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+
+        return Math.abs(diff) <= (this._visionAngle / 2);
     }
 
     // Dibuja el radio de visión usando un Phaser 3 Graphics.
@@ -55,22 +98,37 @@ class Enemy {
 
         if (clearBefore) graphics.clear();
 
-        // rellenar
-        if (typeof graphics.fillStyle === 'function') {
-            graphics.fillStyle(color, fillAlpha);
-            graphics.fillCircle(this._pos_x, this._pos_y, this._visionRadius);
-        } else if (typeof graphics.fillCircle === 'function') {
-            // fallback genérico
-            graphics.fillCircle(this._pos_x, this._pos_y, this._visionRadius);
-        }
+        const px = this._pos_x;
+        const py = this._pos_y;
 
-        // contorno
-        if (typeof graphics.lineStyle === 'function' && typeof graphics.strokeCircle === 'function') {
+        const startAngle = this._facingAngle - (this._visionAngle / 2);
+        const endAngle = this._facingAngle + (this._visionAngle / 2);
+
+        // Si Graphics soporta arc/path
+        if (typeof graphics.beginPath === 'function' && typeof graphics.arc === 'function' && typeof graphics.fillPath === 'function') {
+            graphics.fillStyle(color, fillAlpha);
             graphics.lineStyle(lineWidth, color, lineAlpha);
-            graphics.strokeCircle(this._pos_x, this._pos_y, this._visionRadius);
+            graphics.beginPath();
+            graphics.moveTo(px, py);
+            graphics.arc(px, py, this._visionRadius, startAngle, endAngle, false);
+            graphics.closePath();
+            graphics.fillPath();
+            graphics.strokePath();
+        } else {
+            // Fallback: dibuja el círculo completo si no hay arc
+            if (typeof graphics.fillStyle === 'function') {
+                graphics.fillStyle(color, fillAlpha);
+                graphics.fillCircle(px, py, this._visionRadius);
+            } else if (typeof graphics.fillCircle === 'function') {
+                graphics.fillCircle(px, py, this._visionRadius);
+            }
+            if (typeof graphics.lineStyle === 'function' && typeof graphics.strokeCircle === 'function') {
+                graphics.lineStyle(lineWidth, color, lineAlpha);
+                graphics.strokeCircle(px, py, this._visionRadius);
+            }
         }
     }
-    
+
     // Si el patete entra en el radio de vision del enemigo cambia su estado a alertado
     detectAndAlert(player) {
         if (!player) return false;
@@ -92,19 +150,19 @@ class Enemy {
      */
     onAudioEvent(audioEvent) {
         if (!audioEvent || typeof audioEvent.time !== 'number') return;
-        
+
         // Tipos de sonido que alertan al enemigo
         const alertingSounds = ['quack'];
         if (!alertingSounds.includes(audioEvent.soundType)) return;
-        
+
         // Evita procesar múltiples eventos del mismo sonido
         if (audioEvent.time <= this._lastQuackTime + this._quackCooldown) return;
-        
+
         this._lastQuackTime = audioEvent.time;
 
         // Verifica si el enemigo está dentro del radio del sonido
         if (!audioEvent.position) return;
-        
+
         const dx = audioEvent.position.x - this._pos_x;
         const dy = audioEvent.position.y - this._pos_y;
         const distance = Math.hypot(dx, dy);
@@ -115,9 +173,8 @@ class Enemy {
             this._state = StatusEnemy.ALERTED;
         }
     }
- 
-    // El target es un objeto posicion por el cual hago que el enemigo ande hacia él. 
-    // el parámetro speed se quitará porque es la del propio enemigo (pero esq aujn no estan implementados jeje)
+
+    // El target es un objeto posicion por el cual hago que el enemigo ande hacia él.
     // - delta: tiempo desde el último frame en ms (pasar el "delta" del update de Phaser)
     moveTowards(target, speed = 80, delta = 16) {
         if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') {
@@ -132,79 +189,33 @@ class Enemy {
         const dist = Math.hypot(dx, dy);
         if (dist === 0) return { x: this._pos_x, y: this._pos_y };
 
+        // actualizar ángulo de mirada según dirección de movimiento
+        this._facingAngle = Math.atan2(dy, dx);
+
         const maxMove = s * dt;
         const move = Math.min(maxMove, dist);
         this._pos_x += (dx / dist) * move;
         this._pos_y += (dy / dist) * move;
 
+        // Actualizar posición del sprite y del body si existe
+        super.setPosition(this._pos_x, this._pos_y);
+        if (this.body) {
+            // establecer velocidad aproximada para el cuerpo (útil para colisiones)
+            if (typeof this.body.setVelocity === 'function') {
+                this.body.setVelocity((dx / dist) * s, (dy / dist) * s);
+            } else if (this.body.velocity) {
+                this.body.velocity.x = (dx / dist) * s;
+                this.body.velocity.y = (dy / dist) * s;
+            }
+        }
+
         return { x: this._pos_x, y: this._pos_y };
     }
-}
 
-function EnemigoOld(nombre) {
-    this._nombre = nombre;
-}
-
-EnemigoOld.prototype.mostrarNombre = function () {
-    console.log(`Mi nombre es ${this._nombre}`);
-}
-
-////////////////////////////////////////////////////////////////////////
-class Entidad { }
-
-class EnemigoHerencia extends Entidad {
-    constructor(nombre) {
-        super(nombre);
+    preUpdate(time, delta) {
+        if (super.preUpdate) super.preUpdate(time, delta);
+        // Mantener la posición interna sincronizada por si se cambia la posición del sprite desde fuera
+        this._pos_x = this.x;
+        this._pos_y = this.y;
     }
 }
-
-function EntidadOld() { }
-function EnemigoOldHerencia(nombre) {
-    this.nombre = nombre;
-}
-
-EnemigoOldHerencia.prototype = Object.create(EntidadOld.prototype);
-EnemigoOldHerencia.prototype.constructor = EnemigoOldHerencia;
-
-////////////////////////////////////////////////////////////////////////
-
-class EnemigoMetodo extends Entidad { // ES6
-    constructor(name) { super(name); }
-
-    atacar(enemigo) { super.atacar(enemigo); }
-}
-
-function EntidadMetodoOld() { }
-EntidadMetodoOld.prototype.atacar = function (enemigos) { }
-
-function EnemigoMetodoOld(nombre) { EntidadMetodoOld.call(this, nombre); }
-
-EnemigoMetodoOld.prototype = Object.create(EntidadMetodoOld.prototype);
-EnemigoMetodoOld.prototype.constructor = EnemigoMetodoOld;
-
-EnemigoMetodoOld.prototype.atacar = function (enemigo) {
-    Entidad.prototype.atacar.apply(this, [enemigo]);
-}
-
-////////////////////////////////////////////////////////////////////////
-
-class Personaje {
-    constructor() {
-        this._fuerza = 0;
-    }
-
-    get fuerza() {
-        return this._fuerza;
-    }
-
-    set fuerza(f) {
-        this._fuerza = f;
-    }
-}
-
-let hero = new Personaje();
-console.log(hero.fuerza);
-hero.fuerza = 5;
-console.log(hero.fuerza);
-
-export default Enemy;

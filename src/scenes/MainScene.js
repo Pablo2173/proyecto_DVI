@@ -34,11 +34,9 @@ export default class MainScene extends Phaser.Scene {
             if (this.duck && this.duck.weapon) this.duck.weapon.attack();
         });
 
-        // crear enemigo (uso el sprite del player porque aun no hay de enemigo xd)
-        //esto es para pura prueba, en realidad habria que crear los diferentes tipos de enemigos 
-        this.enemySprite = this.add.sprite(440, 200, 'enemy');
-        this.enemySprite.setFlipX(true);
-        this.enemy = new Enemy('Guard', this.enemySprite.x, this.enemySprite.y, 200);
+        // crear enemigo como GameObject de Phaser (la clase Enemy ahora es un Sprite)
+        this.enemy = new Enemy(this, 'Guard', 440, 200, 'enemy', null, 200);
+        this.enemy.setFlipX(true);
 
         // Registra observador: el enemigo escucha los eventos de sonido
         // Esto permite que el enemigo reaccione a diferentes tipos de sonidos (cuac, dash, disparos, etc.)
@@ -64,39 +62,37 @@ export default class MainScene extends Phaser.Scene {
     update(time, delta) {
         // Duck.preUpdate se llama automáticamente
         // actualizar lógica del enemigo: sincronizar posición y detectar al jugador
-        if (this.enemySprite && this.enemy) {
-            this.enemy.setPosition(this.enemySprite.x, this.enemySprite.y);
+        if (this.enemy) {
+            // actualizar lógica: detectar al jugador
             this.enemy.detectAndAlert(this.duck);
-            
+
             // Parpadeo amarillo claro de 0.5s cuando se alerta
             if (this.enemy.isAlerted()) {
                 if (this.enemyAlertTime === null) {
-                    // Acaba de alertarse: registrar el tiempo
                     this.enemyAlertTime = time;
-                    this.enemySprite.setTint(0xFFFF01); //lo he puesto en amarillo claro porque no me deja con blanco
+                    this.enemy.setTint(0xFFFF01);
                 }
-                // Si han pasado 500ms desde la alerta, limpiar el tint
                 if (time - this.enemyAlertTime > 500) {
-                    this.enemySprite.clearTint();
+                    this.enemy.clearTint();
                 }
             } else {
                 this.enemyAlertTime = null;
-                this.enemySprite.clearTint();
+                this.enemy.clearTint();
             }
 
             // Cuando el enemigo detecta al patete camina hacia él
             if (this.enemy.isAlerted()) {
-                const pos = this.enemy.moveTowards(this.duck, 80, delta); //lo llamo con 80 de speed por probar
-                this.enemySprite.setPosition(pos.x, pos.y);               //la speed se cambiará por la del propio enemigo
+                const pos = this.enemy.moveTowards(this.duck, 80, delta);
+                this.enemy.setPosition(pos.x, pos.y);
 
-                if (this.enemySprite.x < this.duck.x) {
-                    this.enemySprite.setFlipX(false);
+                if (this.enemy.x < this.duck.x) {
+                    this.enemy.setFlipX(false);
                 } else {
-                    this.enemySprite.setFlipX(true);
+                    this.enemy.setFlipX(true);
                 }
             }
 
-            // dibuja el radio de visión (para hacer nosotros las pruebas, para la version final esto se quita)
+            // dibuja el radio de visión (para pruebas)
             this.visionGraphics.clear();
             this.enemy.drawVision(this.visionGraphics, { color: 0xff0000, fillAlpha: 0.08 });
         }
