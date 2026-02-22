@@ -8,6 +8,9 @@ export default class Ramita extends MeleeWeapon {
             attackSpeed:   500,
             swingAngle:    40,
             swingDuration: 150,
+            range:           60,
+            optimalDistance: 30,
+            debug:            true,
             scale:         0.15,
             origin:        { x: 0.2, y: 0.5 }
         });

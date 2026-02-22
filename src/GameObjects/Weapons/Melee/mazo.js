@@ -8,6 +8,9 @@ export default class Mazo extends MeleeWeapon {
             attackSpeed:   800,
             swingAngle:    70,
             swingDuration: 200,
+            range:           60,
+            optimalDistance: 30,
+            debug:            true,
             scale:         0.2,
             origin:        { x: 0, y: 0.5 }
         });

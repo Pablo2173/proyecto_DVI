@@ -44,7 +44,7 @@ export default class MainScene extends Phaser.Scene {
         this.cuackSound = this.sound.add('cuack', { volume: 1 });
 
         // crear el pato con arma
-        this.duck = new Duck(this, 200, 200, 'mazo');
+        this.duck = new Duck(this, 200, 200, 'mcuaktro');
 
         // click para atacar con el arma del pato
         this.input.on('pointerdown', () => {

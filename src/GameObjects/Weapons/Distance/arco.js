@@ -9,7 +9,9 @@ export default class Arco extends DistanceWeapon {
             attackSpeed:     800,
             projectileClass: Flecha,
             projectileSpeed: 600,
-            range:           800,
+            range:           500,
+            optimalDistance: 250,
+            debug:            true,
             scale:           0.2,
         });
     }

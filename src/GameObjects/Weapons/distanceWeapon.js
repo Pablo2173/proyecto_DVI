@@ -1,4 +1,4 @@
-import Weapon from './weapon.js';
+import Weapon from './Weapon.js';
 
 export default class DistanceWeapon extends Weapon {
     constructor(scene, x, y, texture, config = {}) {
@@ -10,7 +10,7 @@ export default class DistanceWeapon extends Weapon {
 
         this.projectileClass = config.projectileClass ?? null;
         this.projectileSpeed = config.projectileSpeed ?? 600;
-        this.range           = config.range           ?? 800;
+        // range ya viene de Weapon vía config
 
         this.owner = null;
         this.spriteAngleOffset = 0;
@@ -19,6 +19,8 @@ export default class DistanceWeapon extends Weapon {
     }
 
     update() {
+        super.update(); // ── dibuja círculos debug si debugMode === true
+
         if (!this.owner || !this.scene) return;
 
         this.x = this.owner.x;
@@ -35,7 +37,6 @@ export default class DistanceWeapon extends Weapon {
         const angleDeg = Phaser.Math.RadToDeg(angleRad);
         this.setAngle(angleDeg + this.spriteAngleOffset);
 
-        // ── Flip visual cuando apunta a la izquierda ──
         const normalized = Phaser.Math.Angle.WrapDegrees(angleDeg);
         if (normalized > 90 || normalized < -90) {
             this.setFlipY(true);

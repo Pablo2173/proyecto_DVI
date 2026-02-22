@@ -9,7 +9,9 @@ export default class Mcuaktro extends DistanceWeapon {
             attackSpeed:     120,
             projectileClass: Bala,
             projectileSpeed: 1000,
-            range:           1200,
+            range:           500,
+            optimalDistance: 250,
+            debug:            true,
             scale:           0.2,
         });
     }

@@ -1,4 +1,4 @@
-import Weapon from './weapon.js';
+import Weapon from './Weapon.js';
 
 export default class MeleeWeapon extends Weapon {
     constructor(scene, x, y, texture, config = {}) {
@@ -15,15 +15,15 @@ export default class MeleeWeapon extends Weapon {
     }
 
     update() {
+        super.update(); // ── dibuja círculos debug si debugMode === true
+
         if (!this.owner) return;
 
         const facing = this.owner.facing ?? 1;
 
-        // Posicionar el arma al lado correcto del personaje
         this.x = this.owner.x + this.offsetX * facing;
         this.y = this.owner.y + this.offsetY;
 
-        // Espejo horizontal según dirección
         this.setFlipX(facing === -1);
     }
 
