@@ -14,6 +14,8 @@ class Enemy {
         this._speed = null;
         this._weapon = null;
         this._state = StatusEnemy.IDLE;
+        this._lastQuackTime = 0; // Para evitar alertas duplicadas del mismo quack
+        this._quackCooldown = 100; // ms
     }
 
     mostrarNombre() {
@@ -82,6 +84,36 @@ class Enemy {
 
     isAlerted() {
         return this._state === StatusEnemy.ALERTED;
+    }
+
+    /**
+     * Observador general para eventos de sonido
+     * @param {object} audioEvent Datos del evento de sonido: { soundType, source, position, radius, time, intensity }
+     */
+    onAudioEvent(audioEvent) {
+        if (!audioEvent || typeof audioEvent.time !== 'number') return;
+        
+        // Tipos de sonido que alertan al enemigo
+        const alertingSounds = ['quack'];
+        if (!alertingSounds.includes(audioEvent.soundType)) return;
+        
+        // Evita procesar múltiples eventos del mismo sonido
+        if (audioEvent.time <= this._lastQuackTime + this._quackCooldown) return;
+        
+        this._lastQuackTime = audioEvent.time;
+
+        // Verifica si el enemigo está dentro del radio del sonido
+        if (!audioEvent.position) return;
+        
+        const dx = audioEvent.position.x - this._pos_x;
+        const dy = audioEvent.position.y - this._pos_y;
+        const distance = Math.hypot(dx, dy);
+        const soundRadius = audioEvent.radius || 0;
+
+        // Si está dentro del radio del sonido, se alerta
+        if (distance <= soundRadius && this._state !== StatusEnemy.ALERTED) {
+            this._state = StatusEnemy.ALERTED;
+        }
     }
  
     // El target es un objeto posicion por el cual hago que el enemigo ande hacia él. 

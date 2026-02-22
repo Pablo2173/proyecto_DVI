@@ -40,8 +40,19 @@ export default class MainScene extends Phaser.Scene {
         this.enemySprite.setFlipX(true);
         this.enemy = new Enemy('Guard', this.enemySprite.x, this.enemySprite.y, 200);
 
+        // Registra observador: el enemigo escucha los eventos de sonido
+        // Esto permite que el enemigo reaccione a diferentes tipos de sonidos (cuac, dash, disparos, etc.)
+        this.events.on('audio:event', (audioEvent) => {
+            if (this.enemy) {
+                this.enemy.onAudioEvent(audioEvent);
+            }
+        });
+
         // graphics para depurar radio de visión
         this.visionGraphics = this.add.graphics();
+
+        // tracking del estado de alerta del enemigo para el parpadeo
+        this.enemyAlertTime = null;
 
         // instrucciones en pantalla
         this.add.text(10, 10, 'Control: Flechas | Dash: Espacio | Pick: E | Drop: Q | Atacar: Click izquierdo | Cuack: C', {
@@ -55,10 +66,21 @@ export default class MainScene extends Phaser.Scene {
         // actualizar lógica del enemigo: sincronizar posición y detectar al jugador
         if (this.enemySprite && this.enemy) {
             this.enemy.setPosition(this.enemySprite.x, this.enemySprite.y);
-            const alerted = this.enemy.detectAndAlert(this.duck);
-            if (alerted) {
-                this.enemySprite.setTint(0xff0000);
+            this.enemy.detectAndAlert(this.duck);
+            
+            // Parpadeo amarillo claro de 0.5s cuando se alerta
+            if (this.enemy.isAlerted()) {
+                if (this.enemyAlertTime === null) {
+                    // Acaba de alertarse: registrar el tiempo
+                    this.enemyAlertTime = time;
+                    this.enemySprite.setTint(0xFFFF01); //lo he puesto en amarillo claro porque no me deja con blanco
+                }
+                // Si han pasado 500ms desde la alerta, limpiar el tint
+                if (time - this.enemyAlertTime > 500) {
+                    this.enemySprite.clearTint();
+                }
             } else {
+                this.enemyAlertTime = null;
                 this.enemySprite.clearTint();
             }
 

@@ -182,6 +182,18 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             this.baseHitboxRadius = screenRadius;
             this.hitboxExpanded = true;
         }
+
+        // Emite el evento de sonido al observador (en este caso el enemigo que este dentro del radio)
+        if (this.scene && this.scene.events) {
+            this.scene.events.emit('audio:event', {
+                soundType: 'quack',
+                source: this,
+                position: { x: this.x, y: this.y },
+                radius: this.baseHitboxRadius,
+                time: this.scene.time.now,
+                intensity: 1.0
+            });
+        }
     }
 
 
