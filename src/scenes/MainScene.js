@@ -1,8 +1,18 @@
 import Phaser from 'phaser';
 import Duck from '../GameObjects/duck.js';
-import Weapon from '../GameObjects/weapon.js';
+// Armas
+import Arco from '../GameObjects/Weapons/Distance/arco.js';
+import Mcuaktro from '../GameObjects/Weapons/Distance/mcuaktro.js';
+import Cuchillo from '../GameObjects/Weapons/Melee/cuchillo.js';
+import Mazo from '../GameObjects/Weapons/Melee/mazo.js';
+import Ramita from '../GameObjects/Weapons/Melee/ramita.js';
+
+// Proyectiles
+import Flecha from '../GameObjects/Projectiles/flecha.js';
+import Bala from '../GameObjects/Projectiles/bala.js';
+
 import Enemy from '../GameObjects/enemy.js';
-import player_sprite from '../../assets/sprites/player.png'; //la de pato_con_rama queda demasiado grande
+import player_sprite from '../../assets/sprites/player.png';
 import enemy_sprite from '../../assets/sprites/player.png';
 import cuackSound from '../../assets/sounds/cuack.mp3';
 
@@ -15,7 +25,14 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('pato', player_sprite);
         this.load.image('enemy', enemy_sprite);
         this.load.audio('cuack', cuackSound);
-        Weapon.preload(this);
+        // No se si esto hay que cargarlo aqui o cada arma se encarga de cargar su propia textura
+        Arco.preload(this);
+        Mcuaktro.preload(this);
+        Cuchillo.preload(this);
+        Mazo.preload(this);
+        Ramita.preload(this);
+        Flecha.preload(this);
+        Bala.preload(this);
     }
 
     create() {
@@ -26,7 +43,7 @@ export default class MainScene extends Phaser.Scene {
         // Pre-cargar sonido de cuack para evitar input lag
         this.cuackSound = this.sound.add('cuack', { volume: 1 });
 
-        // crear el pato con arma (si cambias el nombre cambia el arma)
+        // crear el pato con arma
         this.duck = new Duck(this, 200, 200, 'mcuaktro');
 
         // click para atacar con el arma del pato
