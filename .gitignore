@@ -112,3 +112,7 @@ src/star.ts~
 *~
 
 out/
+
+# Archivos de npm
+package.json
+package-lock.json
