@@ -1,4 +1,4 @@
-import Weapon from './Weapon.js';
+import Weapon from './weapon.js';
 
 export default class MeleeWeapon extends Weapon {
     constructor(scene, x, y, texture, config = {}) {
