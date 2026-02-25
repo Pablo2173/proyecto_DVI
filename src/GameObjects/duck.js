@@ -15,10 +15,6 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.scene = scene;
         scene.add.existing(this);
 
-        const WeaponClass = WEAPON_MAP[weapon_data];
-        this.weapon = WeaponClass ? new WeaponClass(scene, x, y) : null;
-        if (this.weapon) this.weapon.owner = this;
-
         this._speed = 160;
         this._acc = 1;
         this._maxSpeed = 180;
