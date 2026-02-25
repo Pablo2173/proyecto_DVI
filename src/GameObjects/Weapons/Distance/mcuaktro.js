@@ -1,22 +1,25 @@
-import DistanceWeapon from '../distanceWeapon.js';
+import Weapon from '../weapon.js';
 import Bala from '../../Projectiles/bala.js';
-import m4Texture from '../../../../assets/sprites/Weapons/mcuaktro.png';
+import mcuaktroSprite from '../../../../assets/sprites/weapons/mcuaktro.png';
 
-export default class Mcuaktro extends DistanceWeapon {
-    constructor(scene, x, y) {
-        super(scene, x, y, 'mcuaktro', {
-            damage:          10,
-            attackSpeed:     120,
+export default class Mcuaktro extends Weapon {
+    constructor(scene, owner) {
+        super(scene, owner, {
+            texture:         'mcuaktro',
+            isRanged:        true,
             projectileClass: Bala,
-            projectileSpeed: 1000,
+            projectileSpeed: 900,
+            damage:          15,
+            attackSpeed:     200,   // cadencia alta
             range:           500,
-            optimalDistance: 250,
-            debug:           true,
+            optimalDistance: 350,
             scale:           1,
+            spriteAngleOffset: 0,
+            debug:           false
         });
     }
 
     static preload(scene) {
-        scene.load.image('mcuaktro', m4Texture);
+        scene.load.image('mcuaktro', mcuaktroSprite);
     }
 }

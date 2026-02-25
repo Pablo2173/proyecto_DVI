@@ -1,20 +1,24 @@
 import Phaser from 'phaser';
 import Duck from '../GameObjects/duck.js';
+
 // Armas
-import Arco from '../GameObjects/Weapons/Distance/arco.js';
+import Arco     from '../GameObjects/Weapons/Distance/arco.js';
 import Mcuaktro from '../GameObjects/Weapons/Distance/mcuaktro.js';
 import Cuchillo from '../GameObjects/Weapons/Melee/cuchillo.js';
-import Mazo from '../GameObjects/Weapons/Melee/mazo.js';
-import Ramita from '../GameObjects/Weapons/Melee/ramita.js';
+import Mazo     from '../GameObjects/Weapons/Melee/mazo.js';
+import Ramita   from '../GameObjects/Weapons/Melee/ramita.js';
 
 // Proyectiles
 import Flecha from '../GameObjects/Projectiles/flecha.js';
-import Bala from '../GameObjects/Projectiles/bala.js';
+import Bala   from '../GameObjects/Projectiles/bala.js';
+
+// Drops
+import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
 
 import Enemy from '../GameObjects/enemy.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
-import enemy_sprite from '../../assets/sprites/player.png';
-import cuackSound from '../../assets/sounds/cuack.mp3';
+import enemy_sprite  from '../../assets/sprites/player.png';
+import cuackSound    from '../../assets/sounds/cuack.mp3';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -23,12 +27,13 @@ export default class MainScene extends Phaser.Scene {
 
     preload() {
         this.load.spritesheet('idle_duck', player_sprite, {
-            frameWidth: 32,
+            frameWidth:  32,
             frameHeight: 32
         });
         this.load.image('enemy', enemy_sprite);
         this.load.audio('cuack', cuackSound);
-        // No se si esto hay que cargarlo aqui o cada arma se encarga de cargar su propia textura
+
+        // Preload de todas las armas
         Arco.preload(this);
         Mcuaktro.preload(this);
         Cuchillo.preload(this);
@@ -40,66 +45,92 @@ export default class MainScene extends Phaser.Scene {
 
     create() {
 
-        // Animaciones de pato
-
+        // ── Animaciones del pato ──
         this.anims.create({
-            key: 'duck-idle',
-            frames: this.anims.generateFrameNumbers('idle_duck', {
-                start: 0,
-                end: 3 // AJUSTA al número real de frames
-            }),
+            key:       'duck-idle',
+            frames:    this.anims.generateFrameNumbers('idle_duck', { start: 0, end: 3 }),
             frameRate: 8,
-            repeat: -1
+            repeat:    -1
         });
-        
-        // fondo simple
+
+        // ── Fondo ──
         const bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x87CEEB);
         bg.setOrigin(0);
 
-        // Pre-cargar sonido de cuack para evitar input lag
+        // ── Sonido ──
         this.cuackSound = this.sound.add('cuack', { volume: 1 });
 
-        // crear el pato con arma
+        // ── Grupo de drops — debe crearse ANTES que el pato y los drops ──
+        this.dropItems = this.add.group();
+
+        // ── Pato ──
         this.duck = new Duck(this, 200, 200, 'mcuaktro');
 
-        // click para atacar con el arma del pato
+        // ── Atacar con click izquierdo ──
         this.input.on('pointerdown', () => {
             if (this.duck && this.duck.weapon) this.duck.weapon.attack();
         });
 
-        // crear enemigo como GameObject de Phaser (la clase Enemy ahora es un Sprite)
+        // ── Enemigo ──
         this.enemy = new Enemy(this, 'Guard', 440, 200, 'enemy', null, 200);
         this.enemy.setFlipX(true);
 
-        // Registra observador: el enemigo escucha los eventos de sonido
-        // Esto permite que el enemigo reaccione a diferentes tipos de sonidos (cuac, dash, disparos, etc.)
+        // ── Eventos de audio para el enemigo ──
         this.events.on('audio:event', (audioEvent) => {
-            if (this.enemy) {
-                this.enemy.onAudioEvent(audioEvent);
-            }
+            if (this.enemy) this.enemy.onAudioEvent(audioEvent);
         });
 
-        // graphics para depurar radio de visión
+        // ── Graphics para radio de visión ──
         this.visionGraphics = this.add.graphics();
-
-        // tracking del estado de alerta del enemigo para el parpadeo
         this.enemyAlertTime = null;
 
-        // instrucciones en pantalla
-        this.add.text(10, 10, 'Control: Flechas | Dash: Espacio | Pick: E | Drop: Q | Atacar: Click izquierdo | Cuack: C', {
-            fontSize: '16px',
-            fill: '#FFFFFF'
+        // ── Spawn de drops de ejemplo ──
+        // Mazo en posición fija
+        new DropWeapon(this, 350, 350, {
+            texture:         'mazo',
+            isRanged:        false,
+            projectileClass: null,
+            damage:          45,
+            attackSpeed:     800,
+            range:           90,
+            optimalDistance: 65,
+            swingAngle:      90,
+            swingDuration:   180,
+            scale:           0.5,
+            debug:           false
         });
+
+        // Arco en posición aleatoria
+        new DropWeapon(
+            this,
+            Phaser.Math.Between(0, 1000),
+            Phaser.Math.Between(0, 1000),
+            {
+                texture:         'arco',
+                isRanged:        true,
+                projectileClass: Flecha,
+                projectileSpeed: 700,
+                damage:          20,
+                attackSpeed:     600,
+                range:           400,
+                optimalDistance: 280,
+                scale:           0.5,
+                debug:           false
+            }
+        );
+
+        // ── HUD ──
+        this.add.text(10, 10,
+            'Mover: WASD / Flechas | Dash: Espacio | Recoger arma: E | Atacar: Click | Cuack: C',
+            { fontSize: '14px', fill: '#FFFFFF' }
+        );
     }
 
     update(time, delta) {
-        // Duck.preUpdate se llama automáticamente
-        // actualizar lógica del enemigo: sincronizar posición y detectar al jugador
         if (this.enemy) {
-            // actualizar lógica: detectar al jugador
             this.enemy.detectAndAlert(this.duck);
 
-            // Parpadeo amarillo claro de 0.5s cuando se alerta
+            // Parpadeo amarillo 0.5s al alertarse
             if (this.enemy.isAlerted()) {
                 if (this.enemyAlertTime === null) {
                     this.enemyAlertTime = time;
@@ -113,19 +144,15 @@ export default class MainScene extends Phaser.Scene {
                 this.enemy.clearTint();
             }
 
-            // Cuando el enemigo detecta al patete camina hacia él
+            // Enemigo camina hacia el pato cuando está alertado
             if (this.enemy.isAlerted()) {
                 const pos = this.enemy.moveTowards(this.duck, 80, delta);
                 this.enemy.setPosition(pos.x, pos.y);
 
-                if (this.enemy.x < this.duck.x) {
-                    this.enemy.setFlipX(false);
-                } else {
-                    this.enemy.setFlipX(true);
-                }
+                this.enemy.setFlipX(this.enemy.x >= this.duck.x);
             }
 
-            // dibuja el radio de visión (para pruebas)
+            // Radio de visión debug
             this.visionGraphics.clear();
             this.enemy.drawVision(this.visionGraphics, { color: 0xff0000, fillAlpha: 0.08 });
         }

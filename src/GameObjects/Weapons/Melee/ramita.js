@@ -1,22 +1,23 @@
-import MeleeWeapon from '../meleeWeapon.js';
-import ramitaTexture from '../../../../assets/sprites/Weapons/ramita.png';
+import Weapon from '../weapon.js';
+import ramitaSprite from '../../../../assets/sprites/weapons/ramita.png';
 
-export default class Ramita extends MeleeWeapon {
-    constructor(scene, x, y) {
-        super(scene, x, y, 'ramita', {
-            damage:        5,
-            attackSpeed:   500,
-            swingAngle:    40,
-            swingDuration: 150,
-            range:           60,
-            optimalDistance: 30,
-            debug:            true,
-            scale:         0.15,
-            origin:        { x: 0.2, y: 0.5 }
+export default class Ramita extends Weapon {
+    constructor(scene, owner) {
+        super(scene, owner, {
+            texture:         'ramita',
+            isRanged:        false,
+            damage:          5,
+            attackSpeed:     250,   // rápida pero débil
+            range:           70,
+            optimalDistance: 50,
+            swingAngle:      70,
+            swingDuration:   90,
+            scale:           1,
+            debug:           false
         });
     }
 
     static preload(scene) {
-        scene.load.image('ramita', ramitaTexture);
+        scene.load.image('ramita', ramitaSprite);
     }
 }

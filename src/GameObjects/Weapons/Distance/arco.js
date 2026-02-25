@@ -1,22 +1,25 @@
-import DistanceWeapon from '../distanceWeapon.js';
+import Weapon from '../weapon.js';
 import Flecha from '../../Projectiles/flecha.js';
-import arcoTexture from '../../../../assets/sprites/Weapons/arco.png';
+import arcoSprite from '../../../../assets/sprites/weapons/arco.png';
 
-export default class Arco extends DistanceWeapon {
-    constructor(scene, x, y) {
-        super(scene, x, y, 'arco', {
-            damage:          15,
-            attackSpeed:     800,
+export default class Arco extends Weapon {
+    constructor(scene, owner) {
+        super(scene, owner, {
+            texture:         'arco',
+            isRanged:        true,
             projectileClass: Flecha,
-            projectileSpeed: 600,
-            range:           500,
-            optimalDistance: 250,
-            debug:            true,
+            projectileSpeed: 700,
+            damage:          20,
+            attackSpeed:     600,
+            range:           400,
+            optimalDistance: 280,
             scale:           1,
+            spriteAngleOffset: 0,
+            debug:           false
         });
     }
 
     static preload(scene) {
-        scene.load.image('arco', arcoTexture);
+        scene.load.image('arco', arcoSprite);
     }
 }
