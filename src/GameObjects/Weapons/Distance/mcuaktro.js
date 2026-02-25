@@ -11,8 +11,8 @@ export default class Mcuaktro extends DistanceWeapon {
             projectileSpeed: 1000,
             range:           500,
             optimalDistance: 250,
-            debug:            true,
-            scale:           0.2,
+            debug:           true,
+            scale:           1,
         });
     }
 

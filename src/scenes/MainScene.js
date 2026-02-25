@@ -12,7 +12,7 @@ import Flecha from '../GameObjects/Projectiles/flecha.js';
 import Bala from '../GameObjects/Projectiles/bala.js';
 
 import Enemy from '../GameObjects/enemy.js';
-import player_sprite from '../../assets/sprites/player.png';
+import player_sprite from '../../assets/sprites/duck/idle_duck.png';
 import enemy_sprite from '../../assets/sprites/player.png';
 import cuackSound from '../../assets/sounds/cuack.mp3';
 
@@ -22,7 +22,10 @@ export default class MainScene extends Phaser.Scene {
     }
 
     preload() {
-        this.load.image('pato', player_sprite);
+        this.load.spritesheet('idle_duck', player_sprite, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
         this.load.image('enemy', enemy_sprite);
         this.load.audio('cuack', cuackSound);
         // No se si esto hay que cargarlo aqui o cada arma se encarga de cargar su propia textura
@@ -36,6 +39,19 @@ export default class MainScene extends Phaser.Scene {
     }
 
     create() {
+
+        // Animaciones de pato
+
+        this.anims.create({
+            key: 'duck-idle',
+            frames: this.anims.generateFrameNumbers('idle_duck', {
+                start: 0,
+                end: 3 // AJUSTA al número real de frames
+            }),
+            frameRate: 8,
+            repeat: -1
+        });
+        
         // fondo simple
         const bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x87CEEB);
         bg.setOrigin(0);
