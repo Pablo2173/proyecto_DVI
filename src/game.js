@@ -2,10 +2,12 @@ import MainScene from './scenes/MainScene.js';
 
 const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
+    width: 1920,
+    height: 1080,
     parent: 'juego',
-    backgroundColor: '#000000',
+    pixelArt: false,
+    antialias: false,    // desactiva suavizado para pixelart
+    backgroundColor: '#cacaca',
     scene: [MainScene],
     scale: {
         mode: Phaser.Scale.FIT,

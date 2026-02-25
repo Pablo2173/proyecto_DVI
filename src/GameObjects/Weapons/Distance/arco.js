@@ -12,7 +12,7 @@ export default class Arco extends DistanceWeapon {
             range:           500,
             optimalDistance: 250,
             debug:            true,
-            scale:           0.2,
+            scale:           1,
         });
     }
 

@@ -4,7 +4,7 @@ import flechaTexture from '../../../assets/sprites/Projectiles/flecha_arco.png';
 export default class Flecha extends Projectile {
     constructor(scene, x, y, config = {}) {
         super(scene, x, y, 'flecha_arco', config);
-        this.setScale(0.1);
+        this.setScale(1);
     }
 
     static preload(scene) {
