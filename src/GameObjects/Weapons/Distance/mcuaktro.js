@@ -15,7 +15,7 @@ export default class Mcuaktro extends Weapon {
             optimalDistance: 350,
             scale:           1,
             spriteAngleOffset: 0,
-            debug:           false
+            debug:           true
         });
     }
 

@@ -7,13 +7,13 @@ export default class Ramita extends Weapon {
             texture:         'ramita',
             isRanged:        false,
             damage:          5,
-            attackSpeed:     250,   // rápida pero débil
+            attackSpeed:     250,
             range:           70,
             optimalDistance: 50,
             swingAngle:      70,
             swingDuration:   90,
             scale:           1,
-            debug:           false
+            debug:           true
         });
     }
 

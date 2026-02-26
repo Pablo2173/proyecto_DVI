@@ -13,7 +13,7 @@ export default class Mazo extends Weapon {
             swingAngle:      70,
             swingDuration:   180,
             scale:           1.2,
-            debug:           false
+            debug:           true
         });
     }
 

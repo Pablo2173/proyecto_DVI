@@ -13,7 +13,7 @@ export default class Cuchillo extends Weapon {
             swingAngle:      80,
             swingDuration:   100,
             scale:           1,
-            debug:           false
+            debug:           true
         });
     }
 

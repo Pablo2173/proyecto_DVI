@@ -33,7 +33,7 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('enemy', enemy_sprite);
         this.load.audio('cuack', cuackSound);
 
-        // Preload de todas las armas
+        // Preload de todas las armas (cambiar)
         Arco.preload(this);
         Mcuaktro.preload(this);
         Cuchillo.preload(this);
@@ -97,7 +97,7 @@ export default class MainScene extends Phaser.Scene {
             swingAngle:      90,
             swingDuration:   180,
             scale:           1,
-            debug:           false
+            debug:           true
         });
 
         // Arco en posición aleatoria
@@ -115,7 +115,7 @@ export default class MainScene extends Phaser.Scene {
                 range:           400,
                 optimalDistance: 280,
                 scale:           1,
-                debug:           false
+                debug:           true
             }
         );
 
