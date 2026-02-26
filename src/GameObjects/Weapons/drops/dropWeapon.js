@@ -18,7 +18,7 @@ export default class DropWeapon extends DropItem {
         this.weaponConfig = weaponConfig;
 
         // Escala ligeramente reducida para que se vea como ítem suelto
-        this.setScale(weaponConfig.scale ?? 1);
+        this.setScale(1);
         this.setDepth(1);
 
         // Añadir al grupo de drops de la escena si existe

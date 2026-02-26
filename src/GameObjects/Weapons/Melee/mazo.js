@@ -10,7 +10,7 @@ export default class Mazo extends Weapon {
             attackSpeed:     800,   // arma lenta pero poderosa
             range:           90,
             optimalDistance: 65,
-            swingAngle:      90,
+            swingAngle:      70,
             swingDuration:   180,
             scale:           1.2,
             debug:           false

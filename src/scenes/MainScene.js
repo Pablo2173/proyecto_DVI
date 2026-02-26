@@ -67,8 +67,6 @@ export default class MainScene extends Phaser.Scene {
         this.duck = new Duck(this, 200, 200, 'mcuaktro');
 
         // ── Atacar con click izquierdo (puntual o mantenido) ──
-        // El ataque continuo mientras se mantiene el botón se gestiona en update().
-        // Este listener dispara de inmediato en el primer frame del click.
         this.input.on('pointerdown', () => {
             if (this.duck && this.duck.weapon) this.duck.weapon.attack();
         });
@@ -98,7 +96,7 @@ export default class MainScene extends Phaser.Scene {
             optimalDistance: 65,
             swingAngle:      90,
             swingDuration:   180,
-            scale:           0.5,
+            scale:           1,
             debug:           false
         });
 
@@ -116,7 +114,7 @@ export default class MainScene extends Phaser.Scene {
                 attackSpeed:     600,
                 range:           400,
                 optimalDistance: 280,
-                scale:           0.5,
+                scale:           1,
                 debug:           false
             }
         );
