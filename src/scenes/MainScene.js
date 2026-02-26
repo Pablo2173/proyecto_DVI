@@ -86,7 +86,7 @@ export default class MainScene extends Phaser.Scene {
 
         // ── Spawn de drops de ejemplo ──
         // Mazo en posición fija
-        new DropWeapon(this, 350, 350, {
+        new DropWeapon(this, 450, 450, {
             texture:         'mazo',
             isRanged:        false,
             projectileClass: null,
