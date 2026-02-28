@@ -1,22 +1,23 @@
-import MeleeWeapon from '../meleeWeapon.js';
-import cuchilloTexture from '../../../../assets/sprites/Weapons/cuchillo.png';
+import Weapon from '../weapon.js';
+import cuchilloSprite from '../../../../assets/sprites/weapons/cuchillo.png';
 
-export default class Cuchillo extends MeleeWeapon {
-    constructor(scene, x, y) {
-        super(scene, x, y, 'cuchillo', {
-            damage:          15,
-            attackSpeed:     300,
-            swingAngle:      40,
-            swingDuration:   80,
-            range:           60,
-            optimalDistance: 30,
-            debug:            true,
-            scale:           0.2,
-            origin:          { x: 0, y: 0.5 }
+export default class Cuchillo extends Weapon {
+    constructor(scene, owner) {
+        super(scene, owner, {
+            texture:         'cuchillo',
+            isRanged:        false,
+            damage:          25,
+            attackSpeed:     350,
+            range:           80,
+            optimalDistance: 55,
+            swingAngle:      80,
+            swingDuration:   100,
+            scale:           1,
+            debug:           true
         });
     }
 
     static preload(scene) {
-        scene.load.image('cuchillo', cuchilloTexture);
+        scene.load.image('cuchillo', cuchilloSprite);
     }
 }

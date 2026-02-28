@@ -1,22 +1,23 @@
-import MeleeWeapon from '../meleeWeapon.js';
-import mazoTexture from '../../../../assets/sprites/Weapons/mazo.png';
+import Weapon from '../weapon.js';
+import mazoSprite from '../../../../assets/sprites/weapons/mazo.png';
 
-export default class Mazo extends MeleeWeapon {
-    constructor(scene, x, y) {
-        super(scene, x, y, 'mazo', {
-            damage:        30,
-            attackSpeed:   800,
-            swingAngle:    70,
-            swingDuration: 200,
-            range:           60,
-            optimalDistance: 30,
-            debug:            true,
-            scale:         0.2,
-            origin:        { x: 0, y: 0.5 }
+export default class Mazo extends Weapon {
+    constructor(scene, owner) {
+        super(scene, owner, {
+            texture:         'mazo',
+            isRanged:        false,
+            damage:          45,
+            attackSpeed:     800,   // arma lenta pero poderosa
+            range:           90,
+            optimalDistance: 65,
+            swingAngle:      70,
+            swingDuration:   180,
+            scale:           1.2,
+            debug:           true
         });
     }
 
     static preload(scene) {
-        scene.load.image('mazo', mazoTexture);
+        scene.load.image('mazo', mazoSprite);
     }
 }
