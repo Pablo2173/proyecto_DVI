@@ -3,7 +3,7 @@ import Flecha from '../../Projectiles/flecha.js';
 import arcoSprite from '../../../../assets/sprites/weapons/arco.png';
 
 export default class Arco extends Weapon {
-    constructor(scene, owner) {
+    constructor(scene, owner, bar = null) {
         super(scene, owner, {
             texture:         'arco',
             isRanged:        true,
@@ -15,7 +15,8 @@ export default class Arco extends Weapon {
             optimalDistance: 280,
             scale:           1,
             spriteAngleOffset: 0,
-            debug:           true
+            debug:           true,
+            bar:             bar
         });
     }
 
