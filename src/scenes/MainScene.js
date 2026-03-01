@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import Duck from '../GameObjects/duck.js';
 import Weapon from '../GameObjects/weapon.js';
 import Enemy from '../GameObjects/enemy.js';
-import player_sprite from '../../assets/sprites/player.png'; //la de pato_con_rama queda demasiado grande
-import enemy_sprite from '../../assets/sprites/player.png';
+import player_sprite from '../assets/sprites/player.png'; //la de pato_con_rama queda demasiado grande
+import enemy_sprite from '../assets/sprites/player.png';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {

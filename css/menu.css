@@ -1,7 +1,7 @@
 /* ===== Cargar Fuente ===== */
 @font-face {
-  font-family: "MedievalSharp";
-  src: url("typo/MedievalSharp-Regular.ttf") format("truetype");
+  font-family: "GothicByte";
+  src: url("typo/GothicByte.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: swap;
@@ -17,7 +17,7 @@ html, body {
 
 body {
   overflow: hidden;
-  font-family: "MedievalSharp", serif;
+  font-family: "GothicByte", serif;
 }
 
 /* ===== Contenedor principal (Phaser + UI) ===== */
@@ -89,7 +89,7 @@ body {
 }
 
 .btn{
-  font-family: "MedievalSharp", serif;
+  font-family: "GothicByte", serif;
   cursor: pointer;
   padding: 16px 18px;
   font-size: 22px;
