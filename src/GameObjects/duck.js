@@ -6,6 +6,8 @@ import Cuchillo from './Weapons/Melee/cuchillo.js';
 import Mazo     from './Weapons/Melee/mazo.js';
 import Ramita   from './Weapons/Melee/ramita.js';
 
+import WeaponBar from './weaponBar.js'
+
 const WEAPON_MAP = {
     arco:     Arco,
     mcuaktro: Mcuaktro,
@@ -26,6 +28,7 @@ export default class Duck extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y, weaponKey = 'mcuaktro') {
         super(scene, x, y, 'idle_duck', 0);
         this.scene = scene;
+        this.weaponBar = new WeaponBar(scene, this);
         scene.add.existing(this);
 
         this._speed       = 160;
@@ -79,8 +82,9 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             return;
         }
 
-        const newWeapon = new WeaponClass(this.scene, this);
+        const newWeapon = new WeaponClass(this.scene, this, this.weaponBar);
         this.setWeapon(newWeapon);
+        this.weapon.setBar(this.weaponBar)
     }
 
     /**
@@ -183,6 +187,8 @@ export default class Duck extends Phaser.GameObjects.Sprite {
 
         // ── Detección de drops cercanos (tecla E) ──
         this._checkDropPickup();
+
+        this.weaponBar.updatePosition()
     }
 
     /**

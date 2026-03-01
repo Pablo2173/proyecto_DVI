@@ -44,6 +44,7 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         // ── Radios de combate ──
         this.range           = config.range           ?? 800;
         this.optimalDistance = config.optimalDistance ?? this.range * 0.7;
+        this.accuracy = Phaser.Math.Clamp(config.accuracy ?? 0, 0, 180);
 
         // ── Melee ──
         this.swingAngle    = config.swingAngle    ?? 60;
@@ -58,6 +59,8 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         this.debugMode     = config.debug ?? false;
         this.debugGraphics = scene.add.graphics();
         this.debugGraphics.setDepth(9999);
+
+        //this.on_equip();
     }
 
     // ─────────────────────────────────────────
@@ -92,6 +95,8 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         } else {
             this.debugGraphics.clear();
         }
+        if (this._canAttack())
+            this.on_wait();
     }
 
     // ─────────────────────────────────────────
@@ -100,6 +105,7 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
     attack() {
         if (!this._canAttack()) return;
         this.lastAttackTime = this.scene.time.now;
+        this.on_shoot();
 
         if (this.isRanged) {
             this._fireProjectile();
@@ -110,32 +116,52 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
 
     _canAttack() {
         return (this.scene.time.now - this.lastAttackTime) >= this.attackSpeed
-            && !this.isAttacking;
+            && !this.isAttacking && this.barCanShoot();
     }
 
-    // ── Ranged ──
     _fireProjectile() {
         if (!this.projectileClass) {
             console.warn(`${this.constructor.name}: sin projectileClass definida.`);
             return;
         }
 
-        const pointer  = this.scene.input.activePointer;
-        const angle    = Phaser.Math.Angle.Between(
-            this.owner.x, this.owner.y,
-            pointer.worldX, pointer.worldY
-        );
-        const direction = new Phaser.Math.Vector2(Math.cos(angle), Math.sin(angle));
+        const pointer = this.scene.input.activePointer;
 
-        // Spawn en la punta del sprite
+        // Ángulo base hacia el puntero
+        let angle = Phaser.Math.Angle.Between(
+            this.owner.x,
+            this.owner.y,
+            pointer.worldX,
+            pointer.worldY
+        );
+
+        // ── Aplicar desviación según accuracy ──
+        // accuracy = 0   → sin desviación
+        // accuracy = 180 → ±90 grados
+        if (this.accuracy > 0) {
+            const maxDeviationRad = Phaser.Math.DegToRad(this.accuracy / 2);
+            const deviation = Phaser.Math.FloatBetween(
+                -maxDeviationRad,
+                maxDeviationRad
+            );
+            angle += deviation;
+        }
+
+        // Dirección final
+        const direction = new Phaser.Math.Vector2(
+            Math.cos(angle),
+            Math.sin(angle)
+        );
+
+        // Spawn en la punta del arma
         const length = this.displayWidth;
         const spawnX = this.owner.x + Math.cos(angle) * length;
         const spawnY = this.owner.y + Math.sin(angle) * length;
 
         new this.projectileClass(this.scene, spawnX, spawnY, {
             direction,
-            speed:  this.projectileSpeed,
-            range:  this.range,
+            speed: this.projectileSpeed,
+            range: this.range,
             damage: this.damage
         });
     }
@@ -193,4 +219,16 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
     //  PRELOAD (override en subclases o helpers)
     // ─────────────────────────────────────────
     static preload(scene) {}
+
+    setBar(combatBar){
+        this.bar = combatBar
+    }
+
+    // Funciones a implementar para las armas especificas
+
+    on_equip(){}    // Called when you equip the weapon
+    on_shoot(){}    // Called when shooting a bullet
+    on_wait(){}     // Called while not shooting
+    barCanShoot(){return true}  // Called before shoot, after cooldown, to see if the bar state is acceptable for the weapon
+    
 }

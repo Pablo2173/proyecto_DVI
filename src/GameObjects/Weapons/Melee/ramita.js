@@ -2,7 +2,7 @@ import Weapon from '../weapon.js';
 import ramitaSprite from '../../../../assets/sprites/weapons/ramita.png';
 
 export default class Ramita extends Weapon {
-    constructor(scene, owner) {
+    constructor(scene, owner, bar = null) {
         super(scene, owner, {
             texture:         'ramita',
             isRanged:        false,
@@ -13,7 +13,8 @@ export default class Ramita extends Weapon {
             swingAngle:      70,
             swingDuration:   90,
             scale:           1,
-            debug:           true
+            debug:           true,
+            bar:             bar
         });
     }
 

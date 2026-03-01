@@ -2,7 +2,7 @@ import Weapon from '../weapon.js';
 import mazoSprite from '../../../../assets/sprites/weapons/mazo.png';
 
 export default class Mazo extends Weapon {
-    constructor(scene, owner) {
+    constructor(scene, owner, bar = null) {
         super(scene, owner, {
             texture:         'mazo',
             isRanged:        false,
@@ -13,7 +13,8 @@ export default class Mazo extends Weapon {
             swingAngle:      70,
             swingDuration:   180,
             scale:           1.2,
-            debug:           true
+            debug:           true,
+            bar:             bar
         });
     }
 

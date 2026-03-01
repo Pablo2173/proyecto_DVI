@@ -20,6 +20,10 @@ import player_sprite from '../../assets/sprites/duck/idle_duck.png';
 import enemy_sprite  from '../../assets/sprites/player.png';
 import cuackSound    from '../../assets/sounds/cuack.mp3';
 
+// Weapon bar
+import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
+import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
+
 export default class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
@@ -41,6 +45,10 @@ export default class MainScene extends Phaser.Scene {
         Ramita.preload(this);
         Flecha.preload(this);
         Bala.preload(this);
+
+        // Preload de la barra de arma del jugador
+        this.load.image('weapon_bar_border', bar);
+        this.load.image('weapon_bar_fill', bar_fill);
     }
 
     create() {
