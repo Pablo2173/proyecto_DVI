@@ -2,184 +2,283 @@ import Phaser from "phaser";
 
 export default class MenuScene extends Phaser.Scene {
   constructor() {
-    super({ key: "MenuScene" });
-    this.bg = {};
-    this.ui = {};
-  }
+    super("MenuScene");
 
-  preload() {
-    // ✅ Rutas robustas para Vite (assets/ está en la raíz del proyecto)
-    const sky = new URL("../../assets/menu/sky.png", import.meta.url).href;
-    const clouds = new URL("../../assets/menu/clouds.png", import.meta.url).href;
-    const back = new URL("../../assets/menu/backfield.png", import.meta.url).href;
-    const trees = new URL("../../assets/menu/trees.png", import.meta.url).href;
-    const ground = new URL("../../assets/menu/ground.png", import.meta.url).href;
+    // Velocidades parallax (px/seg)
+    this.cloudSpeedPxPerSec = 14;
+    this.backfieldSpeedPxPerSec = 2;
 
-    this.load.image("sky", sky);
-    this.load.image("clouds", clouds);
-    this.load.image("back", back);
-    this.load.image("trees", trees);
-    this.load.image("ground", ground);
+    // Para mantener continuidad en resize
+    this._cloudScroll = 0;
+    this._backScroll = 0;
+
+    // Navegación por teclado
+    this._selectedIndex = 0;
+    this._buttonObjs = [];
   }
 
   create() {
-    this.cameras.main.setRoundPixels(true);
+    this.buildBackground();
+    this.buildUI();
 
-    const { width: w, height: h } = this.scale;
+    // Resize (FIT): re-layout sin romper el loop
+    this.scale.on("resize", () => {
+      this.layoutBackground();
+      this.layoutUI();
+    });
 
-    // --- Fondo animado ---
-    this.bg.sky = this.add.image(w / 2, h / 2, "sky").setDisplaySize(w, h);
+    this.setupKeyboard();
+  }
 
-    this.bg.clouds = this.add
-      .tileSprite(0, 0, w, h, "clouds")
-      .setOrigin(0)
-      .setAlpha(0.95);
+  // -----------------------------
+  // BACKGROUND
+  // -----------------------------
+  buildBackground() {
+    const W = this.scale.width;
+    const H = this.scale.height;
 
-    this.bg.back = this.add.tileSprite(0, h, w, h, "back").setOrigin(0, 1);
-    this.bg.trees = this.add.tileSprite(0, h, w, h, "trees").setOrigin(0, 1);
-    this.bg.ground = this.add.tileSprite(0, h, w, h, "ground").setOrigin(0, 1);
+    // Capas (atrás -> delante)
+    this.sky = this.add.image(W / 2, H / 2, "sky").setDepth(0);
 
-    // --- UI (solo JS/Phaser) ---
-    this.ui.title = this.add
-      .text(0, 0, "THE\nDUCKLER", {
+     // Nubes: 2 copias para loop continuo
+    this.cloudA = this.add.image(0, H / 2, "clouds").setOrigin(0, 0.5).setDepth(1);
+    this.cloudB = this.add.image(0, H / 2, "clouds").setOrigin(0, 0.5).setDepth(1);
+
+    // backfield: 2 copias para parallax suave
+    this.backA = this.add.image(0, H / 2, "backfield").setOrigin(0, 0.5).setDepth(2);
+    this.backB = this.add.image(0, H / 2, "backfield").setOrigin(0, 0.5).setDepth(2);
+
+    // Árboles y suelo
+    this.trees = this.add.image(W / 2, H, "trees").setDepth(3);
+    this.ground = this.add.image(W / 2, H / 2, "ground").setDepth(4);
+
+    // Árboles: origin abajo para sway realista
+    this.trees.setOrigin(0.5, 1);
+
+    // Aplicar escala/colocación inicial
+    this.layoutBackground();
+
+  
+  }
+
+  layoutBackground() {
+    const W = this.scale.width;
+    const H = this.scale.height;
+
+    // Sky cubre pantalla
+    this._scaleToCover(this.sky, W, H).setPosition(W / 2, H / 2);
+
+    // Ground cubre pantalla
+    this._scaleToCover(this.ground, W, H).setPosition(W / 2, H / 2);
+
+    // Trees cubre y anclado abajo
+    this._scaleToCover(this.trees, W, H);
+    this.trees.y = H;
+
+    this._treesBaseX = W / 2;
+    this.trees.x = this._treesBaseX;
+
+    // Backfield parallax: escala igual en A/B
+    this._scaleToCover(this.backA, W, H);
+    this.backB.setScale(this.backA.scaleX, this.backA.scaleY);
+
+    const bw = this.backA.displayWidth;
+    this.backA.y = H / 2;
+    this.backB.y = H / 2;
+
+    // Posición basada en scroll acumulado (sin reset brusco)
+    const backOffset = ((this._backScroll % bw) + bw) % bw;
+    this.backA.x = -backOffset;
+    this.backB.x = this.backA.x + bw;
+
+    // Clouds parallax: escala igual
+    this._scaleToCover(this.cloudA, W, H);
+    this.cloudB.setScale(this.cloudA.scaleX, this.cloudA.scaleY);
+
+    const cw = this.cloudA.displayWidth;
+    this.cloudA.y = H / 2;
+    this.cloudB.y = H / 2;
+
+    const cloudOffset = ((this._cloudScroll % cw) + cw) % cw;
+    this.cloudA.x = -cloudOffset;
+    this.cloudB.x = this.cloudA.x + cw;
+  }
+
+  update(_, dt) {
+    const dts = dt / 1000;
+
+    // Acumular scroll (mantiene continuidad en resize)
+    this._cloudScroll += this.cloudSpeedPxPerSec * dts;
+    this._backScroll += this.backfieldSpeedPxPerSec * dts;
+
+    // Aplicar posiciones según scroll
+    const cw = this.cloudA.displayWidth;
+    const bw = this.backA.displayWidth;
+
+    const cloudOffset = ((this._cloudScroll % cw) + cw) % cw;
+    this.cloudA.x = -cloudOffset;
+    this.cloudB.x = this.cloudA.x + cw;
+
+    const backOffset = ((this._backScroll % bw) + bw) % bw;
+    this.backA.x = -backOffset;
+    this.backB.x = this.backA.x + bw;
+
+  }
+
+  _scaleToCover(img, W, H) {
+    const s = Math.max(W / img.width, H / img.height);
+    img.setScale(s);
+    return img;
+  }
+
+  // -----------------------------
+  // UI (Título + botones)
+  // -----------------------------
+  buildUI() {
+    const W = this.scale.width;
+    const H = this.scale.height;
+
+    // Container centrado
+    this.ui = this.add.container(W / 2, H / 2).setDepth(10);
+
+    // Panel título
+    this.titlePanel = this.add
+      .rectangle(0, -170, 560, 110, 0x000000, 0.35)
+      .setStrokeStyle(4, 0xffffff, 0.25)
+      .setOrigin(0.5);
+
+    // Título (más fino + resolution)
+    this.titleText = this.add
+      .text(0, -178, "THE DUCKLER", {
         fontFamily: "GothicByte",
-        fontSize: "110px",
-        color: "#b35a1a",
-        stroke: "#5a2e0c",
-        strokeThickness: 14,
-        align: "center",
+        fontSize: "56px",
+        fontStyle: "normal",
+        color: "#ffffff",
+        resolution: 2,
       })
       .setOrigin(0.5);
 
-    this.ui.subtitle = this.add
-      .text(0, 0, "Presiona un botón para continuar", {
-        fontFamily: "GothicByte",
-        fontSize: "20px",
-        color: "#2b1407",
-        stroke: "#000000",
-        strokeThickness: 2,
-      })
-      .setOrigin(0.5);
+    // Botones (4)
+    const items = [
+      { label: "JUGAR", fn: () => console.log("JUGAR") /* this.scene.start("MainScene") */ },
+      { label: "CONFIGURACIÓN", fn: () => console.log("CONFIG") },
+      { label: "CRÉDITOS", fn: () => console.log("CREDITOS") },
+      { label: "SALIR", fn: () => console.log("SALIR") },
+    ];
 
-    this.ui.btnStart = this.makeBoxButton("INICIO", () => this.scene.start("MainScene"));
-    this.ui.btnOptions = this.makeBoxButton("OPCIONES", () => console.log("Opciones"));
-    this.ui.btnExit = this.makeBoxButton("SALIR", () => console.log("Salir"));
+    this._buttonObjs = items.map((it, i) => this._makeButton(it.label, it.fn, i));
 
-    // Teclas rápidas
-    this.keyEnter = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
-    this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.keyEsc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    // Añadir al UI container
+    this.ui.add([this.titlePanel, this.titleText]);
+    this._buttonObjs.forEach((b) => this.ui.add([b.bg, b.label]));
 
-    // Layout + resize
-    this.layout();
-    this.onResize = () => this.layout();
-    this.scale.on("resize", this.onResize);
+    // Flotación sutil del título
+    this.tweens.add({
+      targets: [this.titlePanel, this.titleText],
+      y: "+=4",
+      duration: 1800,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut",
+    });
 
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.scale.off("resize", this.onResize);
+    this.layoutUI();
+    this.updateButtonSelection();
+  }
+
+  layoutUI() {
+    const W = this.scale.width;
+    const H = this.scale.height;
+
+    // Centrar container
+    this.ui.setPosition(W / 2, H / 2);
+
+    // Colocar botones en columna
+    const startY = -20;
+    const gap = 70;
+
+    this._buttonObjs.forEach((b, i) => {
+      const y = startY + i * gap;
+      b.bg.setPosition(0, y);
+      b.label.setPosition(0, y - 10);
     });
   }
 
-  makeBoxButton(label, onClick) {
-    const container = this.add.container(0, 0);
+  _makeButton(text, onClick, index) {
+    const bg = this.add
+      .rectangle(0, 0, 380, 56, 0x000000, 0.35)
+      .setStrokeStyle(3, 0xffffff, 0.25)
+      .setOrigin(0.5);
 
-    const bw = 520;
-    const bh = 95;
-
-    const box = this.add.graphics();
-
-    const text = this.add
-      .text(0, 0, label, {
+    // Texto del botón (más fino + resolution)
+    const label = this.add
+      .text(0, 0, text, {
         fontFamily: "GothicByte",
-        fontSize: "44px",
-        color: "#2b1407",
-        stroke: "#000000",
-        strokeThickness: 2,
+        fontSize: "28px",
+        fontStyle: "normal",
+        color: "#ffffff",
+        resolution: 2,
       })
       .setOrigin(0.5);
 
-    const hit = this.add
-      .rectangle(0, 0, bw, bh, 0x000000, 0)
-      .setInteractive({ useHandCursor: true });
+    bg.setInteractive({ useHandCursor: true });
 
-    const draw = (state) => {
-      box.clear();
-
-      const fill =
-        state === "down" ? 0xc8955f : state === "hover" ? 0xe2b182 : 0xd9ad7c;
-
-      // sombra
-      box.fillStyle(0x000000, 0.20);
-      box.fillRoundedRect(-bw / 2 + 8, -bh / 2 + 10, bw, bh, 16);
-
-      // cuerpo
-      box.fillStyle(fill, 0.96);
-      box.lineStyle(6, 0x000000, 0.25);
-      box.fillRoundedRect(-bw / 2, -bh / 2, bw, bh, 16);
-      box.strokeRoundedRect(-bw / 2, -bh / 2, bw, bh, 16);
+    const over = () => {
+      this._selectedIndex = index;
+      this.updateButtonSelection();
     };
 
-    draw("idle");
+    bg.on("pointerover", over);
+    label.setInteractive({ useHandCursor: true });
+    label.on("pointerover", over);
 
-    hit.on("pointerover", () => draw("hover"));
-    hit.on("pointerout", () => draw("idle"));
-    hit.on("pointerdown", () => draw("down"));
-    hit.on("pointerup", () => {
-      draw("hover");
+    const press = () => {
+      bg.setScale(0.98);
+    };
+
+    const release = () => {
+      bg.setScale(1);
       onClick?.();
+    };
+
+    bg.on("pointerdown", press);
+    bg.on("pointerup", release);
+    label.on("pointerdown", press);
+    label.on("pointerup", release);
+
+    bg.on("pointerout", () => this.updateButtonSelection());
+    label.on("pointerout", () => this.updateButtonSelection());
+
+    return { bg, label, onClick };
+  }
+
+  // -----------------------------
+  // Keyboard nav
+  // -----------------------------
+  setupKeyboard() {
+    this.input.keyboard.on("keydown-UP", () => {
+      this._selectedIndex = (this._selectedIndex - 1 + this._buttonObjs.length) % this._buttonObjs.length;
+      this.updateButtonSelection();
     });
 
-    container.on("btn:click", () => onClick?.());
-    container.add([box, text, hit]);
+    this.input.keyboard.on("keydown-DOWN", () => {
+      this._selectedIndex = (this._selectedIndex + 1) % this._buttonObjs.length;
+      this.updateButtonSelection();
+    });
 
-    return container;
+    this.input.keyboard.on("keydown-ENTER", () => {
+      const b = this._buttonObjs[this._selectedIndex];
+      b?.onClick?.();
+    });
   }
 
-  layout() {
-    const { width: w, height: h } = this.scale;
+  updateButtonSelection() {
+    this._buttonObjs.forEach((b, i) => {
+      const selected = i === this._selectedIndex;
 
-    // fondo
-    this.bg.sky.setPosition(w / 2, h / 2).setDisplaySize(w, h);
-    this.bg.clouds.setSize(w, h).setPosition(0, 0);
-    this.bg.back.setSize(w, h).setPosition(0, h);
-    this.bg.trees.setSize(w, h).setPosition(0, h);
-    this.bg.ground.setSize(w, h).setPosition(0, h);
-
-    // UI dentro de pantalla (✅ no se sale)
-    const cx = w / 2;
-
-    const titleSize = Math.max(64, Math.min(120, Math.floor(w / 7)));
-    this.ui.title.setFontSize(titleSize);
-
-    const top = Math.round(h * 0.24);
-    this.ui.title.setPosition(cx, top);
-    this.ui.subtitle.setPosition(cx, top + Math.round(h * 0.16));
-
-    const startY = Math.round(h * 0.62);
-    const gap = Math.round(h * 0.13);
-
-    this.ui.btnStart.setPosition(cx, startY);
-    this.ui.btnOptions.setPosition(cx, startY + gap);
-    this.ui.btnExit.setPosition(cx, startY + gap * 2);
-  }
-
-  update(time, delta) {
-    const dt = delta / 1000;
-
-    // animación parallax
-    this.bg.clouds.tilePositionX += 6 * dt;
-    this.bg.back.tilePositionX += 1.2 * dt;
-    this.bg.trees.tilePositionX += 2.0 * dt;
-    this.bg.ground.tilePositionX += 0.5 * dt;
-
-    this.bg.clouds.y = Math.sin(time * 0.001) * 2;
-
-    // teclado (polling)
-    if (Phaser.Input.Keyboard.JustDown(this.keyEnter) || Phaser.Input.Keyboard.JustDown(this.keySpace)) {
-      this.ui.btnStart.emit("btn:click");
-    }
-    if (Phaser.Input.Keyboard.JustDown(this.keyEsc)) {
-      this.ui.btnExit.emit("btn:click");
-    }
+      b.bg.setAlpha(selected ? 0.55 : 0.35);
+      b.bg.setScale(selected ? 1.03 : 1);
+      b.label.setAlpha(selected ? 1 : 0.9);
+    });
   }
 }

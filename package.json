@@ -28,9 +28,10 @@
         "electron-builder": "^26.8.1",
         "electron-vite": "^5.0.0",
         "rollup": "^4.32.1",
-        "vite": "^5.4.21"
+        "vite": "^7.3.1"
     },
     "dependencies": {
-        "phaser": "3.85.2"
+        "phaser": "3.85.2",
+        "webfontloader": "^1.6.28"
     }
 }
