@@ -159,8 +159,10 @@ export default class MainScene extends Phaser.Scene {
 
             // Enemigo camina hacia el pato cuando está alertado
             if (this.enemy.isAlerted()) {
-                const pos = this.enemy.moveTowards(this.duck, 80, delta);
-                this.enemy.setPosition(pos.x, pos.y);
+                if (this.enemy.isAlerted()) {
+                    this.enemy.moveTowards(this.duck); // solo el target, sin más parámetros
+                    this.enemy.setFlipX(this.enemy.x >= this.duck.x);
+                }   
 
                 this.enemy.setFlipX(this.enemy.x >= this.duck.x);
             }

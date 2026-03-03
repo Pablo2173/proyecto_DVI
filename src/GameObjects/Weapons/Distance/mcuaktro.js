@@ -1,6 +1,6 @@
 import Weapon from '../weapon.js';
 import Bala from '../../Projectiles/bala.js';
-import mcuaktroSprite from '../../../../assets/sprites/weapons/mcuaktro.png';
+import mcuaktroSprite from '../../../../assets/sprites/Weapons/mcuaktro.png';
 
 export default class Mcuaktro extends Weapon {
     constructor(scene, owner, bar = null) {

@@ -22,21 +22,24 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         this.scene = scene;
         scene.add.existing(this);
 
-        // Añade cuerpo físico si la escena tiene physics
+        // --- FÍSICA (top-down) ---
         if (scene.physics && scene.physics.add) {
             scene.physics.add.existing(this);
-            if (this.body && typeof this.body.setCollideWorldBounds === 'function') {
+            if (this.body) {
                 this.body.setCollideWorldBounds(true);
+                this.body.setAllowGravity(false); // Sin gravedad porque estamos haciendo un top-down
+                this.body.setImmovable(false);    // Basicamente lo pongo a false para que le puedan empujar
+
+                this.body.setSize(64, 64); //falta poner el tamanyo del sprite
+                this.body.setOffset(4, 4);
             }
         }
 
         this._nombre = name;
-        this._pos_x = x;
-        this._pos_y = y;
         this._visionRadius = visionRadius;
         this._facingAngle = Math.PI; //Lo he puesto en Math.PI para que empiece mirando para la izquierda
         this._visionAngle = Math.PI / 2; //Esto es un cuarto de circulo para el cono de vision
-        this._speed = null;
+        this._speed = 80; //he puesto este valor por defecto, se sobreescribe en cada tipo de enemigo
         this._weapon = null;
         this._state = StatusEnemy.IDLE;
         this._lastQuackTime = 0; // Para evitar alertas duplicadas del mismo quack
@@ -47,17 +50,38 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         console.log(`Mi nombre es ${this._nombre}`);
     }
 
-    // Sobrescribimos setPosition para mantener sincronía entre sprite y lógica
-    setPosition(x, y) {
-        super.setPosition(x, y);
-        this._pos_x = x;
-        this._pos_y = y;
-        // Mantiene el body en la misma posición si existe
-        if (this.body && this.body.position) {
-            this.body.x = x - (this.displayWidth * this.originX);
-            this.body.y = y - (this.displayHeight * this.originY);
+    /**
+     * Mueve al enemigo hacia un target usando el body de física.
+     * @param {{x: number, y: number}} target
+     * @param {number} speed  píxeles/segundo
+     */
+    moveTowards(target) {
+        if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') {
+           this.body?.setVelocity(0, 0);
+            return;
         }
-        return this;
+
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist === 0) {
+            this.body?.setVelocity(0, 0);
+            return;
+        }
+
+        this._facingAngle = Math.atan2(dy, dx);
+        this.body.setVelocity(
+           (dx / dist) * this._speed,
+            (dy / dist) * this._speed
+        );
+    }
+
+    /**
+     * Detiene el movimiento del enemigo.
+     */
+    stop() {
+        this.body?.setVelocity(0, 0);
     }
 
     setVisionRadius(radius) {
@@ -65,21 +89,25 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
     }
 
     // target: objeto con propiedades {x, y} (en este caso es el sprite del patete)
+    /**
+     * Comprueba si el enemigo puede ver al target dentro de su cono de visión.
+     * @param {{x: number, y: number}} target
+     */
     canSee(target) {
         if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') return false;
-        const dx = target.x - this._pos_x;
-        const dy = target.y - this._pos_y;
-        const dist2 = (dx * dx + dy * dy);
-        if (dist2 > (this._visionRadius * this._visionRadius)) return false;
 
-        // angle to target
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const dist2 = dx * dx + dy * dy;
+
+        if (dist2 > this._visionRadius * this._visionRadius) return false;
+
         const angleToTarget = Math.atan2(dy, dx);
-        // normalize difference to [-PI, PI]
         let diff = angleToTarget - this._facingAngle;
-        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff > Math.PI)  diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
 
-        return Math.abs(diff) <= (this._visionAngle / 2);
+        return Math.abs(diff) <= this._visionAngle / 2;
     }
 
     // Dibuja el radio de visión usando un Phaser 3 Graphics.
@@ -98,8 +126,8 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
 
         if (clearBefore) graphics.clear();
 
-        const px = this._pos_x;
-        const py = this._pos_y;
+        const px = this.x;
+        const py = this.y;
 
         const startAngle = this._facingAngle - (this._visionAngle / 2);
         const endAngle = this._facingAngle + (this._visionAngle / 2);
@@ -130,6 +158,11 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
     }
 
     // Si el patete entra en el radio de vision del enemigo cambia su estado a alertado
+    /**
+     * Comprueba si el jugador es visible y alerta al enemigo.
+     * @param {{x: number, y: number}} player
+     * @returns {boolean} true si acaba de alertarse
+     */
     detectAndAlert(player) {
         if (!player) return false;
         const seen = this.canSee(player);
@@ -163,8 +196,8 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         // Verifica si el enemigo está dentro del radio del sonido
         if (!audioEvent.position) return;
 
-        const dx = audioEvent.position.x - this._pos_x;
-        const dy = audioEvent.position.y - this._pos_y;
+        const dx = audioEvent.position.x - this.x;
+        const dy = audioEvent.position.y - this.y;
         const distance = Math.hypot(dx, dy);
         const soundRadius = audioEvent.radius || 0;
 
@@ -174,48 +207,26 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         }
     }
 
-    // El target es un objeto posicion por el cual hago que el enemigo ande hacia él.
-    // - delta: tiempo desde el último frame en ms (pasar el "delta" del update de Phaser)
-    moveTowards(target, speed = 80, delta = 16) {
-        if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') {
-            return { x: this._pos_x, y: this._pos_y };
-        }
 
-        const dt = (typeof delta === 'number' && delta > 0) ? (delta / 1000) : (16 / 1000);
-        const s = (typeof this._speed === 'number' && this._speed > 0) ? this._speed : speed;
 
-        const dx = target.x - this._pos_x;
-        const dy = target.y - this._pos_y;
-        const dist = Math.hypot(dx, dy);
-        if (dist === 0) return { x: this._pos_x, y: this._pos_y };
+    getState() {
+        return this._state;
+    }
 
-        // actualizar ángulo de mirada según dirección de movimiento
-        this._facingAngle = Math.atan2(dy, dx);
+    setState(state) {
+        this._state = state;
+    }
 
-        const maxMove = s * dt;
-        const move = Math.min(maxMove, dist);
-        this._pos_x += (dx / dist) * move;
-        this._pos_y += (dy / dist) * move;
+    isDead() {
+        return this._state === StatusEnemy.DEAD;
+    }
 
-        // Actualizar posición del sprite y del body si existe
-        super.setPosition(this._pos_x, this._pos_y);
-        if (this.body) {
-            // establecer velocidad aproximada para el cuerpo (útil para colisiones)
-            if (typeof this.body.setVelocity === 'function') {
-                this.body.setVelocity((dx / dist) * s, (dy / dist) * s);
-            } else if (this.body.velocity) {
-                this.body.velocity.x = (dx / dist) * s;
-                this.body.velocity.y = (dy / dist) * s;
-            }
-        }
-
-        return { x: this._pos_x, y: this._pos_y };
+    isStunned() {
+        return this._state === StatusEnemy.STUNNED;
     }
 
     preUpdate(time, delta) {
         if (super.preUpdate) super.preUpdate(time, delta);
-        // Mantener la posición interna sincronizada por si se cambia la posición del sprite desde fuera
-        this._pos_x = this.x;
-        this._pos_y = this.y;
     }
 }
+export { StatusEnemy };
