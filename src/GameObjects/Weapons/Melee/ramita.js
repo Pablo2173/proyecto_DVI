@@ -1,5 +1,5 @@
 import Weapon from '../weapon.js';
-import ramitaSprite from '../../../../assets/sprites/weapons/ramita.png';
+import ramitaSprite from '../../../../assets/sprites/Weapons/ramita.png';
 
 export default class Ramita extends Weapon {
     constructor(scene, owner, bar = null) {

@@ -1,5 +1,5 @@
 import Weapon from '../weapon.js';
-import cuchilloSprite from '../../../../assets/sprites/weapons/cuchillo.png';
+import cuchilloSprite from '../../../../assets/sprites/Weapons/cuchillo.png';
 
 export default class Cuchillo extends Weapon {
     constructor(scene, owner, bar = null) {

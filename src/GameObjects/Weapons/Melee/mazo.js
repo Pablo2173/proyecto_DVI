@@ -1,5 +1,5 @@
 import Weapon from '../weapon.js';
-import mazoSprite from '../../../../assets/sprites/weapons/mazo.png';
+import mazoSprite from '../../../../assets/sprites/Weapons/mazo.png';
 
 export default class Mazo extends Weapon {
     constructor(scene, owner, bar = null) {
