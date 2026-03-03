@@ -9,7 +9,7 @@ export default class WeaponBar {
         this.scene = scene;
         this.player = player;
 
-        this.currentCharge = WeaponBar.MAX_CHARGE;
+        this.currentCharge = 0;
 
         // Contorno
         this.border = scene.add.sprite(0, 0, 'weapon_bar_border')
@@ -19,7 +19,7 @@ export default class WeaponBar {
 
         // Relleno
         this.fill = scene.add.sprite(0, 0, 'weapon_bar_fill')
-            .setOrigin(0.33, 0.5)
+            .setOrigin(0, 0.5)
             .setDepth(9)
             .setScale(3);
 
@@ -34,7 +34,7 @@ export default class WeaponBar {
         this.border.x = this.player.x;
         this.border.y = this.player.y + WeaponBar.OFFSETY;
 
-        this.fill.x = this.border.x - this.border.width / 2;
+        this.fill.x = this.border.x - this.border.width * 1.5;
         this.fill.y = this.border.y;
     }
 
@@ -50,7 +50,7 @@ export default class WeaponBar {
 
     setFull() {
         this.currentCharge = Phaser.Math.Clamp(
-            MAX_CHARGE,
+            WeaponBar.MAX_CHARGE,
             0,
             WeaponBar.MAX_CHARGE
         );

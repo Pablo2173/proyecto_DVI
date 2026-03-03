@@ -37,7 +37,7 @@ export default class Mcuaktro extends Weapon {
         if (this.bar.isEmpty())
             this.destroy()
         this.attackSpeed += 3
-        this.accuracy +=7
+        this.accuracy +=7   
     }    
     
     // Called before shoot, after cooldown, to see if the bar state is acceptable for the weapon

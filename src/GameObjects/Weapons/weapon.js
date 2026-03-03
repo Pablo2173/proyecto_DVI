@@ -59,8 +59,6 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         this.debugMode     = config.debug ?? false;
         this.debugGraphics = scene.add.graphics();
         this.debugGraphics.setDepth(9999);
-
-        //this.on_equip();
     }
 
     // ─────────────────────────────────────────
@@ -222,12 +220,13 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
 
     setBar(combatBar){
         this.bar = combatBar
+        this.on_equip();
     }
 
     // Funciones a implementar para las armas especificas
 
     on_equip(){}    // Called when you equip the weapon
-    on_shoot(){}    // Called when shooting a bullet
+    on_shoot(){ }    // Called when shooting a bullet
     on_wait(){}     // Called while not shooting
     barCanShoot(){return true}  // Called before shoot, after cooldown, to see if the bar state is acceptable for the weapon
     

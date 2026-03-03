@@ -11,17 +11,17 @@ import Weapon   from '../weapon.js';
  */
 export default class DropWeapon extends DropItem {
 
-    constructor(scene, x, y, weaponConfig) {
-        // El sprite en el suelo usa la misma textura que el arma
-        super(scene, x, y, weaponConfig.texture);
+    constructor(scene, x, y, weaponClass, texture) {
 
-        this.weaponConfig = weaponConfig;
+        const textureKey = texture;
 
-        // Escala ligeramente reducida para que se vea como ítem suelto
+        super(scene, x, y, textureKey);
+
+        this.weaponClass = weaponClass;
+
         this.setScale(1);
         this.setDepth(1);
 
-        // Añadir al grupo de drops de la escena si existe
         if (scene.dropItems) {
             scene.dropItems.add(this);
         }
@@ -35,6 +35,8 @@ export default class DropWeapon extends DropItem {
      *
      * @param {Duck} player
      */
+
+        
     interact(player) {
         this.swapWeapon(player);
     }
@@ -44,50 +46,27 @@ export default class DropWeapon extends DropItem {
         const dropX = this.x;
         const dropY = this.y;
 
-        // 1. Guardar config del arma actual del jugador (si tiene)
         const previousWeapon = player.weapon;
-        let   previousConfig = null;
+        let previousClass = null;
+        let previousTexture = null;
 
         if (previousWeapon) {
-            // Extraer config del arma que lleva el jugador para recrearla en el suelo
-            previousConfig = this._extractConfig(previousWeapon);
+            previousClass = previousWeapon.constructor;
+            previousTexture = previousWeapon.texture.key;  // Obtener la clave de textura del arma anterior
         }
 
-        // 2. Crear la nueva arma y equiparla al jugador
-        const newWeapon = new Weapon(scene, player, this.weaponConfig);
+        // Crear nueva arma con el bar del jugador
+        const newWeapon = new this.weaponClass(scene, player, player.weaponBar);
         player.setWeapon(newWeapon);
+        
+        // Inicializar el bar en el arma nueva
+        newWeapon.setBar(player.weaponBar);
 
-        // 3. Si el jugador tenía arma, dejarla en el suelo
-        if (previousConfig) {
-            new DropWeapon(scene, dropX, dropY, previousConfig);
+        // Crear drop con el arma anterior si existía
+        if (previousClass && previousTexture) {
+            new DropWeapon(scene, dropX, dropY, previousClass, previousTexture);
         }
 
-        // 4. Destruir este DropWeapon (ya fue recogido)
         this.destroy();
-    }
-
-    /**
-     * Extrae un weaponConfig a partir de una instancia de Weapon existente,
-     * para poder recrearla después como DropWeapon.
-     *
-     * @param {Weapon} weapon
-     * @returns {object}
-     */
-    _extractConfig(weapon) {
-        return {
-            texture:           weapon.texture?.key   ?? weapon.frame?.texture?.key,
-            isRanged:          weapon.isRanged,
-            projectileClass:   weapon.projectileClass,
-            projectileSpeed:   weapon.projectileSpeed,
-            damage:            weapon.damage,
-            attackSpeed:       weapon.attackSpeed,
-            range:             weapon.range,
-            optimalDistance:   weapon.optimalDistance,
-            swingAngle:        weapon.swingAngle,
-            swingDuration:     weapon.swingDuration,
-            scale:             weapon.scaleX,         // scaleX = scaleY normalmente
-            spriteAngleOffset: weapon.spriteAngleOffset,
-            debug:             weapon.debugMode
-        };
     }
 }

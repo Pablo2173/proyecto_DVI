@@ -84,7 +84,7 @@ export default class Duck extends Phaser.GameObjects.Sprite {
 
         const newWeapon = new WeaponClass(this.scene, this, this.weaponBar);
         this.setWeapon(newWeapon);
-        this.weapon.setBar(this.weaponBar)
+        this.weapon.setBar(this.weaponBar);
     }
 
     /**
