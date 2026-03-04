@@ -1,11 +1,14 @@
 import Phaser from 'phaser';
-import ramita_file from '../../assets/sprites/Weapons/ramita.png';
-import mazo_file from '../../assets/sprites/Weapons/mazo.png';
-import mcuaktro_file from '../../assets/sprites/Weapons/mcuaktro.png';
-import cuchillo_file from '../../assets/sprites/Weapons/cuchillo.png';
-import arco_file from '../../assets/sprites/Weapons/arco.png';
-import bala_mcuaktro_file from '../../assets/sprites/Proyectiles/bala_mcuaktro.png';
-import flecha_arco_file from '../../assets/sprites/Proyectiles/flecha_arco.png';
+
+import ramita_file from "../../assets/Weapons/ramita.png";
+import mazo_file from "../../assets/Weapons/mazo.png";
+import mcuaktro_file from "../../assets/Weapons/mcuaktro.png";
+import cuchillo_file from "../../assets/Weapons/cuchillo.png";
+import arco_file from "../../assets/Weapons/arco.png";
+
+import bala_mcuaktro_file from "../../assets/Proyectiles/bala_mcuaktro.png";
+import flecha_arco_file from "../../assets/Proyectiles/flecha_arco.png";
+
 import { handleDistanceAttack } from './distanceWeapons.js';
 import { handleMeleeAttack } from './meleeWeapons.js';
 

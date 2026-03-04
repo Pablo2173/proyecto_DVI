@@ -1,11 +1,11 @@
 import Phaser from "phaser";
-import Boot from "./scenes/Boot.js";
+import Boot from "./scenes/boot.js";
 import MenuScene from "./scenes/MenuScene.js";
+import MainScene from "./scenes/MainScene.js"; // 👈 AÑADE ESTO
 
 async function loadFont() {
-  // Ruta robusta en Electron-Vite (no depende de /public)
-  const fontUrl = new URL("../css/typo/GothicByte.ttf", import.meta.url);
-  const font = new FontFace("GothicByte", `url(${fontUrl})`);
+  const fontUrl = new URL("../css/typo/return-of-the-boss.ttf", import.meta.url);
+  const font = new FontFace("ReturnOfTheBoss", `url(${fontUrl})`);
   await font.load();
   document.fonts.add(font);
 }
@@ -19,13 +19,11 @@ async function loadFont() {
     height: 600,
     parent: "juego",
     backgroundColor: "#000000",
-
-    // Pixel-art nítido
     pixelArt: true,
     roundPixels: true,
 
-    // Menú primero, luego ya irás a MainScene desde el botón JUGAR
-    scene: [Boot, MenuScene],
+    // 👇 REGISTRA TODAS LAS ESCENAS QUE VAS A USAR
+    scene: [Boot, MenuScene, MainScene],
 
     scale: {
       mode: Phaser.Scale.FIT,

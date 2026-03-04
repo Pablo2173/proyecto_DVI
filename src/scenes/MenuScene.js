@@ -1,3 +1,4 @@
+
 import Phaser from "phaser";
 
 export default class MenuScene extends Phaser.Scene {
@@ -40,7 +41,7 @@ export default class MenuScene extends Phaser.Scene {
     // Capas (atrás -> delante)
     this.sky = this.add.image(W / 2, H / 2, "sky").setDepth(0);
 
-     // Nubes: 2 copias para loop continuo
+    // Nubes: 2 copias para loop continuo
     this.cloudA = this.add.image(0, H / 2, "clouds").setOrigin(0, 0.5).setDepth(1);
     this.cloudB = this.add.image(0, H / 2, "clouds").setOrigin(0, 0.5).setDepth(1);
 
@@ -120,7 +121,6 @@ export default class MenuScene extends Phaser.Scene {
     const backOffset = ((this._backScroll % bw) + bw) % bw;
     this.backA.x = -backOffset;
     this.backB.x = this.backA.x + bw;
-
   }
 
   _scaleToCover(img, W, H) {
@@ -145,20 +145,22 @@ export default class MenuScene extends Phaser.Scene {
       .setStrokeStyle(4, 0xffffff, 0.25)
       .setOrigin(0.5);
 
-    // Título (más fino + resolution)
+    // Título (blanco con borde negro)
     this.titleText = this.add
       .text(0, -178, "THE DUCKLER", {
-        fontFamily: "GothicByte",
+        fontFamily: "ReturnOfTheBoss",
         fontSize: "56px",
         fontStyle: "normal",
         color: "#ffffff",
+        stroke: "#000000",
+        strokeThickness: 6,
         resolution: 2,
       })
       .setOrigin(0.5);
 
     // Botones (4)
     const items = [
-      { label: "JUGAR", fn: () => console.log("JUGAR") /* this.scene.start("MainScene") */ },
+      { label: "JUGAR", fn: () => this.startGameTransition() },
       { label: "CONFIGURACIÓN", fn: () => console.log("CONFIG") },
       { label: "CRÉDITOS", fn: () => console.log("CREDITOS") },
       { label: "SALIR", fn: () => console.log("SALIR") },
@@ -202,50 +204,70 @@ export default class MenuScene extends Phaser.Scene {
     });
   }
 
+  // -----------------------------
+  // BOTÓN (mejorado)
+  // - Texto blanco con borde negro
+  // - Hover/selección: borde y glow sutil
+  // -----------------------------
   _makeButton(text, onClick, index) {
     const bg = this.add
       .rectangle(0, 0, 380, 56, 0x000000, 0.35)
       .setStrokeStyle(3, 0xffffff, 0.25)
       .setOrigin(0.5);
 
-    // Texto del botón (más fino + resolution)
     const label = this.add
       .text(0, 0, text, {
-        fontFamily: "GothicByte",
+        fontFamily: "ReturnOfTheBoss",
         fontSize: "28px",
         fontStyle: "normal",
         color: "#ffffff",
+        stroke: "#000000",
+        strokeThickness: 5,
         resolution: 2,
+
+        // Sombra sutil para que destaque aún más (opcional pero queda bien)
+        shadow: {
+          offsetX: 2,
+          offsetY: 2,
+          color: "#000000",
+          blur: 2,
+          fill: true,
+        },
       })
       .setOrigin(0.5);
 
-    bg.setInteractive({ useHandCursor: true });
-
-    const over = () => {
+    // Interacción: haz clickable tanto el fondo como el texto
+    const makeSelected = () => {
       this._selectedIndex = index;
       this.updateButtonSelection();
     };
 
-    bg.on("pointerover", over);
+    bg.setInteractive({ useHandCursor: true });
     label.setInteractive({ useHandCursor: true });
-    label.on("pointerover", over);
+
+    bg.on("pointerover", makeSelected);
+    label.on("pointerover", makeSelected);
 
     const press = () => {
       bg.setScale(0.98);
+      label.setScale(0.98);
     };
 
     const release = () => {
       bg.setScale(1);
+      label.setScale(1);
       onClick?.();
     };
 
     bg.on("pointerdown", press);
-    bg.on("pointerup", release);
     label.on("pointerdown", press);
+
+    bg.on("pointerup", release);
     label.on("pointerup", release);
 
-    bg.on("pointerout", () => this.updateButtonSelection());
-    label.on("pointerout", () => this.updateButtonSelection());
+    const out = () => this.updateButtonSelection();
+    bg.on("pointerout", out);
+    label.on("pointerout", out);
 
     return { bg, label, onClick };
   }
@@ -270,13 +292,71 @@ export default class MenuScene extends Phaser.Scene {
     });
   }
 
+  // -----------------------------
+  // Selección visual (mejorada)
+  // - Ajusta alpha/scale
+  // - Ajusta el borde del texto para resaltar selección
+  // -----------------------------
   updateButtonSelection() {
     this._buttonObjs.forEach((b, i) => {
       const selected = i === this._selectedIndex;
 
       b.bg.setAlpha(selected ? 0.55 : 0.35);
       b.bg.setScale(selected ? 1.03 : 1);
+
       b.label.setAlpha(selected ? 1 : 0.9);
+      b.label.setScale(selected ? 1.03 : 1);
+
+      // Más borde cuando está seleccionado
+      b.label.setStroke("#000000", selected ? 7 : 5);
+
+      // “Glow” sutil con sombra cuando está seleccionado
+      if (selected) {
+        b.label.setShadow(3, 3, "#000000", 4, true, true);
+      } else {
+        b.label.setShadow(2, 2, "#000000", 2, true, true);
+      }
+    });
+  }
+
+  // EMPIEZA EL JUEGO//
+  startGameTransition() {
+    // evita dobles clicks
+    this.input.enabled = false;
+
+    const w = this.scale.width;
+    const h = this.scale.height;
+
+    const cx = w / 2;
+    const cy = h / 2;
+
+    // radio suficiente para cubrir toda la pantalla (diagonal / 2)
+    const maxR = Math.hypot(w, h) / 2 + 10;
+
+    const g = this.add.graphics().setDepth(9999);
+    g.fillStyle(0x000000, 1);
+
+    const state = { r: 0 };
+
+    const draw = () => {
+      g.clear();
+      g.fillStyle(0x000000, 1);
+      g.fillCircle(cx, cy, state.r);
+    };
+
+    draw();
+
+    this.tweens.add({
+      targets: state,
+      r: maxR,
+      duration: 550,
+      ease: "Sine.easeInOut",
+      onUpdate: draw,
+      onComplete: () => {
+        // Cambia a tu escena del juego y pásale spawn si quieres
+        this.scene.start("MainScene", { spawnX: 200, spawnY: 200 });
+      },
     });
   }
 }
+
