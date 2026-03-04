@@ -57,8 +57,6 @@ export default class MenuScene extends Phaser.Scene {
 
     // Aplicar escala/colocación inicial
     this.layoutBackground();
-
-  
   }
 
   layoutBackground() {
