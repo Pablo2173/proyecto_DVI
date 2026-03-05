@@ -1,36 +1,39 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-    <meta charset="UTF-8">
-    <link rel="shortcut icon" href="assets/sprites/player.png" type="image/png" />
-    <meta name="viewport" content="width=device-width, initial-scale=2.0">
-    <link rel="stylesheet" href="./css/game.css">
+  <meta charset="UTF-8" />
+  <link rel="shortcut icon" href="assets/sprites/player.png" type="image/png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="./css/game.css" />
+  <title>¡Juego con Phaser!</title>
 
-    <title>¡Juego con Phaser!</title>
-    <style>
-        html,
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            width: 100%;
-            height: 100%;
-        }
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
 
-        /* Make the canvas fill the entire viewport */
-        canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-        }
-    </style>
+    #juego {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
 </head>
 
 <body>
-    <script src="./src/game.js" type="module"></script>
-    <div id="juego"></div>
+  <!-- 1) Primero el contenedor -->
+  <div id="juego"></div>
 
+  <!-- 2) Luego el script -->
+  <!-- IMPORTANTE: ajusta la ruta si tu game.js NO está en ./src -->
+  <script type="module" src="./src/game.js"></script>
 </body>
-
 </html>

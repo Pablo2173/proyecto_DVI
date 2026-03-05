@@ -188,4 +188,5 @@ export default class MainScene extends Phaser.Scene {
             this.enemy.drawVision(this.visionGraphics, { color: 0xff0000, fillAlpha: 0.08 });
         }
     }
+  
 }
