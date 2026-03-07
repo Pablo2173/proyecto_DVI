@@ -27,27 +27,27 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         scene.add.existing(this);
 
         // ── Referencias ──
-        this.scene  = scene;
-        this.owner  = owner;
+        this.scene = scene;
+        this.owner = owner;
 
         // ── Tipo ──
-        this.isRanged        = config.isRanged        ?? false;
+        this.isRanged = config.isRanged ?? false;
         this.projectileClass = config.projectileClass ?? null;
         this.projectileSpeed = config.projectileSpeed ?? 600;
 
         // ── Estadísticas ──
-        this.damage      = config.damage      ?? 10;
+        this.damage = config.damage ?? 10;
         this.attackSpeed = config.attackSpeed ?? 500;
         this.lastAttackTime = 0;
-        this.isAttacking    = false;
+        this.isAttacking = false;
 
         // ── Radios de combate ──
-        this.range           = config.range           ?? 800;
+        this.range = config.range ?? 800;
         this.optimalDistance = config.optimalDistance ?? this.range * 0.7;
         this.accuracy = Phaser.Math.Clamp(config.accuracy ?? 0, 0, 180);
 
         // ── Melee ──
-        this.swingAngle    = config.swingAngle    ?? 60;
+        this.swingAngle = config.swingAngle ?? 60;
         this.swingDuration = config.swingDuration ?? 120;
 
         // ── Visual ──
@@ -56,7 +56,7 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         this.setOrigin(0, 0.5);  // origen en la "empuñadura"
 
         // ── Debug ──
-        this.debugMode     = config.debug ?? false;
+        this.debugMode = config.debug ?? false;
         this.debugGraphics = scene.add.graphics();
         this.debugGraphics.setDepth(9999);
     }
@@ -71,8 +71,14 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         this.x = this.owner.x;
         this.y = this.owner.y;
 
+        // ────LÓGICA PARA SWIMMING────
+        if (this.owner.state === 4) {
+            this.setVisible(false);
+            return;     //no se puede hacer ninguna acción con el arma nadando
+        } else { this.setVisible(true); }
+
         // 2. Rotar hacia el puntero
-        const pointer  = this.scene.input.activePointer;
+        const pointer = this.scene.input.activePointer;
         const angleRad = Phaser.Math.Angle.Between(
             this.owner.x, this.owner.y,
             pointer.worldX, pointer.worldY
@@ -114,7 +120,8 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
 
     _canAttack() {
         return (this.scene.time.now - this.lastAttackTime) >= this.attackSpeed
-            && !this.isAttacking && this.barCanShoot();
+            && !this.isAttacking && this.barCanShoot() &&
+            this.owner.state !== 4; // No se puede atacar nadando
     }
 
     _fireProjectile() {
@@ -173,13 +180,13 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         const halfSwing = this.swingAngle / 2;
 
         this.scene.tweens.add({
-            targets:  this,
-            angle:    baseAngle + this.swingAngle,
+            targets: this,
+            angle: baseAngle + this.swingAngle,
             duration: this.swingDuration,
-            yoyo:     true,
-            ease:     'Power1',
+            yoyo: true,
+            ease: 'Power1',
             onComplete: () => {
-                this.angle       = baseAngle;
+                this.angle = baseAngle;
                 this.isAttacking = false;
             }
         });
@@ -216,18 +223,18 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
     // ─────────────────────────────────────────
     //  PRELOAD (override en subclases o helpers)
     // ─────────────────────────────────────────
-    static preload(scene) {}
+    static preload(scene) { }
 
-    setBar(combatBar){
+    setBar(combatBar) {
         this.bar = combatBar
         this.on_equip();
     }
 
     // Funciones a implementar para las armas especificas
 
-    on_equip(){}    // Called when you equip the weapon
-    on_shoot(){ }    // Called when shooting a bullet
-    on_wait(){}     // Called while not shooting
-    barCanShoot(){return true}  // Called before shoot, after cooldown, to see if the bar state is acceptable for the weapon
-    
+    on_equip() { }    // Called when you equip the weapon
+    on_shoot() { }    // Called when shooting a bullet
+    on_wait() { }     // Called while not shooting
+    barCanShoot() { return true }  // Called before shoot, after cooldown, to see if the bar state is acceptable for the weapon
+
 }

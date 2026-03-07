@@ -125,6 +125,7 @@ export default class Duck extends Phaser.GameObjects.Sprite {
     }
 
     startDash() {
+        if (this.state == DUCK_STATE.SWIMMING) return; // No se puede dashar nadando 
         const now = this.scene.time.now;
         if (now < this.lastDashTime + 800) return;
         this.lastDashTime = now;

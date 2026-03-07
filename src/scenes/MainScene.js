@@ -157,6 +157,8 @@ export default class MainScene extends Phaser.Scene {
         g.lineStyle(2, 0x0000ff, 1);
         g.strokeCircle(puddle.x, puddle.y, puddle.radius);
 
+
+
         // ── HUD ──
         this.add.text(10, 10,
             'Mover: WASD / Flechas | Dash: Espacio | Recoger arma: E | Atacar: Click | Cuack: C',
