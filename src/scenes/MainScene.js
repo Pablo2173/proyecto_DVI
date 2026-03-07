@@ -156,7 +156,8 @@ export default class MainScene extends Phaser.Scene {
         const g = this.add.graphics();
         g.lineStyle(2, 0x0000ff, 1);
         g.strokeCircle(puddle.x, puddle.y, puddle.radius);
-        this.time.delayedCall(10000, () => g.destroy()); // Elimina el gráfico después de 10 segundos{
+
+
         // ── HUD ──
         this.add.text(10, 10,
             'Mover: WASD / Flechas | Dash: Espacio | Recoger arma: E | Atacar: Click | Cuack: C',
