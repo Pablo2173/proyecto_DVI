@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import Boot from "./scenes/boot.js";
 import MenuScene from "./scenes/MenuScene.js";
-import MainScene from "./scenes/MainScene.js"; // 👈 AÑADE ESTO
+import MainScene from "./scenes/MainScene.js";
 
 async function loadFont() {
   const fontUrl = new URL("../css/typo/return-of-the-boss.ttf", import.meta.url);
@@ -21,7 +21,6 @@ async function loadFont() {
     pixelArt: true,
     antialias: false,    // desactiva suavizado para pixelart
     backgroundColor: '#cacaca',
-     // 👇 REGISTRA TODAS LAS ESCENAS QUE VAS A USAR
     scene: [Boot, MenuScene, MainScene],
     scale: {
         mode: Phaser.Scale.FIT,

@@ -195,21 +195,37 @@ export default class Duck extends Phaser.GameObjects.Sprite {
     }
 
     /**
-     * Comprueba si hay un DropItem cerca y el jugador pulsa E.
+     * Comprueba si hay drops o consumables cerca y el jugador pulsa E.
      * Usa checkDown con cooldown de 250ms para evitar recogidas múltiples.
      */
     _checkDropPickup() {
-        if (!this.scene.dropItems) return;
+        // Revisar drops de armas
+        if (this.scene.dropItems) {
+            const drops = this.scene.dropItems.getChildren();
+            for (let i = 0; i < drops.length; i++) {
+                const drop = drops[i];
+                if (!drop.active) continue;
 
-        const drops = this.scene.dropItems.getChildren();
-        for (let i = 0; i < drops.length; i++) {
-            const drop = drops[i];
-            if (!drop.active) continue;
+                if (drop.isNear(this, 40) &&
+                    this.scene.input.keyboard.checkDown(this.keyE, 250)) {
+                    drop.interact(this);
+                    return; // solo un item por pulsación
+                }
+            }
+        }
 
-            if (drop.isNear(this, 40) &&
-                this.scene.input.keyboard.checkDown(this.keyE, 250)) {
-                drop.interact(this);
-                break; // solo un drop por pulsación
+        // Revisar consumables
+        if (this.scene.consumableItems) {
+            const consumables = this.scene.consumableItems.getChildren();
+            for (let i = 0; i < consumables.length; i++) {
+                const consumable = consumables[i];
+                if (!consumable.active) continue;
+
+                if (consumable.isNear(this, 40) &&
+                    this.scene.input.keyboard.checkDown(this.keyE, 250)) {
+                    consumable.interact(this);
+                    return; // solo un item por pulsación
+                }
             }
         }
     }

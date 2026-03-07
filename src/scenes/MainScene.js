@@ -14,6 +14,7 @@ import Bala from '../GameObjects/Projectiles/bala.js';
 
 // Drops
 import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
+import Bread from '../GameObjects/consumables/bread.js';
 
 import Enemy from '../GameObjects/enemy.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
@@ -25,7 +26,9 @@ import cuackSound from '../../assets/sounds/cuack.mp3';
 // Weapon bar
 import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
 import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
+import up_bar from '../../assets/sprites/UI/up_bar.png';
 import Puddle from '../GameObjects/puddle.js';
+import ConsumableBar from '../GameObjects/consumables/ConsumableBar.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -65,9 +68,15 @@ export default class MainScene extends Phaser.Scene {
         Flecha.preload(this);
         Bala.preload(this);
 
+        // Preload de consumibles
+        Bread.preload(this);
+
         // Preload de la barra de arma del jugador
         this.load.image('weapon_bar_border', bar);
         this.load.image('weapon_bar_fill', bar_fill);
+        
+        // Preload de UI
+        this.load.image('up_bar', up_bar);
     }
 
     create() {
@@ -116,9 +125,15 @@ export default class MainScene extends Phaser.Scene {
 
         // ── Grupo de drops — debe crearse ANTES que el pato y los drops ──
         this.dropItems = this.add.group();
+        
+        // ── Grupo de consumables ──
+        this.consumableItems = this.add.group();
 
         // ── Pato ──
         this.duck = new Duck(this, 200, 200, 'mcuaktro');
+        
+        // ── Barra de consumibles ──
+        this.consumableBar = new ConsumableBar(this, this.duck);
 
         // ── Atacar con click izquierdo (puntual o mantenido) ──
         this.input.on('pointerdown', () => {
@@ -139,6 +154,15 @@ export default class MainScene extends Phaser.Scene {
         this.enemyAlertTime = null;
 
         // ── Spawn de drops de ejemplo ──
+        // Múltiples panes en posiciones estratégicas para testing
+        new Bread(this, 50, 50);      // Cerca del spawn del pato
+        new Bread(this, 200, 100);    // Arriba a la derecha
+        new Bread(this, 400, 200);    // Centro-derecha
+        new Bread(this, 100, 300);    // Abajo a la izquierda
+        new Bread(this, 350, 400);    // Centro-abajo
+        new Bread(this, 600, 150);    // Derecha-arriba
+        new Bread(this, 250, 500);    // Abajo-centro
+        
         // Mazo en posición fija
         new DropWeapon(this, 450, 450, Mazo, 'mazo');
 
@@ -159,6 +183,12 @@ export default class MainScene extends Phaser.Scene {
 
 
 
+        // ── Barra superior UI (x3) ──
+        const upBar = this.add.image(960, 0, 'up_bar');
+        upBar.setOrigin(0.5, 0);
+        upBar.setScale(3);
+        upBar.setScrollFactor(0);
+
         // ── HUD ──
         this.add.text(10, 10,
             'Mover: WASD / Flechas | Dash: Espacio | Recoger arma: E | Atacar: Click | Cuack: C',
@@ -170,6 +200,11 @@ export default class MainScene extends Phaser.Scene {
     }
 
     update(time, delta) {
+        // ── Actualizar barra de consumibles ──
+        if (this.consumableBar) {
+            this.consumableBar.update();
+        }
+
         // ── Cámara entre pato y ratón ──
         if (this.duck) {
             const mouseX = this.input.activePointer.worldX;
