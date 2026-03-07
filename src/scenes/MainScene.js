@@ -2,23 +2,30 @@ import Phaser from 'phaser';
 import Duck from '../GameObjects/duck.js';
 
 // Armas
-import Arco     from '../GameObjects/Weapons/Distance/arco.js';
+import Arco from '../GameObjects/Weapons/Distance/arco.js';
 import Mcuaktro from '../GameObjects/Weapons/Distance/mcuaktro.js';
 import Cuchillo from '../GameObjects/Weapons/Melee/cuchillo.js';
-import Mazo     from '../GameObjects/Weapons/Melee/mazo.js';
-import Ramita   from '../GameObjects/Weapons/Melee/ramita.js';
+import Mazo from '../GameObjects/Weapons/Melee/mazo.js';
+import Ramita from '../GameObjects/Weapons/Melee/ramita.js';
 
 // Proyectiles
 import Flecha from '../GameObjects/Projectiles/flecha.js';
-import Bala   from '../GameObjects/Projectiles/bala.js';
+import Bala from '../GameObjects/Projectiles/bala.js';
 
 // Drops
 import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
 
 import Enemy from '../GameObjects/enemy.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
-import enemy_sprite  from '../../assets/sprites/player.png';
-import cuackSound    from '../../assets/sounds/cuack.mp3';
+import sprint_sprite from '../../assets/sprites/duck/sprint_duck.png';
+import cuack_sprite from '../../assets/sprites/duck/Cuack_duck.png';
+import enemy_sprite from '../../assets/sprites/player.png';
+import cuackSound from '../../assets/sounds/cuack.mp3';
+
+// Weapon bar
+import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
+import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
+import Puddle from '../GameObjects/puddle.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -27,9 +34,25 @@ export default class MainScene extends Phaser.Scene {
 
     preload() {
         this.load.spritesheet('idle_duck', player_sprite, {
-            frameWidth:  32,
+            frameWidth: 32,
             frameHeight: 32
         });
+
+        this.load.spritesheet('duck_walk', sprint_sprite, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+
+        this.load.spritesheet('duck-cuack', cuack_sprite, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+
+        this.load.spritesheet('duck-dash', sprint_sprite, { // Cambiar a sprite de bolita
+            frameWidth: 32,
+            frameHeight: 32
+        });
+
         this.load.image('enemy', enemy_sprite);
         this.load.audio('cuack', cuackSound);
 
@@ -41,16 +64,47 @@ export default class MainScene extends Phaser.Scene {
         Ramita.preload(this);
         Flecha.preload(this);
         Bala.preload(this);
+
+        // Preload de la barra de arma del jugador
+        this.load.image('weapon_bar_border', bar);
+        this.load.image('weapon_bar_fill', bar_fill);
     }
 
     create() {
 
-        // ── Animaciones del pato ──
         this.anims.create({
-            key:       'duck-idle',
-            frames:    this.anims.generateFrameNumbers('idle_duck', { start: 0, end: 3 }),
+            key: 'duck-idle',
+            frames: this.anims.generateFrameNumbers('idle_duck', { start: 0, end: 3 }),
             frameRate: 8,
-            repeat:    -1
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'duck-walk',
+            frames: this.anims.generateFrameNumbers('duck_walk', { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'duck-cuack',
+            frames: this.anims.generateFrameNumbers('duck-cuack', { start: 0, end: 0 }),
+            frameRate: 8,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'duck-dash',
+            frames: this.anims.generateFrameNumbers('duck-dash', { start: 0, end: 3 }),
+            frameRate: 16,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'duck-swimming',
+            frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
         });
 
         // ── Fondo ──
@@ -86,38 +140,24 @@ export default class MainScene extends Phaser.Scene {
 
         // ── Spawn de drops de ejemplo ──
         // Mazo en posición fija
-        new DropWeapon(this, 450, 450, {
-            texture:         'mazo',
-            isRanged:        false,
-            projectileClass: null,
-            damage:          45,
-            attackSpeed:     800,
-            range:           90,
-            optimalDistance: 65,
-            swingAngle:      90,
-            swingDuration:   180,
-            scale:           1,
-            debug:           true
-        });
+        new DropWeapon(this, 450, 450, Mazo, 'mazo');
 
         // Arco en posición aleatoria
         new DropWeapon(
             this,
             Phaser.Math.Between(0, 1000),
             Phaser.Math.Between(0, 1000),
-            {
-                texture:         'arco',
-                isRanged:        true,
-                projectileClass: Flecha,
-                projectileSpeed: 700,
-                damage:          20,
-                attackSpeed:     600,
-                range:           400,
-                optimalDistance: 280,
-                scale:           1,
-                debug:           true
-            }
+            Arco,
+            'arco'
         );
+
+        // ── Spawn de charco de agua visible temporal ──   
+        const puddle = new Puddle(this, 300, 300, 100);
+        const g = this.add.graphics();
+        g.lineStyle(2, 0x0000ff, 1);
+        g.strokeCircle(puddle.x, puddle.y, puddle.radius);
+
+
 
         // ── HUD ──
         this.add.text(10, 10,
@@ -151,8 +191,10 @@ export default class MainScene extends Phaser.Scene {
 
             // Enemigo camina hacia el pato cuando está alertado
             if (this.enemy.isAlerted()) {
-                const pos = this.enemy.moveTowards(this.duck, 80, delta);
-                this.enemy.setPosition(pos.x, pos.y);
+                if (this.enemy.isAlerted()) {
+                    this.enemy.moveTowards(this.duck); // solo el target, sin más parámetros
+                    this.enemy.setFlipX(this.enemy.x >= this.duck.x);
+                }
 
                 this.enemy.setFlipX(this.enemy.x >= this.duck.x);
             }
@@ -162,4 +204,5 @@ export default class MainScene extends Phaser.Scene {
             this.enemy.drawVision(this.visionGraphics, { color: 0xff0000, fillAlpha: 0.08 });
         }
     }
+
 }

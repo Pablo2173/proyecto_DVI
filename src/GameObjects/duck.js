@@ -1,24 +1,27 @@
 import Phaser from 'phaser';
 // Importa las armas concretas
-import Arco     from './Weapons/Distance/arco.js';
+import Arco from './Weapons/Distance/arco.js';
 import Mcuaktro from './Weapons/Distance/mcuaktro.js';
 import Cuchillo from './Weapons/Melee/cuchillo.js';
-import Mazo     from './Weapons/Melee/mazo.js';
-import Ramita   from './Weapons/Melee/ramita.js';
+import Mazo from './Weapons/Melee/mazo.js';
+import Ramita from './Weapons/Melee/ramita.js';
+
+import WeaponBar from './weaponBar.js'
 
 const WEAPON_MAP = {
-    arco:     Arco,
+    arco: Arco,
     mcuaktro: Mcuaktro,
     cuchillo: Cuchillo,
-    mazo:     Mazo,
-    ramita:   Ramita
+    mazo: Mazo,
+    ramita: Ramita
 };
 
-const DUCK_STATE = Object.freeze({
-    IDLE:     0,
-    WALKING:  1,
-    DASHING:  2,
-    QUACKING: 3
+export const DUCK_STATE = Object.freeze({
+    IDLE: 0,
+    WALKING: 1,
+    DASHING: 2,
+    QUACKING: 3,
+    SWIMMING: 4
 });
 
 export default class Duck extends Phaser.GameObjects.Sprite {
@@ -26,36 +29,37 @@ export default class Duck extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y, weaponKey = 'mcuaktro') {
         super(scene, x, y, 'idle_duck', 0);
         this.scene = scene;
+        this.weaponBar = new WeaponBar(scene, this);
         scene.add.existing(this);
 
-        this._speed       = 160;
-        this._maxSpeed    = 180;
-        this.dashSpeed    = 600;
+        this._speed = 160;
+        this._maxSpeed = 180;
+        this.dashSpeed = 600;
         this.dashDuration = 200;
         this.lastDashTime = 0;
-        this.state        = DUCK_STATE.IDLE;
-        this.facingX      = 1;
-        this.facingY      = 0;
-        this.scale        = 3;
+        this.state = DUCK_STATE.IDLE;
+        this.facingX = 1;
+        this.facingY = 0;
+        this.scale = 3;
 
         // ── Arma ──
         this.weapon = null;
 
         // ── Input ──
-        this.cursors  = scene.input.keyboard.createCursorKeys();
-        this.keyW     = scene.input.keyboard.addKey('W');
-        this.keyA     = scene.input.keyboard.addKey('A');
-        this.keyS     = scene.input.keyboard.addKey('S');
-        this.keyD     = scene.input.keyboard.addKey('D');
+        this.cursors = scene.input.keyboard.createCursorKeys();
+        this.keyW = scene.input.keyboard.addKey('W');
+        this.keyA = scene.input.keyboard.addKey('A');
+        this.keyS = scene.input.keyboard.addKey('S');
+        this.keyD = scene.input.keyboard.addKey('D');
         this.keySpace = scene.input.keyboard.addKey('SPACE');
-        this.keyC     = scene.input.keyboard.addKey('C');
-        this.keyE     = scene.input.keyboard.addKey('E');
+        this.keyC = scene.input.keyboard.addKey('C');
+        this.keyE = scene.input.keyboard.addKey('E');
 
         this.quackDuration = 600;
-        this.quackEndTime  = 0;
+        this.quackEndTime = 0;
 
         this.keySpace.on('down', () => this.startDash());
-        this.keyC.on('down',     () => this.quack());
+        this.keyC.on('down', () => this.quack());
 
         // ── Equipar arma inicial ──
         this.equipWeapon(weaponKey);
@@ -79,8 +83,9 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             return;
         }
 
-        const newWeapon = new WeaponClass(this.scene, this);
+        const newWeapon = new WeaponClass(this.scene, this, this.weaponBar);
         this.setWeapon(newWeapon);
+        this.weapon.setBar(this.weaponBar);
     }
 
     /**
@@ -105,10 +110,11 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.state = newState;
 
         switch (newState) {
-            case DUCK_STATE.IDLE:     this.play('duck-idle',  true); break;
-            case DUCK_STATE.WALKING:  this.play('duck-walk',  true); break;
+            case DUCK_STATE.IDLE: this.play('duck-idle', true); break;
+            case DUCK_STATE.WALKING: this.play('duck-walk', true); break;
             case DUCK_STATE.QUACKING: this.play('duck-cuack', true); break;
-            case DUCK_STATE.DASHING:  this.play('duck-dash',  true); break;
+            case DUCK_STATE.DASHING: this.play('duck-dash', true); break;
+            case DUCK_STATE.SWIMMING: this.play('duck-idle', true); break;
         }
     }
 
@@ -119,6 +125,7 @@ export default class Duck extends Phaser.GameObjects.Sprite {
     }
 
     startDash() {
+        if (this.state == DUCK_STATE.SWIMMING) return; // No se puede dashar nadando 
         const now = this.scene.time.now;
         if (now < this.lastDashTime + 800) return;
         this.lastDashTime = now;
@@ -146,17 +153,17 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         let vx = 0, vy = 0;
 
         if (this.state !== DUCK_STATE.DASHING) {
-            if (this.cursors.left.isDown  || this.keyA.isDown) vx -= 1;
+            if (this.cursors.left.isDown || this.keyA.isDown) vx -= 1;
             if (this.cursors.right.isDown || this.keyD.isDown) vx += 1;
-            if (this.cursors.up.isDown    || this.keyW.isDown) vy -= 1;
-            if (this.cursors.down.isDown  || this.keyS.isDown) vy += 1;
+            if (this.cursors.up.isDown || this.keyW.isDown) vy -= 1;
+            if (this.cursors.down.isDown || this.keyS.isDown) vy += 1;
         }
 
         const isDashing = this.state === DUCK_STATE.DASHING;
-        const speed     = isDashing ? this.dashSpeed : this._speed;
+        const speed = isDashing ? this.dashSpeed : this._speed;
 
         if (vx !== 0 || vy !== 0 || isDashing) {
-            const len   = Math.hypot(vx, vy) || 1;
+            const len = Math.hypot(vx, vy) || 1;
             const moveX = (vx !== 0 ? vx : this.facingX) / len * speed;
             const moveY = (vy !== 0 ? vy : this.facingY) / len * speed;
 
@@ -166,9 +173,9 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             if (!isDashing) {
                 this.facingX = vx;
                 this.facingY = vy;
-                this.setState(DUCK_STATE.WALKING);
+                if (this.state !== DUCK_STATE.SWIMMING) this.setState(DUCK_STATE.WALKING);
             }
-        } else if (this.state !== DUCK_STATE.QUACKING) {
+        } else if (this.state !== DUCK_STATE.QUACKING && this.state !== DUCK_STATE.SWIMMING) {
             this.setState(DUCK_STATE.IDLE);
         }
 
@@ -183,6 +190,8 @@ export default class Duck extends Phaser.GameObjects.Sprite {
 
         // ── Detección de drops cercanos (tecla E) ──
         this._checkDropPickup();
+
+        this.weaponBar.updatePosition()
     }
 
     /**

@@ -1,8 +1,8 @@
 import Weapon from '../weapon.js';
-import cuchilloSprite from '../../../../assets/sprites/weapons/cuchillo.png';
+import cuchilloSprite from '../../../../assets/sprites/Weapons/cuchillo.png';
 
 export default class Cuchillo extends Weapon {
-    constructor(scene, owner) {
+    constructor(scene, owner, bar = null) {
         super(scene, owner, {
             texture:         'cuchillo',
             isRanged:        false,
@@ -13,7 +13,8 @@ export default class Cuchillo extends Weapon {
             swingAngle:      80,
             swingDuration:   100,
             scale:           1,
-            debug:           true
+            debug:           true,
+            bar:             bar
         });
     }
 
