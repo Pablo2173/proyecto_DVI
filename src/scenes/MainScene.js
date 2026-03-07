@@ -164,9 +164,24 @@ export default class MainScene extends Phaser.Scene {
             'Mover: WASD / Flechas | Dash: Espacio | Recoger arma: E | Atacar: Click | Cuack: C',
             { fontSize: '14px', fill: '#FFFFFF' }
         );
+
+        // Cámara
+        // No usar startFollow, lo haremos manualmente en update()
     }
 
     update(time, delta) {
+        // ── Cámara entre pato y ratón ──
+        if (this.duck) {
+            const mouseX = this.input.activePointer.worldX;
+            const mouseY = this.input.activePointer.worldY;
+            
+            // 70% hacia el pato, 30% hacia el ratón
+            const camX = this.duck.x * 0.7 + mouseX * 0.3;
+            const camY = this.duck.y * 0.7 + mouseY * 0.3;
+            
+            this.cameras.main.centerOn(camX, camY);
+        }
+
         // ── Ataque continuo mientras se mantiene el botón izquierdo ──
         if (this.input.activePointer.isDown && this.duck && this.duck.weapon) {
             this.duck.weapon.attack();
