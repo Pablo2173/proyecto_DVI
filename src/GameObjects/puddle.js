@@ -13,7 +13,7 @@ export default class Puddle extends Phaser.GameObjects.Sprite {
         scene.add.existing(this);
 
         this.setOrigin(0.5);
-        this.setVisible(true); // El charco es invisible, solo sirve para detectar si el jugador está dentro
+        this.setVisible(false); // El charco es invisible, solo sirve para detectar si el jugador está dentro
         this.setActive(true);
 
         this.radius = radius;
