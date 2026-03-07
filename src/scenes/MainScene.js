@@ -2,15 +2,15 @@ import Phaser from 'phaser';
 import Duck from '../GameObjects/duck.js';
 
 // Armas
-import Arco     from '../GameObjects/Weapons/Distance/arco.js';
+import Arco from '../GameObjects/Weapons/Distance/arco.js';
 import Mcuaktro from '../GameObjects/Weapons/Distance/mcuaktro.js';
 import Cuchillo from '../GameObjects/Weapons/Melee/cuchillo.js';
-import Mazo     from '../GameObjects/Weapons/Melee/mazo.js';
-import Ramita   from '../GameObjects/Weapons/Melee/ramita.js';
+import Mazo from '../GameObjects/Weapons/Melee/mazo.js';
+import Ramita from '../GameObjects/Weapons/Melee/ramita.js';
 
 // Proyectiles
 import Flecha from '../GameObjects/Projectiles/flecha.js';
-import Bala   from '../GameObjects/Projectiles/bala.js';
+import Bala from '../GameObjects/Projectiles/bala.js';
 
 // Drops
 import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
@@ -18,13 +18,14 @@ import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
 import Enemy from '../GameObjects/enemy.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
 import sprint_sprite from '../../assets/sprites/duck/sprint_duck.png';
-import cuack_sprite  from '../../assets/sprites/duck/Cuack_duck.png';
-import enemy_sprite  from '../../assets/sprites/player.png';
-import cuackSound    from '../../assets/sounds/cuack.mp3';
+import cuack_sprite from '../../assets/sprites/duck/Cuack_duck.png';
+import enemy_sprite from '../../assets/sprites/player.png';
+import cuackSound from '../../assets/sounds/cuack.mp3';
 
 // Weapon bar
 import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
 import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
+import Puddle from '../GameObjects/puddle.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -72,31 +73,38 @@ export default class MainScene extends Phaser.Scene {
     create() {
 
         this.anims.create({
-            key:       'duck-idle',
-            frames:    this.anims.generateFrameNumbers('idle_duck', { start: 0, end: 3 }),
+            key: 'duck-idle',
+            frames: this.anims.generateFrameNumbers('idle_duck', { start: 0, end: 3 }),
             frameRate: 8,
-            repeat:    -1
+            repeat: -1
         });
 
         this.anims.create({
-            key:       'duck-walk',
-            frames:    this.anims.generateFrameNumbers('duck_walk', { start: 0, end: 3 }),
+            key: 'duck-walk',
+            frames: this.anims.generateFrameNumbers('duck_walk', { start: 0, end: 3 }),
             frameRate: 8,
-            repeat:    -1
+            repeat: -1
         });
 
         this.anims.create({
-            key:       'duck-cuack',
-            frames:    this.anims.generateFrameNumbers('duck-cuack', { start: 0, end: 0 }),
+            key: 'duck-cuack',
+            frames: this.anims.generateFrameNumbers('duck-cuack', { start: 0, end: 0 }),
             frameRate: 8,
-            repeat:    0
+            repeat: 0
         });
 
         this.anims.create({
-            key:       'duck-dash',
-            frames:    this.anims.generateFrameNumbers('duck-dash', { start: 0, end: 3 }),
+            key: 'duck-dash',
+            frames: this.anims.generateFrameNumbers('duck-dash', { start: 0, end: 3 }),
             frameRate: 16,
-            repeat:    0
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'duck-swimming',
+            frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
         });
 
         // ── Fondo ──
@@ -143,6 +151,12 @@ export default class MainScene extends Phaser.Scene {
             'arco'
         );
 
+        // ── Spawn de charco de agua temporal ──   
+        const puddle = new Puddle(this, 300, 300, 100);
+        const g = this.add.graphics();
+        g.lineStyle(2, 0x0000ff, 1);
+        g.strokeCircle(puddle.x, puddle.y, puddle.radius);
+        this.time.delayedCall(10000, () => g.destroy()); // Elimina el gráfico después de 10 segundos{
         // ── HUD ──
         this.add.text(10, 10,
             'Mover: WASD / Flechas | Dash: Espacio | Recoger arma: E | Atacar: Click | Cuack: C',
@@ -178,7 +192,7 @@ export default class MainScene extends Phaser.Scene {
                 if (this.enemy.isAlerted()) {
                     this.enemy.moveTowards(this.duck); // solo el target, sin más parámetros
                     this.enemy.setFlipX(this.enemy.x >= this.duck.x);
-                }   
+                }
 
                 this.enemy.setFlipX(this.enemy.x >= this.duck.x);
             }
@@ -188,5 +202,5 @@ export default class MainScene extends Phaser.Scene {
             this.enemy.drawVision(this.visionGraphics, { color: 0xff0000, fillAlpha: 0.08 });
         }
     }
-  
+
 }
