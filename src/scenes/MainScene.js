@@ -255,23 +255,6 @@ export default class MainScene extends Phaser.Scene {
                 }
             }
 
-            // Movimiento inteligente del enemigo cuando está alertado
-            if (this.enemy.isAlerted()) {
-                const dist = Phaser.Math.Distance.Between(this.enemy.x, this.enemy.y, this.duck.x, this.duck.y);
-                const optimalDist = this.enemy.weapon ? this.enemy.weapon.optimalDistance : 200;
-                const maxRange = this.enemy.weapon ? this.enemy.weapon.range : 800;
-
-                if (dist < optimalDist) {
-                    // Si el duck está demasiado cerca, alejarse
-                    this.enemy.moveAwayFrom(this.duck);
-                } else{
-                    // Si el duck está demasiado lejos, acercarse
-                    this.enemy.moveTowards(this.duck);
-                }
-
-                this.enemy.setFlipX(this.enemy.x >= this.duck.x);
-            }
-
             // Radio de visión debug
             this.visionGraphics.clear();
             this.enemy.drawVision(this.visionGraphics, { color: 0xff0000, fillAlpha: 0.08 });

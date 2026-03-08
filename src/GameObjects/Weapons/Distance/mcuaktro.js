@@ -16,8 +16,10 @@ export default class Mcuaktro extends Weapon {
             scale:           1,
             spriteAngleOffset: 0,
             debug:           true,
-            accuracy:        0
+            accuracy:        0,
         });
+        this._attackSpeedBase = this.attackSpeed,
+        this._accuracyBase = this.accuracy
     }
 
     static preload(scene) {
@@ -33,11 +35,13 @@ export default class Mcuaktro extends Weapon {
     // Called when shooting a bullet
     on_shoot(){
         if (!this.bar) return;
-    
+        
         if (this.isEnemy) {
             this.bar.removeCharge(5);
             if (this.bar.isEmpty()) {
                 this.bar.startCooldown(5000);
+                this.attackSpeed = this._attackSpeedBase;
+                this.accuracy = this._accuracyBase;
             }
         } else {
             if(this.bar)

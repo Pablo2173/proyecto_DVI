@@ -383,7 +383,26 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         });
     }
 
+    updateMovement(target) {
+        if (!this.isAlerted() || !target) return;
+
+        const dist = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
+        const optimalDist = this.weapon?.optimalDistance ?? 200;
+        const range = this.weapon?.range ?? 300;
+
+        if (dist < optimalDist) {
+            this.moveAwayFrom(target);
+        } else if (dist > range) {
+            this.moveTowards(target);
+        } else {
+            this.stop();
+        }
+        this.setFlipX(this.x >= target.x);
+    }
+
     preUpdate(time, delta) {
+       
+        this.updateMovement(this.scene.duck);
         // el arma también debe actualizarse para seguir al enemigo
         if (this.weapon && typeof this.weapon.update === 'function') {
             this.weapon.update();
