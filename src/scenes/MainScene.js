@@ -29,6 +29,8 @@ import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png
 import up_bar from '../../assets/sprites/UI/up_bar.png';
 import Puddle from '../GameObjects/puddle.js';
 import ConsumableBar from '../GameObjects/consumables/ConsumableBar.js';
+import Zorro from '../GameObjects/Enemies/zorro.js';
+import Mapache from '../GameObjects/Enemies/mapache.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -129,6 +131,9 @@ export default class MainScene extends Phaser.Scene {
         // ── Grupo de consumables ──
         this.consumableItems = this.add.group();
 
+        // ── Grupo de proyectiles ──
+        this.projectiles = this.add.group();
+
         // ── Pato ──
         this.duck = new Duck(this, 200, 200, 'mcuaktro');
         
@@ -141,8 +146,13 @@ export default class MainScene extends Phaser.Scene {
         });
 
         // ── Enemigo ──
-        this.enemy = new Enemy(this, 'Guard', 440, 200, 'enemy', null, 200);
+        this.enemy = new Mapache(this, 'Mapache', 440, 200, 'enemy', null, null); //de momento el weapon se lo pongo a null hasta que este implementado
         this.enemy.setFlipX(true);
+
+        // ── Colisiones: Proyectiles -> Enemigos ──
+        this.physics.add.overlap(this.projectiles, this.enemy, (projectile, enemy) => {
+            this._onProjectileHitEnemy(projectile, enemy);
+        });
 
         // ── Eventos de audio para el enemigo ──
         this.events.on('audio:event', (audioEvent) => {
@@ -253,6 +263,23 @@ export default class MainScene extends Phaser.Scene {
             this.visionGraphics.clear();
             this.enemy.drawVision(this.visionGraphics, { color: 0xff0000, fillAlpha: 0.08 });
         }
+    }
+
+    /**
+     * Maneja la colisión entre un proyectil y un enemigo
+     * @param {Projectile} projectile - El proyectil que colisionó
+     * @param {Enemy} enemy - El enemigo que fue golpeado
+     */
+    _onProjectileHitEnemy(projectile, enemy) {
+        if (!projectile || !enemy) return;
+
+        // El enemigo recibe daño
+        enemy.takeDamage(projectile.damage);
+
+        // Destruir el proyectil
+        projectile.destroy();
+
+        console.log(`¡Proyectil impactó! Daño: ${projectile.damage}, HP enemigo: ${enemy.getHP()}`);
     }
 
 }

@@ -8,7 +8,7 @@ import Projectile from './projectile.js';
 export default class RamitaSwing extends Projectile {
 
     constructor(scene, x, y, config = {}) {
-        super(scene, x, y, null, { damage: config.damage ?? 5 });
+        super(scene, x, y, null, { damage: config.damage ?? 5, collisionRadius: 15 });
 
         this.owner          = config.owner;
         this.duration       = config.duration      ?? 90;

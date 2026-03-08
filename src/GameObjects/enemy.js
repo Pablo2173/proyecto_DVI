@@ -16,8 +16,9 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
      * @param {string} texture
      * @param {any} frame
      * @param {number} visionRadius
+     * @param {number} hp
      */
-    constructor(scene, name, x, y, texture = 'enemy', frame = null, visionRadius = 100) {
+    constructor(scene, name, x, y, texture, frame = null, visionRadius, hp, speed, weapon) {
         super(scene, x, y, texture, frame);
         this.scene = scene;
         scene.add.existing(this);
@@ -30,17 +31,18 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
                 this.body.setAllowGravity(false); // Sin gravedad porque estamos haciendo un top-down
                 this.body.setImmovable(false);    // Basicamente lo pongo a false para que le puedan empujar
 
-                this.body.setSize(64, 64); //falta poner el tamanyo del sprite
+                this.body.setSize(64, 64); //falta poner el tamanyo del sprite, este es provisional
                 this.body.setOffset(4, 4);
             }
         }
 
         this._nombre = name;
+        this._hp = hp;
         this._visionRadius = visionRadius;
         this._facingAngle = Math.PI; //Lo he puesto en Math.PI para que empiece mirando para la izquierda
         this._visionAngle = Math.PI / 2; //Esto es un cuarto de circulo para el cono de vision
-        this._speed = 80; //he puesto este valor por defecto, se sobreescribe en cada tipo de enemigo
-        this._weapon = null;
+        this._speed = speed;
+        this._weapon = weapon;
         this._state = StatusEnemy.IDLE;
         this._lastQuackTime = 0; // Para evitar alertas duplicadas del mismo quack
         this._quackCooldown = 100; // ms
@@ -94,6 +96,7 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
      * @param {{x: number, y: number}} target
      */
     canSee(target) {
+        if (this._state === StatusEnemy.DEAD) return false;
         if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') return false;
 
         const dx = target.x - this.x;
@@ -166,6 +169,7 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
     detectAndAlert(player) {
         if (!player) return false;
         const seen = this.canSee(player);
+        if (this._state === StatusEnemy.DEAD) return false;
         if (seen && this._state !== StatusEnemy.ALERTED) {
             this._state = StatusEnemy.ALERTED;
             return true;
@@ -223,6 +227,69 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
 
     isStunned() {
         return this._state === StatusEnemy.STUNNED;
+    }
+
+    /**
+     * Reduce el HP del enemigo por daño de un proyectil
+     * @param {number} damage - cantidad de daño a recibir
+     */
+    takeDamage(damage) {
+        // ignorar daño si ya está muerto
+        if (this._state === StatusEnemy.DEAD) return;
+
+        this._hp -= damage;
+        console.log(`${this._nombre} recibió ${damage} de daño. HP actual: ${this._hp}`);
+        
+        if (this._hp <= 0) {
+            this.die();
+        }
+    }
+
+    /**
+     * Mata al enemigo
+     */
+    die() {
+        if (this._state === StatusEnemy.DEAD) return; // evitar doble llamada
+
+        this._state = StatusEnemy.DEAD;
+        console.log(`${this._nombre} ha muerto`);
+
+        // cambiar sprite al de muerto si existe
+        const deadTexture = `${this.texture.key}_corpse`;
+        if (this.scene.textures.exists(deadTexture)) {
+            this.setTexture(deadTexture);
+        } else if (this.scene.textures.exists('enemy_corpse')) {
+            this.setTexture('enemy_corpse');
+        }
+
+        // desactivar física y colisiones
+        if (this.body) {
+            this.body.stop();
+            this.body.setVelocity(0, 0);
+            this.body.enable = false;
+            if (this.body.checkCollision) {
+                this.body.checkCollision.none = true;
+            }
+        }
+
+        // deshabilitar visión y otras lógicas
+        this._visionRadius = 0;
+
+        // destruir después de 10 segundos (10000 ms)
+        this.scene.time.delayedCall(10000, () => {
+            // verifica que el objeto aún exista
+            if (this && this.scene) {
+                super.destroy();
+            }
+        });
+    }
+
+    /**
+     * Obtiene el HP actual del enemigo
+     * @returns {number} HP actual
+     */
+    getHP() {
+        return this._hp;
     }
 
     preUpdate(time, delta) {

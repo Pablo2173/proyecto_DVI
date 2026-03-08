@@ -17,6 +17,30 @@ export default class Projectile extends Phaser.GameObjects.Image {
         // Para rotar el proyectil hacia donde apunta
         this.setRotation(Math.atan2(dir.y, dir.x));
 
+        // ── FÍSICA ──
+        if (scene.physics && scene.physics.add) {
+            scene.physics.add.existing(this);
+            if (this.body) {
+                this.body.setAllowGravity(false);
+                this.body.setImmovable(true);
+                this.body.setVelocity(this.speedX, this.speedY);
+                
+                // Configurar tamaño de colisión basado en config
+                if (config.collisionRadius) {
+                    this.body.setCircle(config.collisionRadius);
+                } else {
+                    const collisionWidth = config.collisionWidth ?? 16;
+                    const collisionHeight = config.collisionHeight ?? 16;
+                    this.body.setSize(collisionWidth, collisionHeight);
+                }
+            }
+        }
+
+        // Agregar el proyectil al grupo de proyectiles de la escena
+        if (scene.projectiles) {
+            scene.projectiles.add(this);
+        }
+
         scene.events.on('update', this._update, this);
         this.once('destroy', () => scene.events.off('update', this._update, this));
     }
