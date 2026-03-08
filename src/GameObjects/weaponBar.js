@@ -5,32 +5,40 @@ export default class WeaponBar {
     static MAX_CHARGE = 100;
     static OFFSETY = 60;
 
-    constructor(scene, player) {
+    constructor(scene, player, isEnemy = false) {
         this.scene = scene;
         this.player = player;
+        this.isEnemy = isEnemy;
 
         this.currentCharge = 0;
+        this.cooldownTime = 0; // tiempo hasta el que está en cooldown
 
-        // Contorno
-        this.border = scene.add.sprite(0, 0, 'weapon_bar_border')
-            .setOrigin(0.5)
-            .setDepth(8)
-            .setScale(3);
+        // Solo crear sprites si no es un enemigo (enemigos tienen barra invisible)
+        if (!isEnemy) {
+            this.border = scene.add.sprite(0, 0, 'weapon_bar_border')
+                .setOrigin(0.5)
+                .setDepth(8)
+                .setScale(3);
 
-        // Relleno
-        this.fill = scene.add.sprite(0, 0, 'weapon_bar_fill')
-            .setOrigin(0, 0.5)
-            .setDepth(9)
-            .setScale(3);
+            this.fill = scene.add.sprite(0, 0, 'weapon_bar_fill')
+                .setOrigin(0, 0.5)
+                .setDepth(9)
+                .setScale(3);
 
-        this.fill.setScale(3);   // o WeaponBar.SCALE
-        this.fillWidth = this.fill.displayWidth;  // ancho real después de la escala
+            this.fillWidth = this.fill.displayWidth;
+        } else {
+            this.border = null;
+            this.fill = null;
+            this.fillWidth = 0;
+        }
 
         this.updatePosition();
         this.updateFill();
     }
 
     updatePosition() {
+        if (!this.border) return;
+
         this.border.x = this.player.x;
         this.border.y = this.player.y + WeaponBar.OFFSETY;
 
@@ -39,6 +47,8 @@ export default class WeaponBar {
     }
 
     updateFill() {
+        if (!this.border) return;
+
         const ratio = Phaser.Math.Clamp(
             this.currentCharge / WeaponBar.MAX_CHARGE,
             0,
@@ -84,11 +94,32 @@ export default class WeaponBar {
     }
 
     update() {
-        this.updatePosition();
+        // Manejar cooldown de recarga
+        if (this.cooldownTime > 0 && this.scene.time.now >= this.cooldownTime) {
+            this.setFull();
+            this.cooldownTime = 0;
+        }
+
+        // Solo actualizar posición y profundidad si hay sprites visibles
+        if (this.border) {
+            this.updatePosition();
+            // mantener la barra siempre por encima del jugador/enemigo
+            if (this.player && this.border) {
+                const baseDepth = typeof this.player.depth === 'number' ? this.player.depth : 0;
+                this.border.setDepth(baseDepth + 10);
+                this.fill.setDepth(baseDepth + 11);
+            }
+        }
+    }
+    //el cooldown para los enemigos
+    startCooldown(ms = 5000) {
+        this.currentCharge = 0;
+        this.updateFill();
+        this.cooldownTime = this.scene.time.now + ms;
     }
 
     destroy() {
-        this.border.destroy();
-        this.fill.destroy();
+        if (this.border) this.border.destroy();  
+        if (this.fill) this.fill.destroy();
     }
 }

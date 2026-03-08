@@ -32,24 +32,40 @@ export default class Mcuaktro extends Weapon {
 
     // Called when shooting a bullet
     on_shoot(){
-        if(this.bar)
+        if (!this.bar) return;
+    
+        if (this.isEnemy) {
             this.bar.removeCharge(5);
-        if (this.bar.isEmpty())
-            this.destroy()
+            if (this.bar.isEmpty()) {
+                this.bar.startCooldown(5000);
+            }
+        } else {
+            if(this.bar)
+                this.bar.removeCharge(5);
+            if (this.bar.isEmpty())
+                this.destroy()
+             
+        }
         this.attackSpeed += 3
-        this.accuracy +=7   
+        this.accuracy +=7         
     }    
     
     // Called before shoot, after cooldown, to see if the bar state is acceptable for the weapon
     barCanShoot(){ 
+        if (!this.bar) return true;
+        if (this.isEnemy) {
+            return !this.bar.isEmpty() && this.bar.cooldownTime === 0;
+        }
         return !this.bar.isEmpty();
     }  
 
     // Called while not shooting
     on_wait(){
-        if(this.bar)
-            this.bar.addCharge(1);
-        this.attackSpeed = 200
-        this.accuracy = 0
+        if (!this.bar) return;
+        if (this.isEnemy) return; // el cooldown lo maneja WeaponBar
+    
+        this.bar.addCharge(1);
+        this.attackSpeed = 200;
+        this.accuracy = 0;
     }
 }

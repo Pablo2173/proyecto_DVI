@@ -1,4 +1,5 @@
 import Enemy, { StatusEnemy } from "../enemy";
+import DropWeapon from "../Weapons/drops/dropWeapon.js";
 
 export default class Mapache extends Enemy {
     constructor(scene, name, x, y, texture, frame, weapon) {
@@ -10,6 +11,7 @@ export default class Mapache extends Enemy {
         this._originalTexture = texture;
         this._originalVisionRadius = this._visionRadius;
         this._maxHP = 100;
+        this._originalWeapon = weapon;
     }
 
     //como la habilidad del mapache es resucitar, sobreescribo el metodo die para que en vez de morir a la primera, se "resucite" una vez, y a la segunda muerte si muera de verdad
@@ -43,7 +45,15 @@ export default class Mapache extends Enemy {
             // revive a los 3 segundos
             this.scene.time.delayedCall(3000, () => this.revive());
         } else {
-            // segunda muerte, usar el comportamiento normal (destrucción a los 10s)
+            // En la segunda muerte ya se muere normal
+            
+            if (this.weapon) {
+                const drop = new DropWeapon(this.scene, this.x, this.y, this.weapon.constructor, this.weapon.texture.key);
+                 if (this.scene.dropItems) {
+                     this.scene.dropItems.add(drop);
+                 }
+                  this.weapon.destroy();
+            }
             super.die();
         }
     }
@@ -55,10 +65,10 @@ export default class Mapache extends Enemy {
         this._hp = this._maxHP;
         this._visionRadius = this._originalVisionRadius;
 
-        // restaurar textura original
+        // vuelve a tener el sprite del mapache vivo
         this.setTexture(this._originalTexture);
 
-        // reactivar físicas/colisiones
+        // reactiva las físicas/colisiones
         if (this.body) {
             this.body.enable = true;
             if (this.body.checkCollision) {
@@ -66,6 +76,9 @@ export default class Mapache extends Enemy {
             }
             this.body.setVelocity(0, 0);
         }
+
+        // reequipa el arma
+        this.equipWeapon(this._originalWeapon);
 
         console.log(`${this._nombre} ha resucitado`);
     }

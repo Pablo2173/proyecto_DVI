@@ -146,7 +146,7 @@ export default class MainScene extends Phaser.Scene {
         });
 
         // ── Enemigo ──
-        this.enemy = new Mapache(this, 'Mapache', 440, 200, 'enemy', null, null); //de momento el weapon se lo pongo a null hasta que este implementado
+        this.enemy = new Mapache(this, 'Mapache', 440, 200, 'enemy', null, 'mcuaktro'); //de momento el weapon se lo pongo a null hasta que este implementado
         this.enemy.setFlipX(true);
 
         // ── Colisiones: Proyectiles -> Enemigos ──
@@ -242,18 +242,31 @@ export default class MainScene extends Phaser.Scene {
                     this.enemy.setTint(0xFFFF01);
                 }
                 if (time - this.enemyAlertTime > 500) {
-                    this.enemy.clearTint();
+                    // only clear if not currently flashing red
+                    if (this.enemy.tintTopLeft !== 0xFF0000) {
+                        this.enemy.clearTint();
+                    }
                 }
             } else {
                 this.enemyAlertTime = null;
-                this.enemy.clearTint();
+                // clear only if not flashing damage
+                if (this.enemy.tintTopLeft !== 0xFF0000) {
+                    this.enemy.clearTint();
+                }
             }
 
-            // Enemigo camina hacia el pato cuando está alertado
+            // Movimiento inteligente del enemigo cuando está alertado
             if (this.enemy.isAlerted()) {
-                if (this.enemy.isAlerted()) {
-                    this.enemy.moveTowards(this.duck); // solo el target, sin más parámetros
-                    this.enemy.setFlipX(this.enemy.x >= this.duck.x);
+                const dist = Phaser.Math.Distance.Between(this.enemy.x, this.enemy.y, this.duck.x, this.duck.y);
+                const optimalDist = this.enemy.weapon ? this.enemy.weapon.optimalDistance : 200;
+                const maxRange = this.enemy.weapon ? this.enemy.weapon.range : 800;
+
+                if (dist < optimalDist) {
+                    // Si el duck está demasiado cerca, alejarse
+                    this.enemy.moveAwayFrom(this.duck);
+                } else{
+                    // Si el duck está demasiado lejos, acercarse
+                    this.enemy.moveTowards(this.duck);
                 }
 
                 this.enemy.setFlipX(this.enemy.x >= this.duck.x);

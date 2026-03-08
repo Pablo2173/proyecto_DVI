@@ -1,5 +1,22 @@
 import Phaser from 'phaser';
 
+import Arco from './Weapons/Distance/arco.js';
+import Mcuaktro from './Weapons/Distance/mcuaktro.js';
+import Cuchillo from './Weapons/Melee/cuchillo.js';
+import Mazo from './Weapons/Melee/mazo.js';
+import Ramita from './Weapons/Melee/ramita.js';
+
+import WeaponBar from './weaponBar.js'
+import DropWeapon from './Weapons/drops/dropWeapon.js'
+
+const WEAPON_MAP = {
+    arco: Arco,
+    mcuaktro: Mcuaktro,
+    cuchillo: Cuchillo,
+    mazo: Mazo,
+    ramita: Ramita
+};
+
 const StatusEnemy = {
     IDLE: 0,
     ALERTED: 1,
@@ -22,6 +39,7 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         super(scene, x, y, texture, frame);
         this.scene = scene;
         scene.add.existing(this);
+        this.weaponBar = new WeaponBar(scene, this, true);
 
         // --- FÍSICA (top-down) ---
         if (scene.physics && scene.physics.add) {
@@ -46,10 +64,31 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         this._state = StatusEnemy.IDLE;
         this._lastQuackTime = 0; // Para evitar alertas duplicadas del mismo quack
         this._quackCooldown = 100; // ms
+
+        // equipar arma si fue pasada
+        this.equipWeapon(weapon);
     }
 
     mostrarNombre() {
         console.log(`Mi nombre es ${this._nombre}`);
+    }
+
+    equipWeapon(weaponKeyOrClass) {
+        const WeaponClass = typeof weaponKeyOrClass === 'string'
+            ? WEAPON_MAP[weaponKeyOrClass]
+            : weaponKeyOrClass;
+
+        if (!WeaponClass) {
+            console.warn(`Enemy: arma desconocida "${weaponKeyOrClass}"`);
+            return;
+        }
+
+        const newWeapon = new WeaponClass(this.scene, this, this.weaponBar);
+        this.setWeapon(newWeapon);
+        // para que la barra conozca la nueva arma (igual que en Duck)
+        if (this.weapon && typeof this.weapon.setBar === 'function') {
+            this.weapon.setBar(this.weaponBar);
+        }
     }
 
     /**
@@ -80,10 +119,47 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
     }
 
     /**
+     * Mueve al enemigo alejándose de un target usando el body de física.
+     * @param {{x: number, y: number}} target
+     */
+    moveAwayFrom(target) {
+        if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') {
+           this.body?.setVelocity(0, 0);
+            return;
+        }
+
+        const dx = this.x - target.x; // invertido
+        const dy = this.y - target.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist === 0) {
+            this.body?.setVelocity(0, 0);
+            return;
+        }
+
+        this._facingAngle = Math.atan2(dy, dx);
+        this.body.setVelocity(
+           (dx / dist) * this._speed,
+            (dy / dist) * this._speed
+        );
+    }
+
+    /**
      * Detiene el movimiento del enemigo.
      */
     stop() {
         this.body?.setVelocity(0, 0);
+    }
+
+    /**
+     * Reemplaza el arma actual por una nueva instancia y destruye la vieja.
+     * @param {Weapon} newWeapon
+     */
+    setWeapon(newWeapon) {
+        if (this.weapon) {
+            this.weapon.destroy();
+        }
+        this.weapon = newWeapon;
     }
 
     setVisionRadius(radius) {
@@ -234,25 +310,31 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
      * @param {number} damage - cantidad de daño a recibir
      */
     takeDamage(damage) {
-        // ignorar daño si ya está muerto
+        // se ignora el daño si ya está muerto
         if (this._state === StatusEnemy.DEAD) return;
 
         this._hp -= damage;
+        if(this._state !== StatusEnemy.ALERTED)
+            this._state = StatusEnemy.ALERTED; // Si recibe daño, se alerta aunque no haya visto al jugador
         console.log(`${this._nombre} recibió ${damage} de daño. HP actual: ${this._hp}`);
-        
+        // parpadeo rojo momentáneo
+        this.flashRed();        
         if (this._hp <= 0) {
             this.die();
         }
     }
 
-    /**
-     * Mata al enemigo
-     */
     die() {
         if (this._state === StatusEnemy.DEAD) return; // evitar doble llamada
 
         this._state = StatusEnemy.DEAD;
         console.log(`${this._nombre} ha muerto`);
+        
+        // dropear el arma si tenía una
+        if (this.weapon) {
+            const drop = new DropWeapon(this.scene, this.x, this.y, this.weapon.constructor, this.weapon.texture.key);
+            this.weapon.destroy();
+        }
 
         // cambiar sprite al de muerto si existe
         const deadTexture = `${this.texture.key}_corpse`;
@@ -292,8 +374,40 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         return this._hp;
     }
 
+    // Reproduce un parpadeo rojo rápido para indicar daño recibido
+    flashRed(duration = 100) {
+        if (!this.scene) return;
+        this.setTint(0xff0000);
+        this.scene.time.delayedCall(duration, () => {
+            if (this && this.clearTint) this.clearTint();
+        });
+    }
+
     preUpdate(time, delta) {
+        // el arma también debe actualizarse para seguir al enemigo
+        if (this.weapon && typeof this.weapon.update === 'function') {
+            this.weapon.update();
+        }
+
+        // actualizar posición de la barra si existe
+        if (this.weaponBar && typeof this.weaponBar.update === 'function') {
+            this.weaponBar.update();
+        }
+
         if (super.preUpdate) super.preUpdate(time, delta);
+    }
+
+    /**
+     * Sobre-escribimos destroy para también limpiar arma y barra.
+     */
+    destroy(fromScene) {
+        if (this.weapon) {
+            this.weapon.destroy();
+        }
+        if (this.weaponBar) {
+            this.weaponBar.destroy();
+        }
+        super.destroy(fromScene);
     }
 }
 export { StatusEnemy };

@@ -77,13 +77,33 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
             return;     //no se puede hacer ninguna acción con el arma nadando
         } else { this.setVisible(true); }
 
-        // 2. Rotar hacia el puntero
-        const pointer = this.scene.input.activePointer;
-        const angleRad = Phaser.Math.Angle.Between(
-            this.owner.x, this.owner.y,
-            pointer.worldX, pointer.worldY
-        );
-        const angleDeg = Phaser.Math.RadToDeg(angleRad);
+        // 2. Rotar hacia el puntero o dirección del owner
+        let angleDeg;
+        if (this.owner._facingAngle !== undefined) {
+            if (this.owner._state === 1) { // Solo apuntar al player si está alertado
+                const player = this.scene.duck;
+                if (player) {
+                    const angleRad = Phaser.Math.Angle.Between(
+                        this.owner.x, this.owner.y,
+                        player.x, player.y
+                    );
+                    angleDeg = Phaser.Math.RadToDeg(angleRad) + this.spriteAngleOffset;
+                } else {
+                    angleDeg = 0; // fallback
+                }
+            } else {
+                // Si no alertado, apuntar hacia la dirección que mira el enemigo
+                angleDeg = Phaser.Math.RadToDeg(this.owner._facingAngle) + this.spriteAngleOffset;
+            }
+        } else {
+            // Para el pato, hacia el puntero
+            const pointer = this.scene.input.activePointer;
+            const angleRad = Phaser.Math.Angle.Between(
+                this.owner.x, this.owner.y,
+                pointer.worldX, pointer.worldY
+            );
+            angleDeg = Phaser.Math.RadToDeg(angleRad) + this.spriteAngleOffset;
+        }
 
         // Aplicar ángulo + corrección del sprite
         this.setAngle(angleDeg + this.spriteAngleOffset);
@@ -93,7 +113,18 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         const wrapped = Phaser.Math.Angle.WrapDegrees(angleDeg);
         this.setFlipY(wrapped > 90 || wrapped < -90);
 
-        // 4. Debug
+        // 4. Para enemigos, disparar automáticamente si el jugador está en rango y el enemigo está alertado
+        if (this.owner._facingAngle !== undefined && this.owner._state === 1 && this.isRanged) {
+            const player = this.scene.duck;
+            if (player) {
+                const dist = Phaser.Math.Distance.Between(this.owner.x, this.owner.y, player.x, player.y);
+                if (dist <= this.range && this._canAttack()) {
+                    this.attack();
+                }
+            }
+        }
+
+        // 5. Debug
         if (this.debugMode) {
             this._drawDebugCircles();
         } else {
@@ -130,15 +161,31 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
             return;
         }
 
-        const pointer = this.scene.input.activePointer;
-
-        // Ángulo base hacia el puntero
-        let angle = Phaser.Math.Angle.Between(
-            this.owner.x,
-            this.owner.y,
-            pointer.worldX,
-            pointer.worldY
-        );
+        // Ángulo base hacia el puntero o hacia el player si es enemigo
+        let angle;
+        if (this.owner._facingAngle !== undefined) {
+            // Para enemigo, hacia el player
+            const player = this.scene.duck;
+            if (player) {
+                angle = Phaser.Math.Angle.Between(
+                    this.owner.x,
+                    this.owner.y,
+                    player.x,
+                    player.y
+                );
+            } else {
+                return; // no disparar si no hay player
+            }
+        } else {
+            // Para el pato, hacia el puntero
+            const pointer = this.scene.input.activePointer;
+            angle = Phaser.Math.Angle.Between(
+                this.owner.x,
+                this.owner.y,
+                pointer.worldX,
+                pointer.worldY
+            );
+        }
 
         // ── Aplicar desviación según accuracy ──
         // accuracy = 0   → sin desviación
@@ -228,6 +275,10 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
     setBar(combatBar) {
         this.bar = combatBar
         this.on_equip();
+    }
+
+    get isEnemy() {
+        return this.owner?._facingAngle !== undefined;
     }
 
     // Funciones a implementar para las armas especificas
