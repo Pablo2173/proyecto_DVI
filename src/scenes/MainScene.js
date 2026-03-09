@@ -269,11 +269,19 @@ export default class MainScene extends Phaser.Scene {
     _onProjectileHitEnemy(projectile, enemy) {
         if (!projectile || !enemy) return;
 
+        // evitar daño repetido al mismo enemigo
+        if (projectile.hitEnemies) {
+            if (projectile.hitEnemies.has(enemy)) return;
+            projectile.hitEnemies.add(enemy);
+        }
+
         // El enemigo recibe daño
         enemy.takeDamage(projectile.damage);
 
-        // Destruir el proyectil
-        projectile.destroy();
+        // Solo destruir proyectiles no-piercing
+        if (!projectile.piercing) {
+            projectile.destroy();
+        }
 
         console.log(`¡Proyectil impactó! Daño: ${projectile.damage}, HP enemigo: ${enemy.getHP()}`);
     }
