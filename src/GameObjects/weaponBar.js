@@ -67,6 +67,15 @@ export default class WeaponBar {
         this.updateFill();
     }
 
+    setEmpty() {
+        this.currentCharge = Phaser.Math.Clamp(
+            0,
+            0,
+            WeaponBar.MAX_CHARGE
+        );
+        this.updateFill();
+    }
+
     addCharge(amount) {
         this.currentCharge = Phaser.Math.Clamp(
             this.currentCharge + amount,

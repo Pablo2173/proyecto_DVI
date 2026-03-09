@@ -145,6 +145,13 @@ export default class MainScene extends Phaser.Scene {
             if (this.duck && this.duck.weapon) this.duck.weapon.attack();
         });
 
+        // ── Soltar click: necesario para armas con carga (arco) ──
+        this.input.on('pointerup', () => {
+            if (this.duck && this.duck.weapon && this.duck.weapon.releaseAttack) {
+                this.duck.weapon.releaseAttack();
+            }
+        });
+
         // ── Enemigo ──
         this.enemy = new Mapache(this, 'Mapache', 440, 200, 'enemy', null, 'mcuaktro'); //de momento el weapon se lo pongo a null hasta que este implementado
         this.enemy.setFlipX(true);
@@ -228,6 +235,7 @@ export default class MainScene extends Phaser.Scene {
         }
 
         // ── Ataque continuo mientras se mantiene el botón izquierdo ──
+        // Para armas con carga (arco), attack() solo inicia la carga una vez
         if (this.input.activePointer.isDown && this.duck && this.duck.weapon) {
             this.duck.weapon.attack();
         }
@@ -269,11 +277,19 @@ export default class MainScene extends Phaser.Scene {
     _onProjectileHitEnemy(projectile, enemy) {
         if (!projectile || !enemy) return;
 
+        // evitar daño repetido al mismo enemigo
+        if (projectile.hitEnemies) {
+            if (projectile.hitEnemies.has(enemy)) return;
+            projectile.hitEnemies.add(enemy);
+        }
+
         // El enemigo recibe daño
         enemy.takeDamage(projectile.damage);
 
-        // Destruir el proyectil
-        projectile.destroy();
+        // Solo destruir proyectiles no-piercing
+        if (!projectile.piercing) {
+            projectile.destroy();
+        }
 
         console.log(`¡Proyectil impactó! Daño: ${projectile.damage}, HP enemigo: ${enemy.getHP()}`);
     }
