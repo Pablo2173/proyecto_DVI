@@ -9,6 +9,12 @@ export default class Flecha extends Projectile {
         if (this.body) {
             this.body.setSize(this.width / 3, this.height / 3);
         }
+
+        // Perforación: la flecha atraviesa al primer enemigo si se cargó al 100%
+        this.piercing = config.piercing ?? false;
+        if (this.piercing) {
+            this.hitEnemies = new Set();
+        }
     }
 
     static preload(scene) {

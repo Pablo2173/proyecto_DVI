@@ -145,6 +145,13 @@ export default class MainScene extends Phaser.Scene {
             if (this.duck && this.duck.weapon) this.duck.weapon.attack();
         });
 
+        // ── Soltar click: necesario para armas con carga (arco) ──
+        this.input.on('pointerup', () => {
+            if (this.duck && this.duck.weapon && this.duck.weapon.releaseAttack) {
+                this.duck.weapon.releaseAttack();
+            }
+        });
+
         // ── Enemigo ──
         this.enemy = new Mapache(this, 'Mapache', 440, 200, 'enemy', null, 'mcuaktro'); //de momento el weapon se lo pongo a null hasta que este implementado
         this.enemy.setFlipX(true);
@@ -228,6 +235,7 @@ export default class MainScene extends Phaser.Scene {
         }
 
         // ── Ataque continuo mientras se mantiene el botón izquierdo ──
+        // Para armas con carga (arco), attack() solo inicia la carga una vez
         if (this.input.activePointer.isDown && this.duck && this.duck.weapon) {
             this.duck.weapon.attack();
         }
