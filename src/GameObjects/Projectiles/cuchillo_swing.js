@@ -8,7 +8,7 @@ import Projectile from './projectile.js';
 export default class CuchilloSwing extends Projectile {
 
     constructor(scene, x, y, config = {}) {
-        super(scene, x, y, null, { damage: config.damage ?? 25 });
+        super(scene, x, y, null, { damage: config.damage ?? 25, collisionRadius: 20 });
 
         this.owner          = config.owner;
         this.duration       = config.duration      ?? 120;

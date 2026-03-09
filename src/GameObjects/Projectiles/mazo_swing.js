@@ -20,7 +20,7 @@ export default class MazoSwing extends Projectile {
 
     constructor(scene, x, y, config = {}) {
         // Pasamos texture null → invisible, Projectile lo gestiona
-        super(scene, x, y, null, { damage: config.damage ?? 10 });
+        super(scene, x, y, null, { damage: config.damage ?? 10, collisionRadius: 30 });
 
         this.owner          = config.owner;
         this.duration       = config.duration      ?? 220;
