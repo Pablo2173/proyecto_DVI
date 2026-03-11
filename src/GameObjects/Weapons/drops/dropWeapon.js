@@ -47,26 +47,23 @@ export default class DropWeapon extends DropItem {
         const dropY = this.y;
 
         const previousWeapon = player.weapon;
-        let previousClass = null;
-        let previousTexture = null;
-
-        if (previousWeapon) {
-            previousClass = previousWeapon.constructor;
-            previousTexture = previousWeapon.texture.key;  // Obtener la clave de textura del arma anterior
-        }
 
         // Crear nueva arma con el bar del jugador
         const newWeapon = new this.weaponClass(scene, player, player.weaponBar);
         player.setWeapon(newWeapon);
-        
-        // Inicializar el bar en el arma nueva
         newWeapon.setBar(player.weaponBar);
 
-        // Crear drop con el arma anterior si existía
-        if (previousClass && previousTexture) {
-            new DropWeapon(scene, dropX, dropY, previousClass, previousTexture);
+        // Solo crear drop si el jugador tenía arma válida y es distinta a la recogida
+        if (
+            previousWeapon &&
+            previousWeapon.constructor &&
+            previousWeapon.texture && previousWeapon.texture.key &&
+            previousWeapon.constructor !== this.weaponClass // Evitar duplicación por tipo
+        ) {
+            new DropWeapon(scene, dropX, dropY, previousWeapon.constructor, previousWeapon.texture.key);
         }
 
+        // Destruir el drop actual para que desaparezca del suelo
         this.destroy();
     }
 }
