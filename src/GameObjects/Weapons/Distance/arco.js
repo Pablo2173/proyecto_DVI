@@ -24,7 +24,7 @@ export default class Arco extends Weapon {
 
         // ── Carga ──
         this.maxRange = this.range;          // rango máximo al 100% de carga
-        this.minRangeRatio = 0.2;            // 20% del rango máximo como mínimo
+        this.minRangeRatio = 0.4;            // 40% del rango máximo como mínimo
         this.chargeTime = 1500;              // ms para carga completa
         this.isCharging = false;
         this.chargeStartTime = 0;

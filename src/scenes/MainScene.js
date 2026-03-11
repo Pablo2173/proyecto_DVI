@@ -355,7 +355,7 @@ export default class MainScene extends Phaser.Scene {
             const camX = this.duck.x * 0.7 + mouseX * 0.3;
             const camY = this.duck.y * 0.7 + mouseY * 0.3;
             
-            this.cameras.main.centerOn(camX, camY);
+            this.cameras.main.centerOn(camX, camY, 1, 1); // suavizado
         }
 
         // ── Ataque continuo mientras se mantiene el botón izquierdo ──
