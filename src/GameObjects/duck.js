@@ -42,6 +42,19 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.facingY = 0;
         this.scale = 3;
 
+        // --- FÍSICA (top-down) ---
+        if (scene.physics && scene.physics.add) {
+            scene.physics.add.existing(this);
+            if (this.body) {
+                this.body.setCollideWorldBounds(true);
+                this.body.setAllowGravity(false); // Sin gravedad porque estamos haciendo un top-down
+                this.body.setImmovable(false);    // Basicamente lo pongo a false para que le puedan empujar
+
+                this.body.setCircle(16, 16); //falta poner el tamanyo del sprite, este es provisional
+                this.body.setOffset(4, 4);
+            }
+        }
+
         // ── Arma ──
         this.weapon = null;
 

@@ -164,10 +164,12 @@ export default class MainScene extends Phaser.Scene {
 
     create() {
 
+        const SCALE = 3;
+        
         const map = this.make.tilemap({ 
         key: 'level1',
-        tileWidth: 16 * 5,  
-        tileHeight: 16 * 5
+        tileWidth: 16 * SCALE,  
+        tileHeight: 16 * SCALE
         });
 
         const tilesetNames = [
@@ -185,8 +187,6 @@ export default class MainScene extends Phaser.Scene {
 
         const tilesets = tilesetNames.map(name => map.addTilesetImage(name, name));
 
-        const SCALE = 5;
-
         const baseLayer = map.createLayer('base', tilesets, 0, 0);
         baseLayer.setScale(SCALE);
 
@@ -201,8 +201,8 @@ export default class MainScene extends Phaser.Scene {
 
         colisionLayer.setCollisionByProperty({ collides: true });
 
-        this.physics.world.setBounds(0, 0, map.widthInPixels * 5, map.heightInPixels * 5);
-        this.cameras.main.setBounds(0, 0, map.widthInPixels * 5, map.heightInPixels * 5);
+        this.physics.world.setBounds(0, 0, map.widthInPixels * SCALE, map.heightInPixels * SCALE);
+        this.cameras.main.setBounds(0, 0, map.widthInPixels * SCALE, map.heightInPixels * SCALE);
 
         this.anims.create({
             key: 'duck-idle',
