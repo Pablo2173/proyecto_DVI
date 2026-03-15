@@ -42,6 +42,14 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.facingY = 0;
         this.scale = 3;
 
+        //GESTIÓN Plumas
+        this.maxFeathers = 10;
+        this.feathers = 5;
+
+        this.lastPuddle = null;      // checkpoint actual
+        this.lastDeathPosition = null;
+        this.isInvulnerable = false; // útil para evitar perder 20 plumas por un solo golpe
+
         // --- FÍSICA (top-down) ---
         if (scene.physics && scene.physics.add) {
             scene.physics.add.existing(this);
@@ -76,6 +84,62 @@ export default class Duck extends Phaser.GameObjects.Sprite {
 
         // ── Equipar arma inicial ──
         this.equipWeapon(weaponKey);
+    }
+    // ─────────────────────────────────────────
+    //  GESTIÓN DE PlUMAS
+    // ─────────────────────────────────────────
+    addFeather(amount = 1) {
+        this.feathers = Phaser.Math.Clamp(this.feathers + amount, 0, this.maxFeathers);
+        this.scene.featherUI?.refresh();
+    }
+
+    loseFeather(amount = 1) {
+        this.feathers = Phaser.Math.Clamp(this.feathers - amount, 0, this.maxFeathers);
+        console.log('Plumas ahora:', this.feathers);
+        this.scene.featherUI?.refresh();
+
+        if (this.feathers <= 0) {
+            this.defeat();
+        }
+    }
+
+    setFeathers(amount) {
+        this.feathers = Phaser.Math.Clamp(amount, 0, this.maxFeathers);
+        this.scene.featherUI?.refresh();
+    }
+
+    takeDamage(amount = 1) {
+        if (this.isInvulnerable) return;
+
+        this.isInvulnerable = true;
+
+        this.setTint(0xff0000);
+        this.scene.time.delayedCall(100, () => {
+            if (this.active) this.clearTint();
+        });
+
+        this.loseFeather(amount);
+
+        this.scene.time.delayedCall(1000, () => {
+            this.isInvulnerable = false;
+        });
+    }
+
+    defeat() {
+        console.log('RESPAWN');
+
+        this.clearTint();
+        this.setFeathers(5);
+
+        // invulnerabilidad al reaparecer
+        this.isInvulnerable = true;
+        this.scene.time.delayedCall(1500, () => {
+            this.isInvulnerable = false;
+        });
+    }
+
+    setCheckpoint(puddle) {
+        this.lastPuddle = puddle;
     }
 
     // ─────────────────────────────────────────

@@ -9,6 +9,8 @@ import Ramita from './Weapons/Melee/ramita.js';
 import WeaponBar from './weaponBar.js'
 import DropWeapon from './Weapons/drops/dropWeapon.js'
 
+import DropFeather from './consumables/dropFeather.js';
+
 const WEAPON_MAP = {
     arco: Arco,
     mcuaktro: Mcuaktro,
@@ -334,6 +336,14 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         if (this.weapon) {
             const drop = new DropWeapon(this.scene, this.x, this.y, this.weapon.constructor, this.weapon.texture.key);
             this.weapon.destroy();
+        }
+
+        // sistema controlado de plumas
+        this.scene.enemiesKilled++;
+
+        if (this.scene.enemiesKilled >= 6) {
+            new DropFeather(this.scene, this.x, this.y);
+            this.scene.enemiesKilled = 0; // resetear el contador después de dropear una pluma
         }
 
         // cambiar sprite al de muerto si existe
