@@ -42,10 +42,15 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.facingY = 0;
         this.scale = 3;
 
-        //GESTIÓN Plumas
+        // GESTIÓN PLUMAS / VIDA
         this.maxFeathers = 10;
-        this.feathers = 5;
+        this.healthPerFeather = 50;
 
+        this.maxHealth = this.maxFeathers * this.healthPerFeather;
+
+        // empieza con 5 plumas
+        this.feathers = 5;
+        this.health = this.feathers * this.healthPerFeather;
         this.lastPuddle = null;      // checkpoint actual
         this.lastDeathPosition = null;
         this.isInvulnerable = false; // útil para evitar perder 20 plumas por un solo golpe
@@ -89,59 +94,110 @@ export default class Duck extends Phaser.GameObjects.Sprite {
     //  GESTIÓN DE PlUMAS
     // ─────────────────────────────────────────
     addFeather(amount = 1) {
-        this.feathers = Phaser.Math.Clamp(this.feathers + amount, 0, this.maxFeathers);
-        this.scene.featherUI?.refresh();
+        const heal = amount * this.healthPerFeather;
+        this.health = Phaser.Math.Clamp(this.health + heal, 0, this.maxHealth);
+        this.updateFeathersFromHealth();
     }
 
     loseFeather(amount = 1) {
-        this.feathers = Phaser.Math.Clamp(this.feathers - amount, 0, this.maxFeathers);
-        console.log('Plumas ahora:', this.feathers);
-        this.scene.featherUI?.refresh();
+        const damage = amount * this.healthPerFeather;
+        this.health = Math.max(0, this.health - damage);
 
-        if (this.feathers <= 0) {
-            this.defeat();
-        }
+        this.updateFeathersFromHealth();
     }
 
     setFeathers(amount) {
         this.feathers = Phaser.Math.Clamp(amount, 0, this.maxFeathers);
-        this.scene.featherUI?.refresh();
+        this.health = this.feathers * this.healthPerFeather;
+
+        if (this.health > this.maxHealth) {
+            this.health = this.maxHealth;
+        }
+
+        if (this.scene?.featherUI) {
+            this.scene.featherUI.refresh();
+        }
+
+        if (this.health <= 0) {
+            this.defeat();
+        }
     }
 
     takeDamage(amount = 1) {
-        if (this.isInvulnerable) return;
+        if (this.isInvulnerable || this.scene?.isPlayerDead) return;
 
         this.isInvulnerable = true;
 
         this.setTint(0xff0000);
+
         this.scene.time.delayedCall(100, () => {
-            if (this.active) this.clearTint();
+            if (this.active && !this.scene?.isPlayerDead) {
+                this.clearTint();
+            }
         });
 
-        this.loseFeather(amount);
+        this.health = Math.max(0, this.health - amount);
+        console.log(`Vida ahora: ${this.health}`);
+
+        this.updateFeathersFromHealth();
+
+        if (this.health <= 0 || this.scene?.isPlayerDead) {
+            return;
+        }
 
         this.scene.time.delayedCall(1000, () => {
-            this.isInvulnerable = false;
+            if (this.active && !this.scene?.isPlayerDead) {
+                this.isInvulnerable = false;
+            }
         });
     }
 
     defeat() {
-        console.log('RESPAWN');
+        if (this.scene?.isPlayerDead) return;
 
         this.clearTint();
-        this.setFeathers(5);
-
-        // invulnerabilidad al reaparecer
         this.isInvulnerable = true;
-        this.scene.time.delayedCall(1500, () => {
-            this.isInvulnerable = false;
-        });
+
+        if (this.weapon?.releaseAttack) {
+            this.weapon.releaseAttack();
+        }
+
+        if (this.body) {
+            this.body.setVelocity(0, 0);
+            this.body.enable = false;
+        }
+
+        this.setState(DUCK_STATE.IDLE);
+
+        this.scene.handlePlayerDeath();
     }
 
     setCheckpoint(puddle) {
         this.lastPuddle = puddle;
     }
 
+    updateFeathersFromHealth() {
+        const newFeathers = Math.max(0, Math.ceil(this.health / this.healthPerFeather));
+
+        if (newFeathers !== this.feathers) {
+            this.feathers = newFeathers;
+            console.log(`Plumas ahora: ${this.feathers}`);
+
+            if (this.scene?.featherUI) {
+                this.scene.featherUI.refresh();
+            }
+        }
+
+        if (this.health <= 0) {
+            this.feathers = 0;
+
+            if (this.scene?.featherUI) {
+                this.scene.featherUI.refresh();
+            }
+
+            this.defeat();
+        }
+    }
     // ─────────────────────────────────────────
     //  GESTIÓN DE ARMA
     // ─────────────────────────────────────────
@@ -219,6 +275,9 @@ export default class Duck extends Phaser.GameObjects.Sprite {
 
     preUpdate(time, dt) {
         super.preUpdate(time, dt);
+
+        if (!this.active) return;
+        if (this.scene?.isPlayerDead) return;
         const delta = dt / 1000;
 
         // Fin de quack
