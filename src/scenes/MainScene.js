@@ -611,10 +611,16 @@ export default class MainScene extends Phaser.Scene {
             'arco'
         );
 
-        const puddle = new Puddle(this, 300, 300, 100);
-        const puddleDebug = this.add.graphics();
-        puddleDebug.lineStyle(2, 0x0000ff, 1);
-        puddleDebug.strokeCircle(puddle.x, puddle.y, puddle.radius);
+        //PUDDLE CONFIG
+        this.startPuddle = new Puddle(this, this.playerSpawn.x + 120, this.playerSpawn.y, 100);
+
+        this.puddleDebug = this.add.graphics();
+        this.puddleDebug.lineStyle(2, 0x0000ff, 1);
+        this.puddleDebug.strokeCircle(
+            this.startPuddle.x,
+            this.startPuddle.y,
+            this.startPuddle.radius
+        );
 
         // TESTING pluma en mapa
         const testPluma = this.add.image(this.duck.x, this.duck.y - 100, 'feather_icon');
@@ -655,6 +661,9 @@ export default class MainScene extends Phaser.Scene {
         // CÁMARA
         // ─────────────────────────────────────────
         this.cameras.main.roundPixels = true;
+
+        this.events.once('shutdown', this._cleanupScene, this);
+        this.events.once('destroy', this._cleanupScene, this);
     }    
 
 
@@ -802,37 +811,40 @@ export default class MainScene extends Phaser.Scene {
     }
 
     showDeathScreen() {
-    if (!this.deathOverlay) return;
+        if (!this.deathOverlay || this.deathOverlay.visible) return;
 
-    this.deathOverlay.setVisible(true);
-    this.deathOverlay.setAlpha(0);
+        this.deathOverlay.setVisible(true);
+        this.deathOverlay.setAlpha(0);
 
-    this.tweens.add({
-        targets: this.deathOverlay,
-        alpha: 1,
-        duration: 400,
-        ease: 'Power2'
-    });
-}
+        this.tweens.add({
+            targets: this.deathOverlay,
+            alpha: 1,
+            duration: 400,
+            ease: 'Power2'
+        });
+    }
 
     handlePlayerDeath() {
         if (this.isPlayerDead) return;
+
         this.isPlayerDead = true;
 
-        // parar jugador
         if (this.duck?.body) {
             this.duck.body.setVelocity(0, 0);
             this.duck.body.enable = false;
         }
 
-        // soltar carga de arma si existe
         if (this.duck?.weapon?.releaseAttack) {
             this.duck.weapon.releaseAttack();
         }
 
-        // parar enemigo
         if (this.enemy?.body) {
             this.enemy.body.setVelocity(0, 0);
+            this.enemy.body.enable = false;
+        }
+
+        if (this.visionGraphics) {
+            this.visionGraphics.clear();
         }
 
         this.showDeathScreen();
@@ -843,6 +855,26 @@ export default class MainScene extends Phaser.Scene {
         });
     }
 
+    _cleanupScene() {
+        this.input.removeAllListeners();
+
+        this.scale.off('resize');
+
+        if (this.visionGraphics) {
+            this.visionGraphics.destroy();
+            this.visionGraphics = null;
+        }
+
+        if (this.puddleDebug) {
+            this.puddleDebug.destroy();
+            this.puddleDebug = null;
+        }
+
+        if (this.deathOverlay) {
+            this.deathOverlay.destroy();
+            this.deathOverlay = null;
+        }
+    }
 
     /**
      * Maneja la colisión entre un proyectil y un enemigo
@@ -852,41 +884,51 @@ export default class MainScene extends Phaser.Scene {
     _onProjectileHitEnemy(projectile, enemy) {
         if (this.isPlayerDead) return;
         if (!projectile || !enemy) return;
+        if (!projectile.active || !enemy.active) return;
+        if (enemy.isDead && enemy.isDead()) return;
 
         if (projectile.hitEnemies) {
             if (projectile.hitEnemies.has(enemy)) return;
             projectile.hitEnemies.add(enemy);
         }
 
-        enemy.takeDamage(projectile.damage);
+        const damage = projectile.damage ?? 1;
+        enemy.takeDamage(damage);
 
         if (!projectile.piercing) {
             projectile.destroy();
         }
 
-        console.log(`¡Proyectil impactó! Daño: ${projectile.damage}, HP enemigo: ${enemy.getHP()}`);
+        console.log(`¡Proyectil impactó! Daño: ${damage}, HP enemigo: ${enemy.getHP()}`);
     }
 
     _onEnemyHitDuck(duck, enemy) {
         if (this.isPlayerDead) return;
         if (!duck || !enemy) return;
+        if (!duck.active || !enemy.active) return;
         if (enemy.isDead && enemy.isDead()) return;
         if (duck.isInvulnerable) return;
 
-        duck.takeDamage(1);
+        const contactDamage = enemy.contactDamage ?? 10;
+        duck.takeDamage(contactDamage);
+
+        console.log(`¡El pato recibió daño cuerpo a cuerpo! Daño: ${contactDamage}, Vida restante: ${duck.health}, Plumas restantes: ${duck.feathers}`);
     }
 
     _onProjectileHitDuck(projectile, duck) {
         if (this.isPlayerDead) return;
         if (!projectile || !duck) return;
+        if (!projectile.active || !duck.active) return;
+        if (duck.isInvulnerable) return;
 
-        duck.takeDamage(projectile.damage ?? 1);
+        const damage = projectile.damage ?? 1;
+        duck.takeDamage(damage);
 
         if (!projectile.piercing) {
             projectile.destroy();
         }
 
-        console.log(`¡El pato recibió daño! Plumas restantes: ${duck.feathers}`);
+        console.log(`¡El pato recibió daño! Daño: ${damage}, Vida restante: ${duck.health}, Plumas restantes: ${duck.feathers}`);
     }
 
 }

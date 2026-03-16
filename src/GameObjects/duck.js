@@ -44,7 +44,11 @@ export default class Duck extends Phaser.GameObjects.Sprite {
 
         //GESTIÓN Plumas
         this.maxFeathers = 10;
-        this.feathers = 5;
+        this.healthPerFeather = 50;
+
+        this.maxHealth = this.maxFeathers * this.healthPerFeather;
+        this.health = this.maxHealth;
+        this.feathers = this.maxFeathers;
 
         this.lastPuddle = null;      // checkpoint actual
         this.lastDeathPosition = null;
@@ -89,42 +93,62 @@ export default class Duck extends Phaser.GameObjects.Sprite {
     //  GESTIÓN DE PlUMAS
     // ─────────────────────────────────────────
     addFeather(amount = 1) {
-        this.feathers = Phaser.Math.Clamp(this.feathers + amount, 0, this.maxFeathers);
-        this.scene.featherUI?.refresh();
+        const heal = amount * this.healthPerFeather;
+        this.health = Phaser.Math.Clamp(this.health + heal, 0, this.maxHealth);
+        this.updateFeathersFromHealth();
     }
 
     loseFeather(amount = 1) {
-        this.feathers = Phaser.Math.Clamp(this.feathers - amount, 0, this.maxFeathers);
-        console.log('Plumas ahora:', this.feathers);
-        this.scene.featherUI?.refresh();
+        const damage = amount * this.healthPerFeather;
+        this.health = Math.max(0, this.health - damage);
 
-        if (this.feathers <= 0) {
-            this.defeat();
-        }
+        this.updateFeathersFromHealth();
     }
 
     setFeathers(amount) {
         this.feathers = Phaser.Math.Clamp(amount, 0, this.maxFeathers);
-        this.scene.featherUI?.refresh();
-    }
+        this.health = this.feathers * this.healthPerFeather;
 
+        if (this.health > this.maxHealth) {
+            this.health = this.maxHealth;
+        }
+
+        if (this.scene?.featherUI) {
+            this.scene.featherUI.refresh();
+        }
+
+        if (this.health <= 0) {
+            this.defeat();
+        }
+    }
+    
     takeDamage(amount = 1) {
         if (this.isInvulnerable || this.scene?.isPlayerDead) return;
 
         this.isInvulnerable = true;
 
         this.setTint(0xff0000);
+
         this.scene.time.delayedCall(100, () => {
-            if (this.active && !this.scene?.isPlayerDead) this.clearTint();
+            if (this.active && !this.scene?.isPlayerDead) {
+                this.clearTint();
+            }
         });
 
-        this.loseFeather(amount);
+        this.health = Math.max(0, this.health - amount);
+        console.log(`Vida ahora: ${this.health}`);
 
-        if (this.feathers > 0) {
-            this.scene.time.delayedCall(1000, () => {
-                this.isInvulnerable = false;
-            });
+        this.updateFeathersFromHealth();
+
+        if (this.health <= 0 || this.scene?.isPlayerDead) {
+            return;
         }
+
+        this.scene.time.delayedCall(1000, () => {
+            if (this.active && !this.scene?.isPlayerDead) {
+                this.isInvulnerable = false;
+            }
+        });
     }
 
     defeat() {
@@ -137,6 +161,13 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             this.weapon.releaseAttack();
         }
 
+        if (this.body) {
+            this.body.setVelocity(0, 0);
+            this.body.enable = false;
+        }
+
+        this.setState(DUCK_STATE.IDLE);
+
         this.scene.handlePlayerDeath();
     }
 
@@ -144,6 +175,28 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.lastPuddle = puddle;
     }
 
+    updateFeathersFromHealth() {
+        const newFeathers = Math.max(0, Math.ceil(this.health / this.healthPerFeather));
+
+        if (newFeathers !== this.feathers) {
+            this.feathers = newFeathers;
+            console.log(`Plumas ahora: ${this.feathers}`);
+
+            if (this.scene?.featherUI) {
+                this.scene.featherUI.refresh();
+            }
+        }
+
+        if (this.health <= 0) {
+            this.feathers = 0;
+
+            if (this.scene?.featherUI) {
+                this.scene.featherUI.refresh();
+            }
+
+            this.defeat();
+        }
+    }
     // ─────────────────────────────────────────
     //  GESTIÓN DE ARMA
     // ─────────────────────────────────────────
@@ -222,6 +275,7 @@ export default class Duck extends Phaser.GameObjects.Sprite {
     preUpdate(time, dt) {
         super.preUpdate(time, dt);
 
+        if (!this.active) return;
         if (this.scene?.isPlayerDead) return;
         const delta = dt / 1000;
 
