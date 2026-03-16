@@ -42,14 +42,15 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.facingY = 0;
         this.scale = 3;
 
-        //GESTIÓN Plumas
+        // GESTIÓN PLUMAS / VIDA
         this.maxFeathers = 10;
         this.healthPerFeather = 50;
 
         this.maxHealth = this.maxFeathers * this.healthPerFeather;
-        this.health = this.maxHealth;
-        this.feathers = this.maxFeathers;
 
+        // empieza con 5 plumas
+        this.feathers = 5;
+        this.health = this.feathers * this.healthPerFeather;
         this.lastPuddle = null;      // checkpoint actual
         this.lastDeathPosition = null;
         this.isInvulnerable = false; // útil para evitar perder 20 plumas por un solo golpe
@@ -121,7 +122,7 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             this.defeat();
         }
     }
-    
+
     takeDamage(amount = 1) {
         if (this.isInvulnerable || this.scene?.isPlayerDead) return;
 
