@@ -72,6 +72,10 @@ import woodFenceInteriorCorner4 from '../../assets/tilesets/wood-fence-interior-
 import tallGrassMiddle from '../../assets/tilesets/tall-grass-middle.png';
 import bush from '../../assets/tilesets/bush.png';
 
+//Plumas
+import feather_icon from '../../assets/sprites/ui/pluma.png';
+import FeatherUI from '../GameObjects/featherUI.js';
+import DropFeather from '../GameObjects/consumables/dropFeather.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -160,6 +164,7 @@ export default class MainScene extends Phaser.Scene {
         
         // Preload de UI
         this.load.image('up_bar', up_bar);
+        this.load.image('feather_icon', feather_icon);
     }
 
     create() {
@@ -277,11 +282,6 @@ export default class MainScene extends Phaser.Scene {
         this.enemy = new Mapache(this, 'Mapache', 2000, 9500, 'enemy', null, 'mcuaktro'); //de momento el weapon se lo pongo a null hasta que este implementado
         this.enemy.setFlipX(true);
 
-        // ── Colisiones: Proyectiles -> Enemigos ──
-        this.physics.add.overlap(this.projectiles, this.enemy, (projectile, enemy) => {
-            this._onProjectileHitEnemy(projectile, enemy);
-        });
-
         // ── Eventos de audio para el enemigo ──
         this.events.on('audio:event', (audioEvent) => {
             if (this.enemy) this.enemy.onAudioEvent(audioEvent);
@@ -336,6 +336,39 @@ export default class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.duck, colisionLayer); //colisiones del mapa
         this.physics.add.collider(this.enemy, colisionLayer);
 
+        // contacto enemigo → pato
+        this.physics.add.overlap(this.duck, this.enemy, (duck, enemy) => {
+            this._onEnemyHitDuck(duck, enemy);
+        });
+
+        // proyectil → enemigo
+        this.physics.add.overlap(this.projectiles, this.enemy, (projectile, enemy) => {
+            this._onProjectileHitEnemy(projectile, enemy);
+        });
+
+        // proyectil → pato
+        this.physics.add.overlap(this.projectiles, this.duck, (projectile, duck) => {
+            this._onProjectileHitDuck(projectile, duck);
+        });
+
+        //Spawn de pluma para testing
+        this.featherUI = new FeatherUI(this, this.duck);
+        this.enemiesKilled = 0;
+
+       //TESTING PLUMAS EN EL MAPA
+        const testPluma = this.add.image(this.duck.x, this.duck.y - 100, 'feather_icon');
+        testPluma.setScale(1);
+        testPluma.setDepth(9999);
+
+        const graphics = this.add.graphics();
+        graphics.lineStyle(3, 0xff0000, 1);
+        graphics.strokeRect(
+            testPluma.getBounds().x,
+            testPluma.getBounds().y,
+            testPluma.getBounds().width,
+            testPluma.getBounds().height
+        ); 
+        
         // Cámara
         // No usar startFollow, lo haremos manualmente en update()
     }
@@ -416,6 +449,26 @@ export default class MainScene extends Phaser.Scene {
         }
 
         console.log(`¡Proyectil impactó! Daño: ${projectile.damage}, HP enemigo: ${enemy.getHP()}`);
+    }
+
+    _onEnemyHitDuck(duck, enemy) {
+        if (!duck || !enemy) return;
+        if (enemy.isDead && enemy.isDead()) return;
+        if (duck.isInvulnerable) return;
+
+        duck.takeDamage(1);
+    }
+
+    _onProjectileHitDuck(projectile, duck) {
+        if (!projectile || !duck) return;
+
+        duck.takeDamage(projectile.damage ?? 1);
+
+        if (!projectile.piercing) {
+            projectile.destroy();
+        }
+
+        console.log(`¡El pato recibió daño! Plumas restantes: ${duck.feathers}`);
     }
 
 }
