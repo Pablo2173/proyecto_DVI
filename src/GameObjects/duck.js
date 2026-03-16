@@ -109,33 +109,35 @@ export default class Duck extends Phaser.GameObjects.Sprite {
     }
 
     takeDamage(amount = 1) {
-        if (this.isInvulnerable) return;
+        if (this.isInvulnerable || this.scene?.isPlayerDead) return;
 
         this.isInvulnerable = true;
 
         this.setTint(0xff0000);
         this.scene.time.delayedCall(100, () => {
-            if (this.active) this.clearTint();
+            if (this.active && !this.scene?.isPlayerDead) this.clearTint();
         });
 
         this.loseFeather(amount);
 
-        this.scene.time.delayedCall(1000, () => {
-            this.isInvulnerable = false;
-        });
+        if (this.feathers > 0) {
+            this.scene.time.delayedCall(1000, () => {
+                this.isInvulnerable = false;
+            });
+        }
     }
 
     defeat() {
-        console.log('RESPAWN');
+        if (this.scene?.isPlayerDead) return;
 
         this.clearTint();
-        this.setFeathers(5);
-
-        // invulnerabilidad al reaparecer
         this.isInvulnerable = true;
-        this.scene.time.delayedCall(1500, () => {
-            this.isInvulnerable = false;
-        });
+
+        if (this.weapon?.releaseAttack) {
+            this.weapon.releaseAttack();
+        }
+
+        this.scene.handlePlayerDeath();
     }
 
     setCheckpoint(puddle) {
@@ -219,6 +221,8 @@ export default class Duck extends Phaser.GameObjects.Sprite {
 
     preUpdate(time, dt) {
         super.preUpdate(time, dt);
+
+        if (this.scene?.isPlayerDead) return;
         const delta = dt / 1000;
 
         // Fin de quack
