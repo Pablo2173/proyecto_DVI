@@ -36,6 +36,9 @@ export default class MazoImpact extends Projectile {
         this.impactRadius = radius;
         this.impactColor  = 0xff0000;
 
+        this.owner = config.owner ?? null;
+        this.team = config.team ?? (this.owner ? this.owner.team : 'neutral');
+
         // Visual circle
         this.gfx = scene.add.graphics();
         this.gfx.setDepth(3);

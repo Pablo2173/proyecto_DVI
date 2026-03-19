@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import BaseCharacter from './BaseCharacter.js';
+import { TEAM } from './team.js';
 
 import Arco from './Weapons/Distance/arco.js';
 import Mcuaktro from './Weapons/Distance/mcuaktro.js';
@@ -6,18 +8,9 @@ import Cuchillo from './Weapons/Melee/cuchillo.js';
 import Mazo from './Weapons/Melee/mazo.js';
 import Ramita from './Weapons/Melee/ramita.js';
 
-import WeaponBar from './weaponBar.js'
 import DropWeapon from './Weapons/drops/dropWeapon.js'
 
 import DropFeather from './consumables/dropFeather.js';
-
-const WEAPON_MAP = {
-    arco: Arco,
-    mcuaktro: Mcuaktro,
-    cuchillo: Cuchillo,
-    mazo: Mazo,
-    ramita: Ramita
-};
 
 const StatusEnemy = {
     IDLE: 0,
@@ -26,7 +19,7 @@ const StatusEnemy = {
     STUNNED: 3
 };
 
-export default class Enemy extends Phaser.GameObjects.Sprite {
+export default class Enemy extends BaseCharacter {
     /**
      * @param {Phaser.Scene} scene
      * @param {string} name
@@ -38,10 +31,7 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
      * @param {number} hp
      */
     constructor(scene, name, x, y, texture, frame = null, visionRadius, hp, speed, weapon) {
-        super(scene, x, y, texture, frame);
-        this.scene = scene;
-        scene.add.existing(this);
-        this.weaponBar = new WeaponBar(scene, this, true);
+        super(scene, x, y, texture, frame, TEAM.ENEMY);
 
         // --- FÍSICA (top-down) ---
         if (scene.physics && scene.physics.add) {
@@ -64,6 +54,15 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         this._speed = speed;
         this._weapon = weapon;
         this._state = StatusEnemy.IDLE;
+
+        this.weaponMap = {
+            arco: Arco,
+            mcuaktro: Mcuaktro,
+            cuchillo: Cuchillo,
+            mazo: Mazo,
+            ramita: Ramita
+        };
+
         this._lastQuackTime = 0; // Para evitar alertas duplicadas del mismo quack
         this._quackCooldown = 100; // ms
 
@@ -73,24 +72,6 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
 
     mostrarNombre() {
         console.log(`Mi nombre es ${this._nombre}`);
-    }
-
-    equipWeapon(weaponKeyOrClass) {
-        const WeaponClass = typeof weaponKeyOrClass === 'string'
-            ? WEAPON_MAP[weaponKeyOrClass]
-            : weaponKeyOrClass;
-
-        if (!WeaponClass) {
-            console.warn(`Enemy: arma desconocida "${weaponKeyOrClass}"`);
-            return;
-        }
-
-        const newWeapon = new WeaponClass(this.scene, this, this.weaponBar);
-        this.setWeapon(newWeapon);
-        // para que la barra conozca la nueva arma (igual que en Duck)
-        if (this.weapon && typeof this.weapon.setBar === 'function') {
-            this.weapon.setBar(this.weaponBar);
-        }
     }
 
     /**
@@ -151,17 +132,6 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
      */
     stop() {
         this.body?.setVelocity(0, 0);
-    }
-
-    /**
-     * Reemplaza el arma actual por una nueva instancia y destruye la vieja.
-     * @param {Weapon} newWeapon
-     */
-    setWeapon(newWeapon) {
-        if (this.weapon) {
-            this.weapon.destroy();
-        }
-        this.weapon = newWeapon;
     }
 
     setVisionRadius(radius) {
