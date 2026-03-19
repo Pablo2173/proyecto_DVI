@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import BaseCharacter from './BaseCharacter.js';
+import { TEAM } from './team.js';
+
 // Importa las armas concretas
 import Arco from './Weapons/Distance/arco.js';
 import Mcuaktro from './Weapons/Distance/mcuaktro.js';
@@ -6,15 +9,6 @@ import Cuchillo from './Weapons/Melee/cuchillo.js';
 import Mazo from './Weapons/Melee/mazo.js';
 import Ramita from './Weapons/Melee/ramita.js';
 
-import WeaponBar from './weaponBar.js'
-
-const WEAPON_MAP = {
-    arco: Arco,
-    mcuaktro: Mcuaktro,
-    cuchillo: Cuchillo,
-    mazo: Mazo,
-    ramita: Ramita
-};
 
 export const DUCK_STATE = Object.freeze({
     IDLE: 0,
@@ -24,13 +18,17 @@ export const DUCK_STATE = Object.freeze({
     SWIMMING: 4
 });
 
-export default class Duck extends Phaser.GameObjects.Sprite {
+export default class Duck extends BaseCharacter {
 
     constructor(scene, x, y, weaponKey = 'mcuaktro') {
-        super(scene, x, y, 'idle_duck', 0);
-        this.scene = scene;
-        this.weaponBar = new WeaponBar(scene, this);
-        scene.add.existing(this);
+        super(scene, x, y, 'idle_duck', 0, TEAM.ALLY);
+        this.weaponMap = {
+            arco: Arco,
+            mcuaktro: Mcuaktro,
+            cuchillo: Cuchillo,
+            mazo: Mazo,
+            ramita: Ramita
+        };
 
         this._speed = 160;
         this._maxSpeed = 180;
@@ -67,6 +65,9 @@ export default class Duck extends Phaser.GameObjects.Sprite {
                 this.body.setOffset(4, 4);
             }
         }
+
+        // ── Equipo ──
+        this.team = TEAM.ALLY;
 
         // ── Arma ──
         this.weapon = null;
@@ -198,42 +199,6 @@ export default class Duck extends Phaser.GameObjects.Sprite {
             this.defeat();
         }
     }
-    // ─────────────────────────────────────────
-    //  GESTIÓN DE ARMA
-    // ─────────────────────────────────────────
-
-    /**
-     * Equipa un arma a partir de su clave (string) o clase directa.
-     * Crea la instancia usando la nueva API: new WeaponClass(scene, owner).
-     */
-    equipWeapon(weaponKeyOrClass) {
-        const WeaponClass = typeof weaponKeyOrClass === 'string'
-            ? WEAPON_MAP[weaponKeyOrClass]
-            : weaponKeyOrClass;
-
-        if (!WeaponClass) {
-            console.warn(`Duck: arma desconocida "${weaponKeyOrClass}"`);
-            return;
-        }
-
-        const newWeapon = new WeaponClass(this.scene, this, this.weaponBar);
-        this.setWeapon(newWeapon);
-        this.weapon.setBar(this.weaponBar);
-    }
-
-    /**
-     * Asigna directamente una instancia de Weapon ya creada.
-     * Destruye el arma anterior si existía.
-     *
-     * @param {Weapon} newWeapon
-     */
-    setWeapon(newWeapon) {
-        if (this.weapon) {
-            this.weapon.destroy();
-        }
-        this.weapon = newWeapon;
-    }
-
     // ─────────────────────────────────────────
     //  ESTADOS
     // ─────────────────────────────────────────

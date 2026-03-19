@@ -9,6 +9,8 @@ export default class Projectile extends Phaser.GameObjects.Image {
         this.range    = config.range  ?? 800;
         this.damage   = config.damage ?? 10;
         this.distanceMoved = 0;
+        this.owner = config.owner ?? null;
+        this.team = config.team ?? (this.owner ? this.owner.team : 'neutral');
 
         const dir = config.direction ?? new Phaser.Math.Vector2(1, 0);
         this.speedX = dir.x * this.speed;

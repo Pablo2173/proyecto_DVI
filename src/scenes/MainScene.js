@@ -887,6 +887,10 @@ export default class MainScene extends Phaser.Scene {
         if (!projectile.active || !enemy.active) return;
         if (enemy.isDead && enemy.isDead()) return;
 
+        if (projectile.team && enemy.team && projectile.team === enemy.team) {
+            return; // No se golpea equipo propio
+        }
+
         if (projectile.hitEnemies) {
             if (projectile.hitEnemies.has(enemy)) return;
             projectile.hitEnemies.add(enemy);
@@ -919,6 +923,9 @@ export default class MainScene extends Phaser.Scene {
         if (this.isPlayerDead) return;
         if (!projectile || !duck) return;
         if (!projectile.active || !duck.active) return;
+        if (projectile.team && duck.team && projectile.team === duck.team) {
+            return; // No se golpea equipo propio
+        }
         if (duck.isInvulnerable) return;
 
         const damage = projectile.damage ?? 1;
