@@ -140,7 +140,11 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
     attack() {
         if (!this._canAttack()) return;
         this.lastAttackTime = this.scene.time.now;
+
         this.on_shoot();
+
+        // Si la acción de disparo destruyó el arma (por esto, mcuaktro barre todo), salir.
+        if (!this.scene || !this.owner || !this.active) return;
 
         if (this.isRanged) {
             this._fireProjectile();
@@ -214,7 +218,9 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
             direction,
             speed: this.projectileSpeed,
             range: this.range,
-            damage: this.damage
+            damage: this.damage,
+            owner: this.owner,
+            team: this.owner?.team ?? 'neutral'
         });
     }
 
@@ -259,7 +265,14 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
     // ─────────────────────────────────────────
     //  DESTROY
     // ─────────────────────────────────────────
-    destroy(fromScene) {
+    destroy(fromScene, options = {}) {
+        const { notifyOwner = true } = options;
+
+        // Notificar al dueño para gestión de arma rota
+        if (notifyOwner && this.owner && typeof this.owner.onWeaponDestroyed === 'function') {
+            this.owner.onWeaponDestroyed(this);
+        }
+
         if (this.debugGraphics) {
             this.debugGraphics.destroy();
             this.debugGraphics = null;

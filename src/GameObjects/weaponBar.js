@@ -25,7 +25,9 @@ export default class WeaponBar {
                 .setDepth(9)
                 .setScale(3);
 
+            // Mantener cursor ancho total para crop en lugar de cambiar el displayWidth
             this.fillWidth = this.fill.displayWidth;
+            this.fillHeight = this.fill.displayHeight;
         } else {
             this.border = null;
             this.fill = null;
@@ -42,7 +44,9 @@ export default class WeaponBar {
         this.border.x = this.player.x;
         this.border.y = this.player.y + WeaponBar.OFFSETY;
 
-        this.fill.x = this.border.x - this.border.width * 1.5;
+        // Fijar el extremo izquierdo de fill al borde izquierdo para evitar desplazamientos (No funciona)
+        const halfBorder = this.border.displayWidth / 2;
+        this.fill.x = this.border.x - halfBorder;
         this.fill.y = this.border.y;
     }
 

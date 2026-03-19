@@ -11,6 +11,7 @@ export default class RamitaSwing extends Projectile {
         super(scene, x, y, null, { damage: config.damage ?? 5, collisionRadius: 15 });
 
         this.owner          = config.owner;
+        this.team           = config.team ?? (this.owner ? this.owner.team : 'neutral');
         this.duration       = config.duration      ?? 90;
         this.swingAmplitude = config.swingAngle    ?? Math.PI * 0.55;   // ~99°
         this.radius         = config.radius        ?? 30;
