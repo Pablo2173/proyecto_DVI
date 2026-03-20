@@ -164,7 +164,7 @@ export default class MainScene extends Phaser.Scene {
         // Preload de la barra de arma del jugador
         this.load.image('weapon_bar_border', bar);
         this.load.image('weapon_bar_fill', bar_fill);
-        
+
         // Preload de UI
         this.load.image('up_bar', up_bar);
         this.load.image('feather_icon', feather_icon);
@@ -474,14 +474,14 @@ export default class MainScene extends Phaser.Scene {
 
         // Ojo: en tu preload actual no he visto cargado 'duck-swimming'.
         // Déjalo solo si realmente existe ese spritesheet cargado.
-       /* if (!this.anims.exists('duck-swimming') && this.textures.exists('duck-swimming')) {
-            this.anims.create({
-                key: 'duck-swimming',
-                frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }*/
+        /* if (!this.anims.exists('duck-swimming') && this.textures.exists('duck-swimming')) {
+             this.anims.create({
+                 key: 'duck-swimming',
+                 frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
+                 frameRate: 8,
+                 repeat: -1
+             });
+         }*/
 
         // ─────────────────────────────────────────
         // AUDIO
@@ -576,80 +576,60 @@ export default class MainScene extends Phaser.Scene {
         });
 
         // ─────────────────────────────────────────
-        // ENEMIGO
+        // ENEMIGOS
         // ─────────────────────────────────────────
-        this.enemy = new Mapache(this, 'Mapache', 2000, 9500, 'enemy', null, 'mcuaktro');
-        this.enemy.setFlipX(true);
+        this.enemies = [];
+        this.visionGraphics = this.add.graphics();
+        this.enemyAlertTimes = {};
 
+        // Zorro con movimiento 'pointToPoint' - Al lado del pato
+        const en1 = new Zorro(this, 'Zorro', 2145, 7131, 'enemy', null, 'mazo');
+        en1.setFlipX(false);
+        en1._movementType = 'pointToPoint';
+        this.add.existing(en1);
+        this.enemies.push(en1);
+
+        // Zorro con movimiento 'AroundPoint' - Al lado del pato
+        const en2 = new Zorro(this, 'Zorro', 1230, 7131, 'enemy', null, 'arco');
+        en2.setFlipX(false);
+        en2._movementType = 'AroundPoint';
+        this.add.existing(en2);
+        this.enemies.push(en2);
+
+        // Mapache con movimiento 'StayAndLook' - Al lado del pato
+        const en3 = new Zorro(this, 'Mapache', 498, 6613, 'enemy', null, 'mcuaktro');
+        en3.setFlipX(false);
+        en3._movementType = 'StayAndLook';
+        this.add.existing(en3);
+        this.enemies.push(en3);
+
+        // Eventos de audio para todos los enemigos
         this.events.on('audio:event', (audioEvent) => {
-            if (this.enemy && !this.isPlayerDead) {
-                this.enemy.onAudioEvent(audioEvent);
-            }
+            if (this.isPlayerDead) return;
+            this.enemies.forEach(enemy => {
+                if (enemy && !enemy.isDead?.()) {
+                    enemy.onAudioEvent(audioEvent);
+                }
+            });
         });
 
-        this.visionGraphics = this.add.graphics();
-        this.enemyAlertTime = null;
-
         // ─────────────────────────────────────────
-        // SPAWNS DE TEST
-        // ─────────────────────────────────────────
-        new Bread(this, 50, 50);
-        new Bread(this, 200, 100);
-        new Bread(this, 400, 200);
-        new Bread(this, 100, 300);
-        new Bread(this, 350, 400);
-        new Bread(this, 600, 150);
-        new Bread(this, 250, 500);
-
-        new DropWeapon(this, 450, 450, Mazo, 'mazo');
-
-        new DropWeapon(
-            this,
-            Phaser.Math.Between(0, 1000),
-            Phaser.Math.Between(0, 1000),
-            Arco,
-            'arco'
-        );
-
-        //PUDDLE CONFIG
-        this.startPuddle = new Puddle(this, this.playerSpawn.x + 120, this.playerSpawn.y, 100);
-
-        this.puddleDebug = this.add.graphics();
-        this.puddleDebug.lineStyle(2, 0x0000ff, 1);
-        this.puddleDebug.strokeCircle(
-            this.startPuddle.x,
-            this.startPuddle.y,
-            this.startPuddle.radius
-        );
-
-        // TESTING pluma en mapa
-        const testPluma = this.add.image(this.duck.x, this.duck.y - 100, 'feather_icon');
-        testPluma.setScale(1);
-        testPluma.setDepth(9999);
-
-        const featherDebug = this.add.graphics();
-        featherDebug.lineStyle(3, 0xff0000, 1);
-        featherDebug.strokeRect(
-            testPluma.getBounds().x,
-            testPluma.getBounds().y,
-            testPluma.getBounds().width,
-            testPluma.getBounds().height
-        );
-
-        // ─────────────────────────────────────────
-        // COLISIONES Y OVERLAPS
+        // COLISIONES
         // ─────────────────────────────────────────
         this.physics.add.collider(this.duck, this.colisionLayer);
-        this.physics.add.collider(this.enemy, this.colisionLayer);
 
-        this.physics.add.overlap(this.duck, this.enemy, (duck, enemy) => {
-            if (this.isPlayerDead) return;
-            this._onEnemyHitDuck(duck, enemy);
-        });
-
-        this.physics.add.overlap(this.projectiles, this.enemy, (projectile, enemy) => {
-            if (this.isPlayerDead) return;
-            this._onProjectileHitEnemy(projectile, enemy);
+        // Colisiones con todos los enemigos
+        this.enemies.forEach(enemy => {
+            this.physics.add.collider(this.duck, enemy);
+            this.physics.add.collider(enemy, this.colisionLayer);
+            this.physics.add.overlap(this.projectiles, enemy, (projectile, en) => {
+                if (this.isPlayerDead) return;
+                this._onProjectileHitEnemy(projectile, en);
+            });
+            this.physics.add.overlap(this.duck, enemy, (duck, en) => {
+                if (this.isPlayerDead) return;
+                this._onEnemyHitDuck(duck, en);
+            });
         });
 
         this.physics.add.overlap(this.projectiles, this.duck, (projectile, duck) => {
@@ -657,15 +637,12 @@ export default class MainScene extends Phaser.Scene {
             this._onProjectileHitDuck(projectile, duck);
         });
 
-        // ─────────────────────────────────────────
-        // CÁMARA
-        // ─────────────────────────────────────────
-        this.cameras.main.roundPixels = true;
+        // Consumibles y drops
+        new Bread(this, 500, 9400);
+        new Bread(this, 1800, 9200);
+        new DropWeapon(this, 1500, 9600, Mazo, 'mazo');
 
-        this.events.once('shutdown', this._cleanupScene, this);
-        this.events.once('destroy', this._cleanupScene, this);
-    }    
-
+    }
 
     /*update(time, delta) {
         // ── Actualizar barra de consumibles ──
@@ -719,7 +696,6 @@ export default class MainScene extends Phaser.Scene {
             this.enemy.drawVision(this.visionGraphics, { color: 0xff0000, fillAlpha: 0.08 });
         }
     }*/
-
     update(time, delta) {
         // ─────────────────────────────────────────
         // BLOQUEO TOTAL SI EL JUGADOR ESTÁ MUERTO
@@ -729,6 +705,22 @@ export default class MainScene extends Phaser.Scene {
                 this.visionGraphics.clear();
             }
             return;
+        }
+
+        // ───────────────────────────────────────────────────────────────────
+        // DEBUG: MOSTRAR POSICIÓN DEL PATO PARA UBICAR POSICIONES EN EL MAPA
+        // ───────────────────────────────────────────────────────────────────
+        if (!this.positionText) {
+            this.positionText = this.add.text(10, 50, '', {
+                fontSize: '16px',
+                fill: '#00ff00',
+                backgroundColor: '#000000',
+                padding: { x: 5, y: 5 }
+            }).setScrollFactor(0).setDepth(10000);
+        }
+
+        if (this.duck) {
+            this.positionText.setText(`Pato: (${Math.round(this.duck.x)}, ${Math.round(this.duck.y)})`);
         }
 
         // ─────────────────────────────────────────
@@ -769,45 +761,47 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         // IA / VISIÓN DEL ENEMIGO
         // ─────────────────────────────────────────
-        if (this.enemy && this.enemy.active && this.duck && this.duck.active) {
-            this.enemy.detectAndAlert(this.duck);
+        if (this.duck && this.duck.active) {
+            this.enemies.forEach(enemy => {
+                if (!enemy || !enemy.active || enemy.isDead?.()) return;
 
-            // Parpadeo amarillo 0.5s al alertarse
-            if (this.enemy.isAlerted()) {
-                if (this.enemyAlertTime === null) {
-                    this.enemyAlertTime = time;
-                    this.enemy.setTint(0xFFFF01);
-                }
+                // Solo detectar si se alerta
+                enemy.detectAndAlert(this.duck);
 
-                if (time - this.enemyAlertTime > 500) {
-                    // Solo limpiar si no está en rojo por daño
-                    if (this.enemy.tintTopLeft !== 0xFF0000) {
-                        this.enemy.clearTint();
+                // Parpadeo al alertarse
+                if (enemy.isAlerted()) {
+                    if (!this.enemyAlertTimes[enemy.name]) {
+                        this.enemyAlertTimes[enemy.name] = time;
+                        enemy.setTint(0xFFFF01);
+                    }
+
+                    if (time - this.enemyAlertTimes[enemy.name] > 500) {
+                        if (enemy.tintTopLeft !== 0xFF0000) {
+                            enemy.clearTint();
+                        }
+                    }
+                } else {
+                    delete this.enemyAlertTimes[enemy.name];
+                    if (enemy.tintTopLeft !== 0xFF0000) {
+                        enemy.clearTint();
                     }
                 }
-            } else {
-                this.enemyAlertTime = null;
 
-                // Solo limpiar si no está en rojo por daño
-                if (this.enemy.tintTopLeft !== 0xFF0000) {
-                    this.enemy.clearTint();
+                // Debug del radio de visión
+                if (this.visionGraphics) {
+                    enemy.drawVision(this.visionGraphics, {
+                        color: 0xff0000,
+                        fillAlpha: 0.08
+                    });
                 }
-            }
-
-            // Debug del radio de visión
-            if (this.visionGraphics) {
-                this.visionGraphics.clear();
-                this.enemy.drawVision(this.visionGraphics, {
-                    color: 0xff0000,
-                    fillAlpha: 0.08
-                });
-            }
+            });
         } else {
-            this.enemyAlertTime = null;
+            this.enemyAlertTimes = {};
             if (this.visionGraphics) {
                 this.visionGraphics.clear();
             }
         }
+
     }
 
     showDeathScreen() {
@@ -838,10 +832,15 @@ export default class MainScene extends Phaser.Scene {
             this.duck.weapon.releaseAttack();
         }
 
-        if (this.enemy?.body) {
-            this.enemy.body.setVelocity(0, 0);
-            this.enemy.body.enable = false;
-        }
+        // Detener todos los enemigos
+        /*
+        this.enemies.forEach(enemy => {
+            if (enemy?.body) {
+                enemy.body.setVelocity(0, 0);
+                enemy.body.enable = false;
+            }
+        });
+        */
 
         if (this.visionGraphics) {
             this.visionGraphics.clear();
