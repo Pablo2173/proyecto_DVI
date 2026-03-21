@@ -394,8 +394,8 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         const map = this.make.tilemap({
             key: 'level1',
-            tileWidth: 16 * SCALE,
-            tileHeight: 16 * SCALE
+            tileWidth: 16,
+            tileHeight: 16
         });
 
         const tilesetNames = [
@@ -582,26 +582,41 @@ export default class MainScene extends Phaser.Scene {
         this.visionGraphics = this.add.graphics();
         this.enemyAlertTimes = {};
 
-        // Zorro con movimiento 'pointToPoint' - Al lado del pato
-        const en1 = new Zorro(this, 'Zorro', 2145, 7131, 'enemy', null, 'mazo');
-        en1.setFlipX(false);
-        en1._movementType = 'pointToPoint';
-        this.add.existing(en1);
-        this.enemies.push(en1);
+        const enemigosPorCapa = {
+            'enemies/Mapache': Mapache,
+            'enemies/Zorro': Zorro,
+        };
 
-        // Zorro con movimiento 'AroundPoint' - Al lado del pato
-        const en2 = new Zorro(this, 'Zorro', 1230, 7131, 'enemy', null, 'arco');
-        en2.setFlipX(false);
-        en2._movementType = 'AroundPoint';
-        this.add.existing(en2);
-        this.enemies.push(en2);
 
-        // Mapache con movimiento 'StayAndLook' - Al lado del pato
-        const en3 = new Zorro(this, 'Mapache', 498, 6613, 'enemy', null, 'mcuaktro');
-        en3.setFlipX(false);
-        en3._movementType = 'StayAndLook';
-        this.add.existing(en3);
-        this.enemies.push(en3);
+        Object.entries(enemigosPorCapa).forEach(([nombreCapa, Clase]) => {
+            const capa = map.getObjectLayer(nombreCapa);
+            if (!capa) return; // si la capa no existe, salta
+
+            capa.objects.forEach(obj => {
+                const props = {};
+                if (obj.properties) {
+                    obj.properties.forEach(p => props[p.name] = p.value);
+                }
+
+                console.log('Creando enemigo:', obj.name, 'en', obj.x, obj.y, 'props:', props);
+
+                const enemy = new Clase(
+                    this,
+                    obj.name,
+                    obj.x * SCALE,
+                    obj.y * SCALE,
+                    props.texture ?? 'enemy',
+                    null,
+                    props.weapon ?? 'arco',
+                    props.movementType ?? 'stay'
+                );
+
+                this.add.existing(enemy);
+                this.enemies.push(enemy);
+
+            });
+        });
+
 
         // Eventos de audio para todos los enemigos
         this.events.on('audio:event', (audioEvent) => {
@@ -642,6 +657,11 @@ export default class MainScene extends Phaser.Scene {
         new Bread(this, 1800, 9200);
         new DropWeapon(this, 1500, 9600, Mazo, 'mazo');
 
+        //inicialización de la cámara centrada en el jugador antes del update
+        //como el movimiento depende del ratón inicializaremos el puntero en la posición del jugador
+        this.cameras.main.centerOn(this.playerSpawn.x, this.playerSpawn.y);
+        this.input.activePointer.worldX = this.playerSpawn.x;
+        this.input.activePointer.worldY = this.playerSpawn.y;
     }
 
 

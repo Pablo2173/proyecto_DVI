@@ -2,8 +2,8 @@ import Enemy, { StatusEnemy } from "../enemy";
 import DropWeapon from "../Weapons/drops/dropWeapon.js";
 
 export default class Mapache extends Enemy {
-    constructor(scene, name, x, y, texture, frame, weapon) {
-        super(scene, name, x, y, texture, frame, 150, 100, 80, weapon); 
+    constructor(scene, name, x, y, texture, frame, weapon, movementType) {
+        super(scene, name, x, y, texture, frame, 150, 100, 80, weapon, movementType);
         //visionRadius = 150, hp = 100, speed = 80 para el mapache
 
         // guardamos las estadisticas originales para poder restaurarlas al resucitar
@@ -46,13 +46,13 @@ export default class Mapache extends Enemy {
             this.scene.time.delayedCall(3000, () => this.revive());
         } else {
             // En la segunda muerte ya se muere normal
-            
+
             if (this.weapon) {
                 const drop = new DropWeapon(this.scene, this.x, this.y, this.weapon.constructor, this.weapon.texture.key);
-                 if (this.scene.dropItems) {
-                     this.scene.dropItems.add(drop);
-                 }
-                  this.weapon.destroy();
+                if (this.scene.dropItems) {
+                    this.scene.dropItems.add(drop);
+                }
+                this.weapon.destroy();
             }
             super.die();
         }

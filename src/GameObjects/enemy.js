@@ -30,7 +30,7 @@ export default class Enemy extends BaseCharacter {
      * @param {number} visionRadius
      * @param {number} hp
      */
-    constructor(scene, name, x, y, texture, frame = null, visionRadius, hp, speed, weapon, movementType = 'stay') {
+    constructor(scene, name, x, y, texture, frame = null, visionRadius, hp, speed, weapon, movementType) {
         super(scene, x, y, texture, frame, TEAM.ENEMY);
 
         // --- FÍSICA (top-down) ---
