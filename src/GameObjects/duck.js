@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import BaseCharacter from './BaseCharacter.js';
+import { TEAM } from './team.js';
+
 // Importa las armas concretas
 import Arco from './Weapons/Distance/arco.js';
 import Mcuaktro from './Weapons/Distance/mcuaktro.js';
@@ -6,15 +9,6 @@ import Cuchillo from './Weapons/Melee/cuchillo.js';
 import Mazo from './Weapons/Melee/mazo.js';
 import Ramita from './Weapons/Melee/ramita.js';
 
-import WeaponBar from './weaponBar.js'
-
-const WEAPON_MAP = {
-    arco: Arco,
-    mcuaktro: Mcuaktro,
-    cuchillo: Cuchillo,
-    mazo: Mazo,
-    ramita: Ramita
-};
 
 export const DUCK_STATE = Object.freeze({
     IDLE: 0,
@@ -24,13 +18,17 @@ export const DUCK_STATE = Object.freeze({
     SWIMMING: 4
 });
 
-export default class Duck extends Phaser.GameObjects.Sprite {
+export default class Duck extends BaseCharacter {
 
     constructor(scene, x, y, weaponKey = 'mcuaktro') {
-        super(scene, x, y, 'idle_duck', 0);
-        this.scene = scene;
-        this.weaponBar = new WeaponBar(scene, this);
-        scene.add.existing(this);
+        super(scene, x, y, 'idle_duck', 0, TEAM.ALLY);
+        this.weaponMap = {
+            arco: Arco,
+            mcuaktro: Mcuaktro,
+            cuchillo: Cuchillo,
+            mazo: Mazo,
+            ramita: Ramita
+        };
 
         this._speed = 160;
         this._maxSpeed = 180;
@@ -41,6 +39,19 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         this.facingX = 1;
         this.facingY = 0;
         this.scale = 3;
+
+        // GESTIÓN PLUMAS / VIDA
+        this.maxFeathers = 10;
+        this.healthPerFeather = 50;
+
+        this.maxHealth = this.maxFeathers * this.healthPerFeather;
+
+        // empieza con 5 plumas
+        this.feathers = 5;
+        this.health = this.feathers * this.healthPerFeather;
+        this.lastPuddle = null;      // checkpoint actual
+        this.lastDeathPosition = null;
+        this.isInvulnerable = false; // útil para evitar perder 20 plumas por un solo golpe
 
         // --- FÍSICA (top-down) ---
         if (scene.physics && scene.physics.add) {
@@ -54,6 +65,9 @@ export default class Duck extends Phaser.GameObjects.Sprite {
                 this.body.setOffset(4, 4);
             }
         }
+
+        // ── Equipo ──
+        this.team = TEAM.ALLY;
 
         // ── Arma ──
         this.weapon = null;
@@ -77,43 +91,114 @@ export default class Duck extends Phaser.GameObjects.Sprite {
         // ── Equipar arma inicial ──
         this.equipWeapon(weaponKey);
     }
-
     // ─────────────────────────────────────────
-    //  GESTIÓN DE ARMA
+    //  GESTIÓN DE PlUMAS
     // ─────────────────────────────────────────
+    addFeather(amount = 1) {
+        const heal = amount * this.healthPerFeather;
+        this.health = Phaser.Math.Clamp(this.health + heal, 0, this.maxHealth);
+        this.updateFeathersFromHealth();
+    }
 
-    /**
-     * Equipa un arma a partir de su clave (string) o clase directa.
-     * Crea la instancia usando la nueva API: new WeaponClass(scene, owner).
-     */
-    equipWeapon(weaponKeyOrClass) {
-        const WeaponClass = typeof weaponKeyOrClass === 'string'
-            ? WEAPON_MAP[weaponKeyOrClass]
-            : weaponKeyOrClass;
+    loseFeather(amount = 1) {
+        const damage = amount * this.healthPerFeather;
+        this.health = Math.max(0, this.health - damage);
 
-        if (!WeaponClass) {
-            console.warn(`Duck: arma desconocida "${weaponKeyOrClass}"`);
+        this.updateFeathersFromHealth();
+    }
+
+    setFeathers(amount) {
+        this.feathers = Phaser.Math.Clamp(amount, 0, this.maxFeathers);
+        this.health = this.feathers * this.healthPerFeather;
+
+        if (this.health > this.maxHealth) {
+            this.health = this.maxHealth;
+        }
+
+        if (this.scene?.featherUI) {
+            this.scene.featherUI.refresh();
+        }
+
+        if (this.health <= 0) {
+            this.defeat();
+        }
+    }
+
+    takeDamage(amount = 1) {
+        if (this.isInvulnerable || this.scene?.isPlayerDead) return;
+
+        this.isInvulnerable = true;
+
+        this.setTint(0xff0000);
+
+        this.scene.time.delayedCall(100, () => {
+            if (this.active && !this.scene?.isPlayerDead) {
+                this.clearTint();
+            }
+        });
+
+        this.health = Math.max(0, this.health - amount);
+        console.log(`Vida ahora: ${this.health}`);
+
+        this.updateFeathersFromHealth();
+
+        if (this.health <= 0 || this.scene?.isPlayerDead) {
             return;
         }
 
-        const newWeapon = new WeaponClass(this.scene, this, this.weaponBar);
-        this.setWeapon(newWeapon);
-        this.weapon.setBar(this.weaponBar);
+        this.scene.time.delayedCall(1000, () => {
+            if (this.active && !this.scene?.isPlayerDead) {
+                this.isInvulnerable = false;
+            }
+        });
     }
 
-    /**
-     * Asigna directamente una instancia de Weapon ya creada.
-     * Destruye el arma anterior si existía.
-     *
-     * @param {Weapon} newWeapon
-     */
-    setWeapon(newWeapon) {
-        if (this.weapon) {
-            this.weapon.destroy();
+    defeat() {
+        if (this.scene?.isPlayerDead) return;
+
+        this.clearTint();
+        this.isInvulnerable = true;
+
+        if (this.weapon?.releaseAttack) {
+            this.weapon.releaseAttack();
         }
-        this.weapon = newWeapon;
+
+        if (this.body) {
+            this.body.setVelocity(0, 0);
+            this.body.enable = false;
+        }
+
+        this.setState(DUCK_STATE.IDLE);
+
+        this.scene.handlePlayerDeath();
     }
 
+    setCheckpoint(puddle) {
+        this.lastPuddle = puddle;
+    }
+
+    updateFeathersFromHealth() {
+        const newFeathers = Math.max(0, Math.ceil(this.health / this.healthPerFeather));
+
+        if (newFeathers !== this.feathers) {
+            this.feathers = newFeathers;
+            console.log(`Plumas ahora: ${this.feathers}`);
+
+            if (this.scene?.featherUI) {
+                this.scene.featherUI.refresh();
+            }
+        }
+
+        if (this.health <= 0) {
+            this.feathers = 0;
+
+            if (this.scene?.featherUI) {
+                this.scene.featherUI.refresh();
+            }
+
+            this.defeat();
+        }
+    }
     // ─────────────────────────────────────────
     //  ESTADOS
     // ─────────────────────────────────────────
@@ -155,6 +240,9 @@ export default class Duck extends Phaser.GameObjects.Sprite {
 
     preUpdate(time, dt) {
         super.preUpdate(time, dt);
+
+        if (!this.active) return;
+        if (this.scene?.isPlayerDead) return;
         const delta = dt / 1000;
 
         // Fin de quack

@@ -145,7 +145,9 @@ export default class Mazo extends Weapon {
         // Crear impacto bajo el pato
         new MazoImpact(this.scene, this.owner.x, this.owner.y, {
             radius: impactRadius,
-            damage: impactDamage
+            damage: impactDamage,
+            owner: this.owner,
+            team: this.owner?.team ?? 'neutral'
         });
 
         // Restaurar radio base y limpiar círculo

@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import BaseCharacter from './BaseCharacter.js';
+import { TEAM } from './team.js';
 
 import Arco from './Weapons/Distance/arco.js';
 import Mcuaktro from './Weapons/Distance/mcuaktro.js';
@@ -6,16 +8,9 @@ import Cuchillo from './Weapons/Melee/cuchillo.js';
 import Mazo from './Weapons/Melee/mazo.js';
 import Ramita from './Weapons/Melee/ramita.js';
 
-import WeaponBar from './weaponBar.js'
 import DropWeapon from './Weapons/drops/dropWeapon.js'
 
-const WEAPON_MAP = {
-    arco: Arco,
-    mcuaktro: Mcuaktro,
-    cuchillo: Cuchillo,
-    mazo: Mazo,
-    ramita: Ramita
-};
+import DropFeather from './consumables/dropFeather.js';
 
 const StatusEnemy = {
     IDLE: 0,
@@ -24,7 +19,7 @@ const StatusEnemy = {
     STUNNED: 3
 };
 
-export default class Enemy extends Phaser.GameObjects.Sprite {
+export default class Enemy extends BaseCharacter {
     /**
      * @param {Phaser.Scene} scene
      * @param {string} name
@@ -35,11 +30,8 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
      * @param {number} visionRadius
      * @param {number} hp
      */
-    constructor(scene, name, x, y, texture, frame = null, visionRadius, hp, speed, weapon) {
-        super(scene, x, y, texture, frame);
-        this.scene = scene;
-        scene.add.existing(this);
-        this.weaponBar = new WeaponBar(scene, this, true);
+    constructor(scene, name, x, y, texture, frame = null, visionRadius, hp, speed, weapon, movementType) {
+        super(scene, x, y, texture, frame, TEAM.ENEMY);
 
         // --- FÍSICA (top-down) ---
         if (scene.physics && scene.physics.add) {
@@ -62,6 +54,17 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         this._speed = speed;
         this._weapon = weapon;
         this._state = StatusEnemy.IDLE;
+        this._movementType = movementType;
+        this._movementData = null; // para almacenar datos específicos del tipo de movimiento (ej. puntos de patrulla)
+
+        this.weaponMap = {
+            arco: Arco,
+            mcuaktro: Mcuaktro,
+            cuchillo: Cuchillo,
+            mazo: Mazo,
+            ramita: Ramita
+        };
+
         this._lastQuackTime = 0; // Para evitar alertas duplicadas del mismo quack
         this._quackCooldown = 100; // ms
 
@@ -73,24 +76,6 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         console.log(`Mi nombre es ${this._nombre}`);
     }
 
-    equipWeapon(weaponKeyOrClass) {
-        const WeaponClass = typeof weaponKeyOrClass === 'string'
-            ? WEAPON_MAP[weaponKeyOrClass]
-            : weaponKeyOrClass;
-
-        if (!WeaponClass) {
-            console.warn(`Enemy: arma desconocida "${weaponKeyOrClass}"`);
-            return;
-        }
-
-        const newWeapon = new WeaponClass(this.scene, this, this.weaponBar);
-        this.setWeapon(newWeapon);
-        // para que la barra conozca la nueva arma (igual que en Duck)
-        if (this.weapon && typeof this.weapon.setBar === 'function') {
-            this.weapon.setBar(this.weaponBar);
-        }
-    }
-
     /**
      * Mueve al enemigo hacia un target usando el body de física.
      * @param {{x: number, y: number}} target
@@ -98,7 +83,7 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
      */
     moveTowards(target) {
         if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') {
-           this.body?.setVelocity(0, 0);
+            this.body?.setVelocity(0, 0);
             return;
         }
 
@@ -113,7 +98,7 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
 
         this._facingAngle = Math.atan2(dy, dx);
         this.body.setVelocity(
-           (dx / dist) * this._speed,
+            (dx / dist) * this._speed,
             (dy / dist) * this._speed
         );
     }
@@ -124,7 +109,7 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
      */
     moveAwayFrom(target) {
         if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') {
-           this.body?.setVelocity(0, 0);
+            this.body?.setVelocity(0, 0);
             return;
         }
 
@@ -139,7 +124,7 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
 
         this._facingAngle = Math.atan2(dy, dx);
         this.body.setVelocity(
-           (dx / dist) * this._speed,
+            (dx / dist) * this._speed,
             (dy / dist) * this._speed
         );
     }
@@ -149,17 +134,6 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
      */
     stop() {
         this.body?.setVelocity(0, 0);
-    }
-
-    /**
-     * Reemplaza el arma actual por una nueva instancia y destruye la vieja.
-     * @param {Weapon} newWeapon
-     */
-    setWeapon(newWeapon) {
-        if (this.weapon) {
-            this.weapon.destroy();
-        }
-        this.weapon = newWeapon;
     }
 
     setVisionRadius(radius) {
@@ -183,7 +157,7 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
 
         const angleToTarget = Math.atan2(dy, dx);
         let diff = angleToTarget - this._facingAngle;
-        while (diff > Math.PI)  diff -= Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
 
         return Math.abs(diff) <= this._visionAngle / 2;
@@ -314,11 +288,11 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         if (this._state === StatusEnemy.DEAD) return;
 
         this._hp -= damage;
-        if(this._state !== StatusEnemy.ALERTED)
+        if (this._state !== StatusEnemy.ALERTED)
             this._state = StatusEnemy.ALERTED; // Si recibe daño, se alerta aunque no haya visto al jugador
         console.log(`${this._nombre} recibió ${damage} de daño. HP actual: ${this._hp}`);
         // parpadeo rojo momentáneo
-        this.flashRed();        
+        this.flashRed();
         if (this._hp <= 0) {
             this.die();
         }
@@ -329,11 +303,19 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
 
         this._state = StatusEnemy.DEAD;
         console.log(`${this._nombre} ha muerto`);
-        
+
         // dropear el arma si tenía una
         if (this.weapon) {
             const drop = new DropWeapon(this.scene, this.x, this.y, this.weapon.constructor, this.weapon.texture.key);
             this.weapon.destroy();
+        }
+
+        // sistema controlado de plumas
+        this.scene.enemiesKilled++;
+
+        if (this.scene.enemiesKilled >= 6) {
+            new DropFeather(this.scene, this.x, this.y);
+            this.scene.enemiesKilled = 0; // resetear el contador después de dropear una pluma
         }
 
         // cambiar sprite al de muerto si existe
@@ -383,7 +365,29 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         });
     }
 
-    updateMovement(target) {
+
+    /**
+     * Sobre-escribimos destroy para también limpiar arma y barra.
+     */
+    destroy(fromScene) {
+        if (this.weapon) {
+            this.weapon.destroy();
+        }
+        if (this.weaponBar) {
+            this.weaponBar.destroy();
+        }
+        super.destroy(fromScene);
+    }
+
+
+    /*
+--------------------------------------------------------------------------------
+                   MOVIMIENTOS PREDEFINIDOS PARA ENEMIGOS
+--------------------------------------------------------------------------------
+    */
+
+    //persecución cuando está alertado
+    movementAlerted(target) {
         if (!this.isAlerted() || !target) return;
 
         const dist = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
@@ -400,9 +404,156 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         this.setFlipX(this.x >= target.x);
     }
 
+    //se mueve 3 segundos hacia un lado y se para 2 segundos, luego repite hacia el otro lado.
+    movementPointToPoint() {
+        if (!this._movementData) {
+            this._movementData = {
+                cycleTimer: 0,
+                isMoving: true,
+                isMovingRight: true
+            };
+        }
+
+        if (this.isAlerted()) return;
+
+        const data = this._movementData;
+        data.cycleTimer += this.scene.game.loop.delta;
+
+        const moveDuration = 3000;  // 3 segundos movieéndose
+        const pauseDuration = 2000; // 2 segundos parado
+        const cycleDuration = moveDuration + pauseDuration; // 5 segundos total
+
+        // Reinicia el ciclo
+        if (data.cycleTimer >= cycleDuration) {
+            data.cycleTimer = 0;
+            data.isMovingRight = !data.isMovingRight;
+        }
+
+        // Determina si está en fase de movimiento o pausa
+        data.isMoving = data.cycleTimer < moveDuration;
+
+        if (data.isMoving) {
+            // Moverse 3 segundos
+            const direction = data.isMovingRight ? 1 : -1;
+            this.body.setVelocity(direction * this._speed, 0);
+            this.setFlipX(!data.isMovingRight);
+            this._facingAngle = data.isMovingRight ? 0 : Math.PI;
+        } else {
+            // Parar 2 segundos
+            this.stop();
+            this.setFlipX(!data.isMovingRight);
+            this._facingAngle = data.isMovingRight ? 0 : Math.PI;
+        }
+    }
+
+
+    //movimientos aleatorios en un radio de 150 px.
+    movementRandomAroundPoint(radius = 150) {
+        if (!this._movementData) {
+            this._movementData = {
+                centerX: this.x,
+                centerY: this.y,
+                radius: radius,
+                targetPoint: { x: this.x, y: this.y },
+                changeTimer: 0,
+                changeInterval: 2000
+            };
+        }
+
+        if (this.isAlerted()) {
+            this._movementData.changeTimer = 0;
+            return;
+        }
+
+        const data = this._movementData;
+        data.changeTimer += this.scene.game.loop.delta;
+
+        if (data.changeTimer >= data.changeInterval) {
+            const angle = Math.random() * Math.PI * 2;
+            const distance = Math.random() * data.radius;
+            data.targetPoint = {
+                x: data.centerX + Math.cos(angle) * distance,
+                y: data.centerY + Math.sin(angle) * distance
+            };
+            data.changeTimer = 0;
+        }
+
+        const dist = Phaser.Math.Distance.Between(this.x, this.y, data.targetPoint.x, data.targetPoint.y);
+        if (dist > 5) {
+            this.moveTowards(data.targetPoint);
+        } else {
+            this.stop();
+        }
+    }
+
+
+    //mirar hacia un lado durante 3 segundos y luego hacia el otro también 3 segundos
+    movementStayAndLook(lookInterval = 3000) {
+        if (!this._movementData) {
+            this._movementData = {
+                initialX: this.x,
+                initialY: this.y,
+                lookInterval: lookInterval,
+                lookTimer: 0,
+                isMovingRight: true,
+                movementDuration: 200, // ms para moverse un poco antes de quedarse mirando
+                movementTimer: 0
+            };
+        }
+
+        if (this.isAlerted()) return;
+
+        const data = this._movementData;
+        data.lookTimer += this.scene.game.loop.delta;
+        data.movementTimer += this.scene.game.loop.delta;
+
+        // Cambia de dirección cada lookInterval
+        if (data.lookTimer >= data.lookInterval) {
+            data.isMovingRight = !data.isMovingRight;
+            data.lookTimer = 0;
+            data.movementTimer = 0;
+        }
+
+        // Mueve durante los primeros 200ms del intervalo
+        if (data.movementTimer < data.movementDuration) {
+            const direction = data.isMovingRight ? 1 : -1;
+            this.body.setVelocity(direction * this._speed, 0);
+            this.setFlipX(!data.isMovingRight);
+            this._facingAngle = data.isMovingRight ? 0 : Math.PI;
+        } else {
+            // Se detiene el resto del intervalo
+            this.stop();
+            this.setFlipX(!data.isMovingRight);
+            this._facingAngle = data.isMovingRight ? 0 : Math.PI;
+        }
+    }
+
+
+
+    /*
+--------------------------------------------------------------------------------
+                          PRECARGA DEL OBJETO ENEMIGO
+--------------------------------------------------------------------------------
+    */
+
     preUpdate(time, delta) {
-       
-        this.updateMovement(this.scene.duck);
+        // Ejecutar movimiento si está en IDLE
+        if (this._state === StatusEnemy.IDLE && this._movementType) {
+            switch (this._movementType) {
+                case 'pointToPoint':
+                    this.movementPointToPoint(this._movementData?.x1 || this.x, this._movementData?.y1 || this.y);
+                    break;
+                case 'AroundPoint':
+                    this.movementRandomAroundPoint();
+                    break;
+                case 'StayAndLook':
+                    this.movementStayAndLook();
+                    break;
+            }
+        } else if (this.isAlerted()) {
+            if (this.scene.duck) this.movementAlerted(this.scene.duck);
+        }
+
         // el arma también debe actualizarse para seguir al enemigo
         if (this.weapon && typeof this.weapon.update === 'function') {
             this.weapon.update();
@@ -416,17 +567,5 @@ export default class Enemy extends Phaser.GameObjects.Sprite {
         if (super.preUpdate) super.preUpdate(time, delta);
     }
 
-    /**
-     * Sobre-escribimos destroy para también limpiar arma y barra.
-     */
-    destroy(fromScene) {
-        if (this.weapon) {
-            this.weapon.destroy();
-        }
-        if (this.weaponBar) {
-            this.weaponBar.destroy();
-        }
-        super.destroy(fromScene);
-    }
 }
 export { StatusEnemy };
