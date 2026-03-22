@@ -59,6 +59,7 @@ export default class ConsumableBar {
             slot.background.setOrigin(0);
             slot.background.setScrollFactor(0);
             slot.background.setStrokeStyle(2, 0xffffff, 0.5);
+            slot.background.setDepth(9100);
             slot.background.setInteractive();
             
             // Evento de click en el slot
@@ -74,6 +75,7 @@ export default class ConsumableBar {
             });
             slot.text.setOrigin(0);
             slot.text.setScrollFactor(0);
+            slot.text.setDepth(9102);
             
             // Sprite del item (vacío por ahora)
             slot.itemSprite = null;
@@ -115,6 +117,7 @@ export default class ConsumableBar {
                     );
                     slot.itemSprite.setScale(3); // Escalar para que sea x3 más grande
                     slot.itemSprite.setScrollFactor(0);
+                    slot.itemSprite.setDepth(9101);
                 }
                 
                 // Cambiar color del borde si hay item
@@ -164,7 +167,8 @@ export default class ConsumableBar {
      */
     getSpriteKey(type) {
         const spriteMap = {
-            'bread': 'bread_item'
+            'bread': 'bread_item',
+            'mask': 'mask_icon'
             // Agregar más tipos aquí: 'health': 'health_potion', etc.
         };
         return spriteMap[type] || null;

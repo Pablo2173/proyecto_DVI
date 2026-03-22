@@ -15,6 +15,8 @@ import Bala from '../GameObjects/Projectiles/bala.js';
 // Drops
 import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
 import Bread from '../GameObjects/consumables/bread.js';
+import DropBread from '../GameObjects/consumables/dropBread.js';
+import DropMask from '../GameObjects/consumables/dropMask.js';
 
 import Enemy from '../GameObjects/enemy.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
@@ -77,7 +79,9 @@ import bush from '../../assets/tilesets/bush.png';
 //Plumas
 import feather_icon from '../../assets/sprites/ui/pluma.png';
 import FeatherUI from '../GameObjects/featherUI.js';
-import DropFeather from '../GameObjects/consumables/dropFeather.js';
+
+// Drops de enemigos
+import mask_icon from '../../assets/sprites/Weapons/ramita.png';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -160,6 +164,7 @@ export default class MainScene extends Phaser.Scene {
 
         // Preload de consumibles
         Bread.preload(this);
+        DropBread.preload(this);
 
         // Preload de la barra de arma del jugador
         this.load.image('weapon_bar_border', bar);
@@ -168,6 +173,9 @@ export default class MainScene extends Phaser.Scene {
         // Preload de UI
         this.load.image('up_bar', up_bar);
         this.load.image('feather_icon', feather_icon);
+
+        // Preload de drops de enemigos
+        this.load.image('mask_icon', mask_icon);
     }
 
     /*
@@ -575,6 +583,9 @@ export default class MainScene extends Phaser.Scene {
             }
         });
 
+        // Tecla E: usada exclusivamente para recoger items de tipo 'interact' (DropMask)
+        this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+
         // ─────────────────────────────────────────
         // ENEMIGOS
         // ─────────────────────────────────────────
@@ -698,6 +709,29 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         if (this.consumableBar) {
             this.consumableBar.update();
+        }
+
+        // ─────────────────────────────────────────
+        // RECOGIDA DE CONSUMIBLES
+        // Usa isNear() (igual que el duck con las plumas) para detectar rango.
+        // - pickupType 'auto'     → interact() se llama inmediatamente (DropBread)
+        // - pickupType 'interact' → interact() solo se llama al pulsar E (DropMask)
+        // ─────────────────────────────────────────
+        if (this.duck && this.duck.active) {
+            const eJustDown = Phaser.Input.Keyboard.JustDown(this.keyE);
+
+            this.consumableItems.getChildren().forEach(item => {
+                if (!item || !item.active) return;
+                if (!item.isNear(this.duck, 60)) return;
+
+                if (item.pickupType === 'auto') {
+                    // auto pickup: recoger inmediatamente al entrar en rango
+                    item.interact(this.duck);
+                } else if (item.pickupType === 'interact' && eJustDown) {
+                    // interact pickup: solo recoger si el jugador pulsa E estando en rango
+                    item.interact(this.duck);
+                }
+            });
         }
 
         // ─────────────────────────────────────────

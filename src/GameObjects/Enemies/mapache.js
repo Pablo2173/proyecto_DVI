@@ -1,5 +1,5 @@
 import Enemy, { StatusEnemy } from "../enemy";
-import DropWeapon from "../Weapons/drops/dropWeapon.js";
+import DropMask from "../consumables/dropMask.js";
 
 export default class Mapache extends Enemy {
     constructor(scene, name, x, y, texture, frame, weapon, movementType, hasFeather) {
@@ -7,12 +7,18 @@ export default class Mapache extends Enemy {
         //visionRadius = 150, hp = 100, speed = 80 para el mapache
 
         // guardamos las estadisticas originales para poder restaurarlas al resucitar
-        this._resurrected = false;
-        this._originalTexture = texture;
+        this._resurrected        = false;
+        this._originalTexture    = texture;
         this._originalVisionRadius = this._visionRadius;
-        this._maxHP = 100;
-        this._originalWeapon = weapon;
-        this.hasFeather = true; 
+        this._maxHP              = 100;
+        this._originalWeapon     = weapon;
+        this.hasFeather          = true;
+    }
+
+    // Drop del mapache
+    dropMask() {
+        const { dx, dy } = this._randomDropOffset();
+        new DropMask(this.scene, this.x + dx, this.y + dy);
     }
 
     //como la habilidad del mapache es resucitar, sobreescribo el metodo die para que en vez de morir a la primera, se "resucite" una vez, y a la segunda muerte si muera de verdad
@@ -23,7 +29,7 @@ export default class Mapache extends Enemy {
             this._resurrected = true;
 
             this._state = StatusEnemy.DEAD;
-            console.log(`${this._nombre} ha muerto`);
+            console.log(`${this._nombre} ha muerto (primera vez, resucitará)`);
 
             const deadTexture = `${this.texture.key}_corpse`;
             if (this.scene.textures.exists(deadTexture)) {
@@ -36,25 +42,18 @@ export default class Mapache extends Enemy {
                 this.body.stop();
                 this.body.setVelocity(0, 0);
                 this.body.enable = false;
-                if (this.body.checkCollision) {
-                    this.body.checkCollision.none = true;
-                }
+                if (this.body.checkCollision) this.body.checkCollision.none = true;
             }
 
             this._visionRadius = 0;
 
-            // revive a los 3 segundos
+            // Revive a los 3 segundos
             this.scene.time.delayedCall(3000, () => this.revive());
-        } else {
-            // En la segunda muerte ya se muere normal
 
-            if (this.weapon) {
-                const drop = new DropWeapon(this.scene, this.x, this.y, this.weapon.constructor, this.weapon.texture.key);
-                if (this.scene.dropItems) {
-                    this.scene.dropItems.add(drop);
-                }
-                this.weapon.destroy();
-            }
+        } else {
+            // Segunda muerte: drops completos y muerte real
+            // Los drops estándar (weapon, feather, bread) los gestiona super.die()
+            this.dropMask();
             super.die();
         }
     }
@@ -62,9 +61,9 @@ export default class Mapache extends Enemy {
     revive() {
         if (!this.scene) return;
 
-        this._state = StatusEnemy.IDLE;
-        this._hp = this._maxHP;
-        this._visionRadius = this._originalVisionRadius;
+        this._state         = StatusEnemy.IDLE;
+        this._hp            = this._maxHP;
+        this._visionRadius  = this._originalVisionRadius;
 
         // vuelve a tener el sprite del mapache vivo
         this.setTexture(this._originalTexture);
@@ -72,9 +71,7 @@ export default class Mapache extends Enemy {
         // reactiva las físicas/colisiones
         if (this.body) {
             this.body.enable = true;
-            if (this.body.checkCollision) {
-                this.body.checkCollision.none = false;
-            }
+            if (this.body.checkCollision) this.body.checkCollision.none = false;
             this.body.setVelocity(0, 0);
         }
 
