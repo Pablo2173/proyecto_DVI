@@ -60,16 +60,20 @@ export default class BaseCharacter extends Phaser.GameObjects.Sprite {
 
         this.weapon = null;
 
-        if (this.scene && this.scene.time) {
-            this.scene.time.delayedCall(1, () => {
-                if (!this.weapon && !this._isSwitchingWeapon) {
-                    this._isSwitchingWeapon = true;
-                    this.equipWeapon('ramita');
-                    this._isSwitchingWeapon = false;
-                }
-            });
-        } else {
-            this.equipWeapon('ramita');
+        // Solo equipar la ramita automáticamente si es un jugador (no un enemigo)
+        const isPlayer = this.team === TEAM.PLAYER || this.constructor.name === 'Duck';
+        if (isPlayer) {
+            if (this.scene && this.scene.time) {
+                this.scene.time.delayedCall(1, () => {
+                    if (!this.weapon && !this._isSwitchingWeapon) {
+                        this._isSwitchingWeapon = true;
+                        this.equipWeapon('ramita');
+                        this._isSwitchingWeapon = false;
+                    }
+                });
+            } else {
+                this.equipWeapon('ramita');
+            }
         }
     }
 }

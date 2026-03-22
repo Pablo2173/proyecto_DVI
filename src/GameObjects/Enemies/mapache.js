@@ -2,8 +2,8 @@ import Enemy, { StatusEnemy } from "../enemy";
 import DropWeapon from "../Weapons/drops/dropWeapon.js";
 
 export default class Mapache extends Enemy {
-    constructor(scene, name, x, y, texture, frame, weapon, movementType) {
-        super(scene, name, x, y, texture, frame, 150, 100, 80, weapon, movementType);
+    constructor(scene, name, x, y, texture, frame, weapon, movementType, hasFeather) {
+        super(scene, name, x, y, texture, frame, 150, 100, 80, weapon, movementType, hasFeather);
         //visionRadius = 150, hp = 100, speed = 80 para el mapache
 
         // guardamos las estadisticas originales para poder restaurarlas al resucitar
@@ -12,6 +12,7 @@ export default class Mapache extends Enemy {
         this._originalVisionRadius = this._visionRadius;
         this._maxHP = 100;
         this._originalWeapon = weapon;
+        this.hasFeather = true; 
     }
 
     //como la habilidad del mapache es resucitar, sobreescribo el metodo die para que en vez de morir a la primera, se "resucite" una vez, y a la segunda muerte si muera de verdad

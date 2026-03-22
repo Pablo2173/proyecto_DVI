@@ -53,12 +53,11 @@ export default class DropWeapon extends DropItem {
         player.setWeapon(newWeapon);
         newWeapon.setBar(player.weaponBar);
 
-        // Solo crear drop si el jugador tenía arma válida y es distinta a la recogida
+        // Siempre crear drop si el jugador tenía arma válida
         if (
             previousWeapon &&
             previousWeapon.constructor &&
-            previousWeapon.texture && previousWeapon.texture.key &&
-            previousWeapon.constructor !== this.weaponClass // Evitar duplicación por tipo
+            previousWeapon.texture && previousWeapon.texture.key
         ) {
             new DropWeapon(scene, dropX, dropY, previousWeapon.constructor, previousWeapon.texture.key);
         }

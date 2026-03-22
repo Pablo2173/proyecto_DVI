@@ -499,7 +499,7 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         // PLAYER
         // ─────────────────────────────────────────
-        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, 'mcuaktro');
+        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, 'arco');
 
         // ─────────────────────────────────────────
         // UI
@@ -608,7 +608,8 @@ export default class MainScene extends Phaser.Scene {
                     props.texture ?? 'enemy',
                     null,
                     props.weapon ?? 'arco',
-                    props.movementType ?? 'stay'
+                    props.movementType ?? 'stay',
+                    props.hasFeather ?? false
                 );
 
                 this.add.existing(enemy);

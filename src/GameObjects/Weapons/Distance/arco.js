@@ -12,9 +12,9 @@ export default class Arco extends Weapon {
             isRanged:        true,
             projectileClass: Flecha,
             projectileSpeed: 700,
-            damage:          20,
+            damage:          2000,
             attackSpeed:     100,    // cooldown bajo, la carga controla el ritmo
-            range:           800,
+            range:           8000,
             optimalDistance: 280,
             scale:           1,
             spriteAngleOffset: 0,

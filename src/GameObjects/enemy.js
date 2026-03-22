@@ -30,7 +30,7 @@ export default class Enemy extends BaseCharacter {
      * @param {number} visionRadius
      * @param {number} hp
      */
-    constructor(scene, name, x, y, texture, frame = null, visionRadius, hp, speed, weapon, movementType) {
+    constructor(scene, name, x, y, texture, frame = null, visionRadius, hp, speed, weapon, movementType, hasFeather) {
         super(scene, x, y, texture, frame, TEAM.ENEMY);
 
         // --- FÍSICA (top-down) ---
@@ -56,6 +56,7 @@ export default class Enemy extends BaseCharacter {
         this._state = StatusEnemy.IDLE;
         this._movementType = movementType;
         this._movementData = null; // para almacenar datos específicos del tipo de movimiento (ej. puntos de patrulla)
+        this.hasFeather = hasFeather;
 
         this.weaponMap = {
             arco: Arco,
@@ -310,12 +311,9 @@ export default class Enemy extends BaseCharacter {
             this.weapon.destroy();
         }
 
-        // sistema controlado de plumas
-        this.scene.enemiesKilled++;
-
-        if (this.scene.enemiesKilled >= 6) {
+        // soltar una pluma solo si tiene
+        if (this.hasFeather) {
             new DropFeather(this.scene, this.x, this.y);
-            this.scene.enemiesKilled = 0; // resetear el contador después de dropear una pluma
         }
 
         // cambiar sprite al de muerto si existe
