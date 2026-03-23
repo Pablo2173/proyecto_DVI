@@ -384,7 +384,7 @@ export default class MainScene extends Phaser.Scene {
         // CONFIG GENERAL DE LA ESCENA
         // ─────────────────────────────────────────
         this.isPlayerDead = false;
-        this.playerSpawn = { x: 1700, y: 9500 };
+        this.playerSpawn = { x: 1229, y: 5588 };
 
         // Limpia listeners anteriores por seguridad al reiniciar la escena
         this.input.removeAllListeners();
