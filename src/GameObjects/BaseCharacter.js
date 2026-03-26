@@ -10,7 +10,7 @@ export default class BaseCharacter extends Phaser.GameObjects.Sprite {
         scene.add.existing(this);
 
         this.weapon = null;
-        this.weaponBar = new WeaponBar(scene, this);
+        this.weaponBar = new WeaponBar(scene, this, team === TEAM.ENEMY);
         this._isSwitchingWeapon = false;
 
         this.team = team;

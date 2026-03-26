@@ -75,7 +75,7 @@ import tallGrassMiddle from '../../assets/tilesets/tall-grass-middle.png';
 import bush from '../../assets/tilesets/bush.png';
 
 //Plumas
-import feather_icon from '../../assets/sprites/ui/pluma.png';
+import feather_icon from '../../assets/sprites/UI/pluma.png';
 import FeatherUI from '../GameObjects/featherUI.js';
 import DropFeather from '../GameObjects/consumables/dropFeather.js';
 
@@ -472,8 +472,6 @@ export default class MainScene extends Phaser.Scene {
             });
         }
 
-        // Ojo: en tu preload actual no he visto cargado 'duck-swimming'.
-        // Déjalo solo si realmente existe ese spritesheet cargado.
         /* if (!this.anims.exists('duck-swimming') && this.textures.exists('duck-swimming')) {
              this.anims.create({
                  key: 'duck-swimming',

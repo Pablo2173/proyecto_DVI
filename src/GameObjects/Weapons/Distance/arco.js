@@ -11,9 +11,9 @@ export default class Arco extends Weapon {
             texture:         'arco',
             isRanged:        true,
             projectileClass: Flecha,
-            projectileSpeed: 700,
+            projectileSpeed: 400,
             damage:          20,
-            attackSpeed:     100,    // cooldown bajo, la carga controla el ritmo
+            attackSpeed:     500,    // para jugador, la carga controla el ritmo
             range:           800,
             optimalDistance: 280,
             scale:           1,
@@ -30,7 +30,14 @@ export default class Arco extends Weapon {
         this.chargeStartTime = 0;
         this.chargePercent = 0;
         this._piercing = false;              // se activa al 100% de carga
-        this.range = this.maxRange * this.minRangeRatio;
+
+        if (this.isEnemy) {
+            // Enemigo: rango fijo alto y disparo cada 1 segundo, sin carga.
+            this.attackSpeed = 1000;
+            this.range = this.maxRange * 0.85;
+        } else {
+            this.range = this.maxRange * this.minRangeRatio;
+        }
     }
 
     static preload(scene) {

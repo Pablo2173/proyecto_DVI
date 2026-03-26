@@ -30,8 +30,8 @@ export default class Duck extends BaseCharacter {
             ramita: Ramita
         };
 
-        this._speed = 160;
-        this._maxSpeed = 180;
+        this._speed = 320;
+        this._maxSpeed = 360;
         this.dashSpeed = 600;
         this.dashDuration = 200;
         this.lastDashTime = 0;
@@ -61,8 +61,8 @@ export default class Duck extends BaseCharacter {
                 this.body.setAllowGravity(false); // Sin gravedad porque estamos haciendo un top-down
                 this.body.setImmovable(false);    // Basicamente lo pongo a false para que le puedan empujar
 
-                this.body.setCircle(16, 16); //falta poner el tamanyo del sprite, este es provisional
-                this.body.setOffset(4, 4);
+                this.body.setCircle(6, 6); 
+                this.body.setOffset(9, 13);
             }
         }
 
