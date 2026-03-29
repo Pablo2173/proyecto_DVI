@@ -661,6 +661,12 @@ export default class MainScene extends Phaser.Scene {
             this._onProjectileHitDuck(projectile, duck);
         });
 
+        // proyectil -> capa de colisión del mapa
+        this.physics.add.collider(this.projectiles, this.colisionLayer, (projectile) => {
+            if (!projectile || !projectile.active) return;
+            projectile.destroy();
+        });
+
         // Consumibles y drops
         new Bread(this, 500, 9400);
         new Bread(this, 1800, 9200);
