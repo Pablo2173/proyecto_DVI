@@ -425,6 +425,7 @@ export default class MainScene extends Phaser.Scene {
 
         this.esteticaLayer = map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
         this.esteticaLayer.setScale(SCALE);
+        this.esteticaLayer.setDepth(200); //le he añadido esto para que el patete este por debajo
 
         // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
         // Esto evita depender de propiedades "collides" en cada tile del tileset.
