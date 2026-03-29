@@ -370,12 +370,6 @@ export default class Enemy extends BaseCharacter {
      * Sobre-escribimos destroy para también limpiar arma y barra.
      */
     destroy(fromScene) {
-        if (this.weapon) {
-            this.weapon.destroy();
-        }
-        if (this.weaponBar) {
-            this.weaponBar.destroy();
-        }
         super.destroy(fromScene);
     }
 

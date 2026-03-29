@@ -12,6 +12,7 @@ export default class BaseCharacter extends Phaser.GameObjects.Sprite {
         this.weapon = null;
         this.weaponBar = new WeaponBar(scene, this, team === TEAM.ENEMY);
         this._isSwitchingWeapon = false;
+        this._isBeingDestroyed = false;
 
         this.team = team;
 
@@ -19,7 +20,23 @@ export default class BaseCharacter extends Phaser.GameObjects.Sprite {
         this.weaponMap = {};
     }
 
+    _canCreateWeapon() {
+        if (this._isBeingDestroyed) return false;
+        if (!this.scene || !this.scene.sys) return false;
+        if (!this.scene.add) return false;
+        return true;
+    }
+
+    _canScheduleFallbackEquip() {
+        if (!this._canCreateWeapon()) return false;
+        if (!this.scene.time) return false;
+        if (typeof this.scene.sys.isActive === 'function' && !this.scene.sys.isActive()) return false;
+        return true;
+    }
+
     equipWeapon(weaponKeyOrClass) {
+        if (!this._canCreateWeapon()) return;
+
         const WeaponClass = typeof weaponKeyOrClass === 'string'
             ? this.weaponMap[weaponKeyOrClass]
             : weaponKeyOrClass;
@@ -47,7 +64,9 @@ export default class BaseCharacter extends Phaser.GameObjects.Sprite {
         }
 
         if (!newWeapon) {
-            this.equipWeapon('ramita');
+            if (this._canCreateWeapon()) {
+                this.equipWeapon('ramita');
+            }
             return;
         }
 
@@ -56,20 +75,37 @@ export default class BaseCharacter extends Phaser.GameObjects.Sprite {
 
     onWeaponDestroyed(weapon) {
         if (this._isSwitchingWeapon) return;
+        if (this._isBeingDestroyed) return;
         if (this.weapon !== weapon) return;
 
         this.weapon = null;
 
-        if (this.scene && this.scene.time) {
+        if (this._canScheduleFallbackEquip()) {
             this.scene.time.delayedCall(1, () => {
-                if (!this.weapon && !this._isSwitchingWeapon) {
+                if (!this._canScheduleFallbackEquip()) return;
+                if (!this.weapon && !this._isSwitchingWeapon && !this._isBeingDestroyed) {
                     this._isSwitchingWeapon = true;
                     this.equipWeapon('ramita');
                     this._isSwitchingWeapon = false;
                 }
             });
-        } else {
-            this.equipWeapon('ramita');
         }
+    }
+
+    destroy(fromScene) {
+        this._isBeingDestroyed = true;
+
+        if (this.weapon) {
+            const weapon = this.weapon;
+            this.weapon = null;
+            weapon.destroy(undefined, { notifyOwner: false });
+        }
+
+        if (this.weaponBar) {
+            this.weaponBar.destroy();
+            this.weaponBar = null;
+        }
+
+        super.destroy(fromScene);
     }
 }

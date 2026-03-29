@@ -385,6 +385,7 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         this.isPlayerDead = false;
         this.playerSpawn = { x: 1229, y: 5588 };
+        this.positionText = null;
 
         // Limpia listeners anteriores por seguridad al reiniciar la escena
         this.input.removeAllListeners();
@@ -552,10 +553,18 @@ export default class MainScene extends Phaser.Scene {
         this.deathOverlay.add([deathBg, deathText]);
 
         // Si la ventana cambia, reajustamos overlay
-        this.scale.on('resize', (gameSize) => {
+        if (this._onResize) {
+            this.scale.off('resize', this._onResize, this);
+        }
+        this._onResize = (gameSize) => {
             deathBg.setSize(gameSize.width, gameSize.height);
             deathText.setPosition(gameSize.width / 2, gameSize.height / 2);
-        });
+        };
+        this.scale.on('resize', this._onResize, this);
+
+        // Limpieza segura al reiniciar/destruir la escena
+        this.events.once('shutdown', this._cleanupScene, this);
+        this.events.once('destroy', this._cleanupScene, this);
 
         // ─────────────────────────────────────────
         // INPUTS
@@ -875,7 +884,10 @@ export default class MainScene extends Phaser.Scene {
     _cleanupScene() {
         this.input.removeAllListeners();
 
-        this.scale.off('resize');
+        if (this._onResize) {
+            this.scale.off('resize', this._onResize, this);
+            this._onResize = null;
+        }
 
         if (this.visionGraphics) {
             this.visionGraphics.destroy();
@@ -890,6 +902,16 @@ export default class MainScene extends Phaser.Scene {
         if (this.deathOverlay) {
             this.deathOverlay.destroy();
             this.deathOverlay = null;
+        }
+
+        if (this.positionText) {
+            this.positionText.destroy();
+            this.positionText = null;
+        }
+
+        if (this.controlsText) {
+            this.controlsText.destroy();
+            this.controlsText = null;
         }
     }
 
