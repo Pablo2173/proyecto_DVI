@@ -67,6 +67,7 @@ export default class Enemy extends BaseCharacter {
 
         this._lastQuackTime = 0; // Para evitar alertas duplicadas del mismo quack
         this._quackCooldown = 100; // ms
+        this._visionAlertFlashUntil = 0;
 
         // equipar arma si fue pasada
         this.equipWeapon(weapon);
@@ -216,15 +217,38 @@ export default class Enemy extends BaseCharacter {
      * @param {{x: number, y: number}} player
      * @returns {boolean} true si acaba de alertarse
      */
-    detectAndAlert(player) {
+    detectAndAlert(player, time = this.scene?.time?.now ?? 0) {
         if (!player) return false;
         const seen = this.canSee(player);
         if (this._state === StatusEnemy.DEAD) return false;
         if (seen && this._state !== StatusEnemy.ALERTED) {
             this._state = StatusEnemy.ALERTED;
+            this._visionAlertFlashUntil = time + 500;
             return true;
         }
         return false;
+    }
+
+    updateAwareness(player, time = this.scene?.time?.now ?? 0) {
+        this.detectAndAlert(player, time);
+        this._updateVisionAlertFlash(time);
+    }
+
+    _updateVisionAlertFlash(time) {
+        if (this._visionAlertFlashUntil <= 0) return;
+
+        if (time <= this._visionAlertFlashUntil) {
+            // No pisar el rojo de daño mientras dura su flash
+            if (this.tintTopLeft !== 0xFF0000) {
+                this.setTint(0xFFFF01);
+            }
+            return;
+        }
+
+        this._visionAlertFlashUntil = 0;
+        if (this.tintTopLeft !== 0xFF0000) {
+            this.clearTint();
+        }
     }
 
     isAlerted() {
@@ -279,29 +303,26 @@ export default class Enemy extends BaseCharacter {
         return this._state === StatusEnemy.STUNNED;
     }
 
-    /**
-     * Reduce el HP del enemigo por daño de un proyectil
-     * @param {number} damage - cantidad de daño a recibir
-     */
-    takeDamage(damage) {
-        // se ignora el daño si ya está muerto
-        if (this._state === StatusEnemy.DEAD) return;
+    canTakeDamage() {
+        return super.canTakeDamage() && !this.isDead();
+    }
 
-        this._hp -= damage;
-        if (this._state !== StatusEnemy.ALERTED)
-            this._state = StatusEnemy.ALERTED; // Si recibe daño, se alerta aunque no haya visto al jugador
-        console.log(`${this._nombre} recibió ${damage} de daño. HP actual: ${this._hp}`);
-        // parpadeo rojo momentáneo
-        this.flashRed();
-        if (this._hp <= 0) {
-            this.die();
+    afterTakeDamage(damage, previousHealth, newHealth) {
+        if (this._state !== StatusEnemy.ALERTED) {
+            this._state = StatusEnemy.ALERTED;
         }
+        console.log(`${this._nombre} recibió ${damage} de daño. HP actual: ${newHealth}`);
+    }
+
+    onHealthDepleted() {
+        this.die();
     }
 
     die() {
         if (this._state === StatusEnemy.DEAD) return; // evitar doble llamada
 
         this._state = StatusEnemy.DEAD;
+        this._visionAlertFlashUntil = 0;
         console.log(`${this._nombre} ha muerto`);
 
         // dropear el arma si tenía una
@@ -355,16 +376,6 @@ export default class Enemy extends BaseCharacter {
     getHP() {
         return this._hp;
     }
-
-    // Reproduce un parpadeo rojo rápido para indicar daño recibido
-    flashRed(duration = 100) {
-        if (!this.scene) return;
-        this.setTint(0xff0000);
-        this.scene.time.delayedCall(duration, () => {
-            if (this && this.clearTint) this.clearTint();
-        });
-    }
-
 
     /**
      * Sobre-escribimos destroy para también limpiar arma y barra.

@@ -92,6 +92,73 @@ export default class BaseCharacter extends Phaser.GameObjects.Sprite {
         }
     }
 
+    getHealthValue() {
+        if (typeof this.health === 'number') return this.health;
+        if (typeof this._hp === 'number') return this._hp;
+        return null;
+    }
+
+    setHealthValue(value) {
+        if (typeof this.health === 'number') {
+            this.health = value;
+            return;
+        }
+        if (typeof this._hp === 'number') {
+            this._hp = value;
+        }
+    }
+
+    canTakeDamage() {
+        return !this._isBeingDestroyed && this.active;
+    }
+
+    beforeTakeDamage(amount, previousHealth) {
+        return { amount, previousHealth };
+    }
+
+    afterTakeDamage(amount, previousHealth, newHealth) {
+        return { amount, previousHealth, newHealth };
+    }
+
+    onHealthDepleted() {
+        if (typeof this.die === 'function') {
+            this.die();
+        }
+    }
+
+    flashRed(duration = 100) {
+        if (!this.scene) return;
+
+        this.setTint(0xff0000);
+
+        if (!this.scene.time) return;
+
+        this.scene.time.delayedCall(duration, () => {
+            if (!this.active || this._isBeingDestroyed) return;
+            this.clearTint();
+        });
+    }
+
+    takeDamage(amount = 1) {
+        if (typeof amount !== 'number' || amount <= 0) return;
+        if (!this.canTakeDamage()) return;
+
+        const previousHealth = this.getHealthValue();
+        if (typeof previousHealth !== 'number') return;
+
+        this.beforeTakeDamage(amount, previousHealth);
+
+        const newHealth = Math.max(0, previousHealth - amount);
+        this.setHealthValue(newHealth);
+
+        this.flashRed();
+        this.afterTakeDamage(amount, previousHealth, newHealth);
+
+        if (newHealth <= 0) {
+            this.onHealthDepleted();
+        }
+    }
+
     destroy(fromScene) {
         this._isBeingDestroyed = true;
 

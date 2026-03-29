@@ -426,7 +426,9 @@ export default class MainScene extends Phaser.Scene {
         this.esteticaLayer = map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
         this.esteticaLayer.setScale(SCALE);
 
-        this.colisionLayer.setCollisionByProperty({ collides: true });
+        // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
+        // Esto evita depender de propiedades "collides" en cada tile del tileset.
+        this.colisionLayer.setCollisionByExclusion([-1], true);
 
         const worldWidth = map.widthInPixels * SCALE;
         const worldHeight = map.heightInPixels * SCALE;
@@ -587,7 +589,6 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         this.enemies = [];
         this.visionGraphics = this.add.graphics();
-        this.enemyAlertTimes = {};
 
         const enemigosPorCapa = {
             'enemies/Mapache': Mapache,
@@ -792,27 +793,8 @@ export default class MainScene extends Phaser.Scene {
             this.enemies.forEach(enemy => {
                 if (!enemy || !enemy.active || enemy.isDead?.()) return;
 
-                // Solo detectar si se alerta
-                enemy.detectAndAlert(this.duck);
-
-                // Parpadeo al alertarse
-                if (enemy.isAlerted()) {
-                    if (!this.enemyAlertTimes[enemy.name]) {
-                        this.enemyAlertTimes[enemy.name] = time;
-                        enemy.setTint(0xFFFF01);
-                    }
-
-                    if (time - this.enemyAlertTimes[enemy.name] > 500) {
-                        if (enemy.tintTopLeft !== 0xFF0000) {
-                            enemy.clearTint();
-                        }
-                    }
-                } else {
-                    delete this.enemyAlertTimes[enemy.name];
-                    if (enemy.tintTopLeft !== 0xFF0000) {
-                        enemy.clearTint();
-                    }
-                }
+                // Detección y feedback visual manejados por la propia clase Enemy
+                enemy.updateAwareness(this.duck, time);
 
                 // Debug del radio de visión
                 if (this.visionGraphics) {
@@ -823,7 +805,6 @@ export default class MainScene extends Phaser.Scene {
                 }
             });
         } else {
-            this.enemyAlertTimes = {};
             if (this.visionGraphics) {
                 this.visionGraphics.clear();
             }

@@ -124,25 +124,20 @@ export default class Duck extends BaseCharacter {
         }
     }
 
-    takeDamage(amount = 1) {
-        if (this.isInvulnerable || this.scene?.isPlayerDead) return;
+    canTakeDamage() {
+        return super.canTakeDamage() && !this.isInvulnerable && !this.scene?.isPlayerDead;
+    }
 
+    beforeTakeDamage() {
         this.isInvulnerable = true;
+    }
 
-        this.setTint(0xff0000);
-
-        this.scene.time.delayedCall(100, () => {
-            if (this.active && !this.scene?.isPlayerDead) {
-                this.clearTint();
-            }
-        });
-
-        this.health = Math.max(0, this.health - amount);
-        console.log(`Vida ahora: ${this.health}`);
+    afterTakeDamage(amount, previousHealth, newHealth) {
+        console.log(`Vida ahora: ${newHealth}`);
 
         this.updateFeathersFromHealth();
 
-        if (this.health <= 0 || this.scene?.isPlayerDead) {
+        if (newHealth <= 0 || this.scene?.isPlayerDead || !this.scene?.time) {
             return;
         }
 
@@ -263,21 +258,40 @@ export default class Duck extends BaseCharacter {
         const isDashing = this.state === DUCK_STATE.DASHING;
         const speed = isDashing ? this.dashSpeed : this._speed;
 
-        if (vx !== 0 || vy !== 0 || isDashing) {
-            const len = Math.hypot(vx, vy) || 1;
-            const moveX = (vx !== 0 ? vx : this.facingX) / len * speed;
-            const moveY = (vy !== 0 ? vy : this.facingY) / len * speed;
+        let moveDirX = vx;
+        let moveDirY = vy;
 
-            this.x += moveX * delta;
-            this.y += moveY * delta;
+        if (isDashing && moveDirX === 0 && moveDirY === 0) {
+            moveDirX = this.facingX;
+            moveDirY = this.facingY;
+        }
 
-            if (!isDashing) {
+        const isMoving = moveDirX !== 0 || moveDirY !== 0;
+
+        if (isMoving) {
+            const len = Math.hypot(moveDirX, moveDirY) || 1;
+            const velX = (moveDirX / len) * speed;
+            const velY = (moveDirY / len) * speed;
+
+            if (this.body) {
+                this.body.setVelocity(velX, velY);
+            } else {
+                this.x += velX * delta;
+                this.y += velY * delta;
+            }
+
+            if (!isDashing && (vx !== 0 || vy !== 0)) {
                 this.facingX = vx;
                 this.facingY = vy;
                 if (this.state !== DUCK_STATE.SWIMMING) this.setState(DUCK_STATE.WALKING);
             }
-        } else if (this.state !== DUCK_STATE.QUACKING && this.state !== DUCK_STATE.SWIMMING) {
-            this.setState(DUCK_STATE.IDLE);
+        } else {
+            if (this.body) {
+                this.body.setVelocity(0, 0);
+            }
+            if (this.state !== DUCK_STATE.QUACKING && this.state !== DUCK_STATE.SWIMMING) {
+                this.setState(DUCK_STATE.IDLE);
+            }
         }
 
         // Flip del sprite del pato
