@@ -169,9 +169,8 @@ export default class ConsumableBar {
             'bread': 'bread_item',
             'attack_potion': 'attack_potion',
             'speed_potion': 'speed_potion',
-            'health_potion': 'bread_item', // Placeholder
-            'mana_potion': 'bread_item',   // Placeholder
-            // Agregar más tipos aquí: 'health': 'health_potion', etc.
+            'speed_attack_potion': 'speed_attack_potion',
+            // Agregar más tipos aquí cuando se necesite
         };
         return spriteMap[type] || null;
     }
@@ -222,11 +221,8 @@ export default class ConsumableBar {
             case 'speed_potion':
                 this.useSpeedPotionEffect(duck);
                 break;
-            case 'health_potion':
-                this.useHealthPotionEffect(duck);
-                break;
-            case 'mana_potion':
-                this.useManaPotionEffect(duck);
+            case 'speed_attack_potion':
+                this.useSpeedAttackPotionEffect(duck);
                 break;
             // Agregar más casos aquí para otros consumibles
             default:
@@ -280,7 +276,7 @@ export default class ConsumableBar {
      */
     useSpeedPotionEffect(duck) {
         console.log('Usando poción de velocidad: duplicando velocidad por 15 segundos');
-        
+
         // Duplicar el multiplicador de velocidad
         if (!duck.speedMultiplier) {
             duck.speedMultiplier = 1;
@@ -292,6 +288,31 @@ export default class ConsumableBar {
             if (duck.speedMultiplier) {
                 duck.speedMultiplier /= 2;
                 console.log('Efecto de poción de velocidad terminado: velocidad restaurada');
+            }
+        });
+    }
+
+    useSpeedAttackPotionEffect(duck) {
+        console.log('Usando poción de velocidad de ataque: duplicando cadencia de ataque por 20 segundos');
+
+        if (!duck.weapon) {
+            console.warn('No hay arma equipada para aplicar el efecto de velocidad de ataque');
+            return;
+        }
+
+        if (duck.weapon._attackSpeedBase == null) {
+            duck.weapon._attackSpeedBase = duck.weapon.attackSpeed;
+        }
+
+        // El attackSpeed es el tiempo entre ataques, así que reducirlo acelera la cadencia
+        duck.weapon.attackSpeed = duck.weapon._attackSpeedBase / 2;
+        duck.weapon._attackSpeedBuffActive = true;
+
+        duck.scene.time.delayedCall(20000, () => {
+            if (duck.weapon && duck.weapon._attackSpeedBuffActive) {
+                duck.weapon.attackSpeed = duck.weapon._attackSpeedBase;
+                duck.weapon._attackSpeedBuffActive = false;
+                console.log('Efecto de poción de velocidad de ataque terminado: velocidad de ataque restaurada');
             }
         });
     }

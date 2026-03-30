@@ -17,6 +17,7 @@ import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
 import Bread from '../GameObjects/consumables/bread.js';
 import AttackPotion from '../GameObjects/consumables/attackPotion.js';
 import SpeedPotion from '../GameObjects/consumables/speedPotion.js';
+import SpeedAttackPotion from '../GameObjects/consumables/SpeedAttackPotion.js';
 
 import Enemy from '../GameObjects/enemy.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
@@ -164,6 +165,7 @@ export default class MainScene extends Phaser.Scene {
         Bread.preload(this);
         AttackPotion.preload(this);
         SpeedPotion.preload(this);
+        SpeedAttackPotion.preload(this);
 
         // Preload de la barra de arma del jugador
         this.load.image('weapon_bar_border', bar);
@@ -646,15 +648,34 @@ export default class MainScene extends Phaser.Scene {
         // CONSUMIBLES DESDE TILED
         // ─────────────────────────────────────────
         // Sistema para evitar repeticiones: tipos disponibles y usados
-        this.availableConsumableTypes = ['bread', 'health_potion', 'mana_potion', 'speed_potion'];
+        this.availableConsumableTypes = ['bread', 'speed_potion', 'attack_potion', 'speed_attack_potion'];
         this.usedConsumableTypes = [];
 
-        const consumableLayer = map.getObjectLayer('consumables');
+        const consumableLayer = map.getObjectLayer('consumables') || map.getObjectLayer('consummable') || map.getObjectLayer('consumable');
         if (consumableLayer) {
             consumableLayer.objects.forEach(obj => {
-                if (obj.name === 'consumable') {
+                const objectName = (obj.name || '').toLowerCase();
+                const objectTypeRaw = (obj.type || '').toLowerCase();
+                const objectTypeProp = (obj.properties && obj.properties.find(p => p.name === 'type')?.value || '').toLowerCase();
+                const objectType = objectTypeRaw || objectTypeProp;
+
+                // Aceptar nombre/tipo 'consumable' o 'consummable' (se aceptan ambos por si hay typo)
+                const isConsumableObject =
+                    objectName === 'consumable' || objectName === 'consummable' ||
+                    objectType === 'consumable' || objectType === 'consummable';
+                if (!isConsumableObject) {
+                    return;
+                }
+
+                let selectedType = null;
+
+                // Si en Tiled el objeto viene con obj.type: 'speed_potion', use eso.
+                if (objectType && this.availableConsumableTypes.includes(objectType)) {
+                    selectedType = objectType;
+                }
+
+                if (!selectedType) {
                     // Elegir tipo aleatorio sin repetición
-                    let selectedType;
                     if (this.availableConsumableTypes.length > 0) {
                         const randomIndex = Phaser.Math.Between(0, this.availableConsumableTypes.length - 1);
                         selectedType = this.availableConsumableTypes.splice(randomIndex, 1)[0];
@@ -667,11 +688,18 @@ export default class MainScene extends Phaser.Scene {
                         selectedType = this.availableConsumableTypes.splice(randomIndex, 1)[0];
                         this.usedConsumableTypes.push(selectedType);
                     }
-
-                    // Crear el consumible basado en el tipo
-                    this.createConsumable(selectedType, obj.x * SCALE, obj.y * SCALE);
                 }
+
+                if (!selectedType) {
+                    console.warn('Consumable sin tipo válido:', obj);
+                    return;
+                }
+
+                console.log('Spawn consumable:', selectedType, 'en', obj.x, obj.y, 'layer', consumableLayer.name);
+                this.createConsumable(selectedType, obj.x * SCALE, obj.y * SCALE);
             });
+        } else {
+            console.warn('No se encontró una capa de consumables en Tiled. Nombres válidos: consumables, consummable, consumable.');
         }
 
 
@@ -790,21 +818,6 @@ export default class MainScene extends Phaser.Scene {
             return;
         }
 
-        // ───────────────────────────────────────────────────────────────────
-        // DEBUG: MOSTRAR POSICIÓN DEL PATO PARA UBICAR POSICIONES EN EL MAPA
-        // ───────────────────────────────────────────────────────────────────
-        if (!this.positionText) {
-            this.positionText = this.add.text(10, 50, '', {
-                fontSize: '16px',
-                fill: '#00ff00',
-                backgroundColor: '#000000',
-                padding: { x: 5, y: 5 }
-            }).setScrollFactor(0).setDepth(10000);
-        }
-
-        if (this.duck) {
-            this.positionText.setText(`Pato: (${Math.round(this.duck.x)}, ${Math.round(this.duck.y)})`);
-        }
 
         // ─────────────────────────────────────────
         // ACTUALIZAR BARRA DE CONSUMIBLES
@@ -1015,7 +1028,7 @@ export default class MainScene extends Phaser.Scene {
 
     /**
      * Crea un consumible basado en el tipo especificado
-     * @param {string} type - Tipo del consumible ('bread', 'health_potion', etc.)
+     * @param {string} type - Tipo del consumible ('bread', 'attack_potion', 'speed_potion', etc.)
      * @param {number} x - Posición X
      * @param {number} y - Posición Y
      */
@@ -1024,14 +1037,14 @@ export default class MainScene extends Phaser.Scene {
             case 'bread':
                 new Bread(this, x, y);
                 break;
-            case 'health_potion':
-                new HealthPotion(this, x, y);
-                break;
-            case 'mana_potion':
-                new ManaPotion(this, x, y);
+            case 'attack_potion':
+                new AttackPotion(this, x, y);
                 break;
             case 'speed_potion':
                 new SpeedPotion(this, x, y);
+                break;
+            case 'speed_attack_potion':
+                new SpeedAttackPotion(this, x, y);
                 break;
             default:
                 console.warn(`Tipo de consumible desconocido: ${type}`);

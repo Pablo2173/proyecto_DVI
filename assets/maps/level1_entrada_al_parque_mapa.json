@@ -225,9 +225,56 @@
          "visible":true,
          "x":0,
          "y":0
+        }, 
+        {
+         "class":"consummable",
+         "draworder":"topdown",
+         "id":10,
+         "name":"consummable",
+         "objects":[
+                {
+                 "height":0,
+                 "id":9,
+                 "name":"consummable",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"name",
+                         "type":"string",
+                         "value":"consummable"
+                        }, 
+                        {
+                         "name":"type",
+                         "type":"string",
+                         "value":"consummable"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":812,
+                 "y":1720
+                }],
+         "opacity":1,
+         "properties":[
+                {
+                 "name":"name",
+                 "type":"string",
+                 "value":"consummable"
+                }, 
+                {
+                 "name":"type",
+                 "type":"string",
+                 "value":"consummable"
+                }],
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
         }],
- "nextlayerid":10,
- "nextobjectid":6,
+ "nextlayerid":11,
+ "nextobjectid":10,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.0",
