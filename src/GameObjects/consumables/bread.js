@@ -26,7 +26,6 @@ export default class Bread extends ConsumableItem {
      * @param {Duck} player - El pato que usa el consumible
      */
     use_effect(player) {
-        console.log('Usando pan: creando nuevo pan cerca del pato');
         
         // Generar posición aleatoria cerca del pato (radio de 100-200 píxeles)
         const angle = Math.random() * Math.PI * 2;

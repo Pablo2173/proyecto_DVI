@@ -15,6 +15,8 @@ import Bala from '../GameObjects/Projectiles/bala.js';
 // Drops
 import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
 import Bread from '../GameObjects/consumables/bread.js';
+import AttackPotion from '../GameObjects/consumables/attackPotion.js';
+import SpeedPotion from '../GameObjects/consumables/speedPotion.js';
 
 import Enemy from '../GameObjects/enemy.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
@@ -160,6 +162,8 @@ export default class MainScene extends Phaser.Scene {
 
         // Preload de consumibles
         Bread.preload(this);
+        AttackPotion.preload(this);
+        SpeedPotion.preload(this);
 
         // Preload de la barra de arma del jugador
         this.load.image('weapon_bar_border', bar);
@@ -270,6 +274,8 @@ export default class MainScene extends Phaser.Scene {
         // ── Barra de consumibles ──
         this.consumableBar = new ConsumableBar(this, this.duck);
 
+
+
         // ── Atacar con click izquierdo (puntual o mantenido) ──
         this.input.on('pointerdown', () => {
             if (this.duck && this.duck.weapon) this.duck.weapon.attack();
@@ -304,6 +310,12 @@ export default class MainScene extends Phaser.Scene {
         new Bread(this, 350, 400);    // Centro-abajo
         new Bread(this, 600, 150);    // Derecha-arriba
         new Bread(this, 250, 500);    // Abajo-centro
+        
+        // AttackPotion para testing
+        new AttackPotion(this, 1700, 9600); // Cerca del duck
+        
+        // SpeedPotion para testing
+        new SpeedPotion(this, 1750, 9600); // Cerca del duck
         
         // Mazo en posición fija
         new DropWeapon(this, 450, 450, Mazo, 'mazo');
@@ -510,6 +522,9 @@ export default class MainScene extends Phaser.Scene {
         this.featherUI = new FeatherUI(this, this.duck);
         this.enemiesKilled = 0;
 
+        // Dar poción de velocidad al pato para depurar
+        this.duck.consumables.push({ type: 'speed_potion', value: 1 });
+
         const upBar = this.add.image(960, 0, 'up_bar');
         upBar.setOrigin(0.5, 0);
         upBar.setScale(3);
@@ -625,6 +640,39 @@ export default class MainScene extends Phaser.Scene {
 
             });
         });
+
+
+        // ─────────────────────────────────────────
+        // CONSUMIBLES DESDE TILED
+        // ─────────────────────────────────────────
+        // Sistema para evitar repeticiones: tipos disponibles y usados
+        this.availableConsumableTypes = ['bread', 'health_potion', 'mana_potion', 'speed_potion'];
+        this.usedConsumableTypes = [];
+
+        const consumableLayer = map.getObjectLayer('consumables');
+        if (consumableLayer) {
+            consumableLayer.objects.forEach(obj => {
+                if (obj.name === 'consumable') {
+                    // Elegir tipo aleatorio sin repetición
+                    let selectedType;
+                    if (this.availableConsumableTypes.length > 0) {
+                        const randomIndex = Phaser.Math.Between(0, this.availableConsumableTypes.length - 1);
+                        selectedType = this.availableConsumableTypes.splice(randomIndex, 1)[0];
+                        this.usedConsumableTypes.push(selectedType);
+                    } else {
+                        // Si se agotaron, resetear y permitir repeticiones
+                        this.availableConsumableTypes = [...this.usedConsumableTypes];
+                        this.usedConsumableTypes = [];
+                        const randomIndex = Phaser.Math.Between(0, this.availableConsumableTypes.length - 1);
+                        selectedType = this.availableConsumableTypes.splice(randomIndex, 1)[0];
+                        this.usedConsumableTypes.push(selectedType);
+                    }
+
+                    // Crear el consumible basado en el tipo
+                    this.createConsumable(selectedType, obj.x * SCALE, obj.y * SCALE);
+                }
+            });
+        }
 
 
         // Eventos de audio para todos los enemigos
@@ -963,6 +1011,31 @@ export default class MainScene extends Phaser.Scene {
         }
 
         console.log(`¡El pato recibió daño! Daño: ${damage}, Vida restante: ${duck.health}, Plumas restantes: ${duck.feathers}`);
+    }
+
+    /**
+     * Crea un consumible basado en el tipo especificado
+     * @param {string} type - Tipo del consumible ('bread', 'health_potion', etc.)
+     * @param {number} x - Posición X
+     * @param {number} y - Posición Y
+     */
+    createConsumable(type, x, y) {
+        switch (type) {
+            case 'bread':
+                new Bread(this, x, y);
+                break;
+            case 'health_potion':
+                new HealthPotion(this, x, y);
+                break;
+            case 'mana_potion':
+                new ManaPotion(this, x, y);
+                break;
+            case 'speed_potion':
+                new SpeedPotion(this, x, y);
+                break;
+            default:
+                console.warn(`Tipo de consumible desconocido: ${type}`);
+        }
     }
 
 }

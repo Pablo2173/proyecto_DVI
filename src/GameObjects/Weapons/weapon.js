@@ -41,7 +41,8 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         this.lastAttackTime = 0;
         this.isAttacking = false;
 
-        // ── Radios de combate ──
+        // ── Método para obtener daño con multiplicadores ──
+        this.getDamage = () => this.damage * (this.owner.damageMultiplier || 1);
         this.range = config.range ?? 800;
         this.optimalDistance = config.optimalDistance ?? this.range * 0.7;
         this.accuracy = Phaser.Math.Clamp(config.accuracy ?? 0, 0, 180);
@@ -218,7 +219,7 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
             direction,
             speed: this.projectileSpeed,
             range: this.range,
-            damage: this.damage,
+            damage: this.getDamage(),
             owner: this.owner,
             team: this.owner?.team ?? 'neutral'
         });

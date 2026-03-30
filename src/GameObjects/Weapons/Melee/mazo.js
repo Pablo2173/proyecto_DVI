@@ -6,31 +6,31 @@ import mazoSprite from '../../../../assets/sprites/Weapons/mazo.png';
 
 export default class Mazo extends Weapon {
 
-    static CHARGE_DURATION  = 3000;  // ~3 s para carga máxima
+    static CHARGE_DURATION = 3000;  // ~3 s para carga máxima
     static MIN_SPEED_FACTOR = 0.2;   // velocidad mínima del pato al máx. carga
 
     constructor(scene, owner, bar = null) {
         super(scene, owner, {
-            texture:         'mazo',
-            isRanged:        false,
-            damage:          45,
-            attackSpeed:     500,
-            range:           90,
-            optimalDistance:  65,
-            swingAngle:      70,
-            swingDuration:   180,
-            scale:           1.2,
-            debug:           true,
-            bar:             bar
+            texture: 'mazo',
+            isRanged: false,
+            damage: 45,
+            attackSpeed: 500,
+            range: 90,
+            optimalDistance: 65,
+            swingAngle: 70,
+            swingDuration: 180,
+            scale: 1.2,
+            debug: true,
+            bar: bar
         });
 
         // ── Estado de carga ──
-        this.isCharging       = false;
-        this.isSlamming       = false;
-        this.chargeStartTime  = 0;
-        this.chargeLevel      = 0;   // 0..1
+        this.isCharging = false;
+        this.isSlamming = false;
+        this.chargeStartTime = 0;
+        this.chargeLevel = 0;   // 0..1
         this.originalDuckSpeed = null;
-        this.baseRange        = this.range;  // radio mínimo (sin carga)
+        this.baseRange = this.range;  // radio mínimo (sin carga)
 
         // Gráficos del círculo de rango dinámico (rojo)
         this.rangeCircleGfx = scene.add.graphics();
@@ -52,10 +52,10 @@ export default class Mazo extends Weapon {
         if (this.isEnemy) { super.attack(); return; }
         if (!this._canAttack()) return;
 
-        this.isCharging       = true;
-        this.isAttacking      = true;   // bloquea _canAttack() y on_wait()
-        this.chargeStartTime  = this.scene.time.now;
-        this.chargeLevel      = 0;
+        this.isCharging = true;
+        this.isAttacking = true;   // bloquea _canAttack() y on_wait()
+        this.chargeStartTime = this.scene.time.now;
+        this.chargeLevel = 0;
         this.originalDuckSpeed = this.owner._speed;
 
         if (this.bar) this.bar.setEmpty();
@@ -114,8 +114,8 @@ export default class Mazo extends Weapon {
 
         // ── Elevar el mazo (arco más corto hacia -90° = arriba) ──
         const cur = this.angle;
-        let diff  = -90 - cur;
-        while (diff >  180) diff -= 360;
+        let diff = -90 - cur;
+        while (diff > 180) diff -= 360;
         while (diff < -180) diff += 360;
         const elevated = cur + diff * this.chargeLevel;
         this.setAngle(elevated);
@@ -140,7 +140,7 @@ export default class Mazo extends Weapon {
         const impactRadius = this.baseRange * (1 + this.chargeLevel);
 
         // Daño escala con la carga (50 % – 200 % del daño base)
-        const impactDamage = this.damage * (0.5 + this.chargeLevel * 1.5);
+        const impactDamage = this.getDamage() * (0.5 + this.chargeLevel * 1.5);
 
         // Crear impacto bajo el pato
         new MazoImpact(this.scene, this.owner.x, this.owner.y, {
@@ -156,7 +156,7 @@ export default class Mazo extends Weapon {
 
         // Cooldown
         this.lastAttackTime = this.scene.time.now;
-        this.chargeLevel    = 0;
+        this.chargeLevel = 0;
         if (this.bar) this.bar.setEmpty();
 
         // Animación de slam
@@ -166,8 +166,8 @@ export default class Mazo extends Weapon {
     // ── Cancelar carga (p.ej. al nadar) ──────
     _cancelCharge() {
         if (!this.isCharging) return;
-        this.isCharging  = false;
-        this.isSlamming  = false;
+        this.isCharging = false;
+        this.isSlamming = false;
         this.isAttacking = false;
         this.chargeLevel = 0;
 
@@ -187,7 +187,7 @@ export default class Mazo extends Weapon {
 
         this.scene.time.delayedCall(200, () => {
             if (!this.scene) return;
-            this.isSlamming  = false;
+            this.isSlamming = false;
             this.isAttacking = false;
         });
     }
@@ -198,7 +198,7 @@ export default class Mazo extends Weapon {
         this.bar.removeCharge(5);
         if (this.bar.isFull()) this.bar.startCooldown(5000);
         this.attackSpeed += 3;
-        this.accuracy    += 7;
+        this.accuracy += 7;
     }
 
     barCanShoot() {

@@ -109,7 +109,7 @@ export default class Ramita extends Weapon {
         if (typeof target.isDead === 'function' && target.isDead()) return;
 
         if (typeof target.takeDamage === 'function') {
-            target.takeDamage(this.damage);
+            target.takeDamage(this.getDamage());
         }
     }
 

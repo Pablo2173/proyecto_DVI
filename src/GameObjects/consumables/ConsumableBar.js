@@ -1,20 +1,22 @@
 import Phaser from 'phaser';
 // Importar consumibles directamente
 import Bread from './bread.js';
+import AttackPotion from './attackPotion.js';
+import SpeedPotion from './speedPotion.js';
 
 export default class ConsumableBar {
-    
+
     constructor(scene, duck) {
         this.scene = scene;
         this.duck = duck;
-        
+
         // Posiciones y dimensiones de los slots
         this.slotWidth = 80;
         this.slotHeight = 80;
         this.slotSpacing = 10;
         this.startX = 100; // Posición inicial en X
         this.startY = 30;  // Posición inicial en Y (dentro de up_bar)
-        
+
         this.slots = []; // Array de objetos gráficos para cada slot
         this.createSlots();
         this.setupKeyboardInput();
@@ -43,7 +45,7 @@ export default class ConsumableBar {
         for (let i = 0; i < 9; i++) {
             const x = this.startX + (i * (this.slotWidth + this.slotSpacing));
             const y = this.startY;
-            
+
             // Crear un contenedor para cada slot
             const slot = {
                 index: i + 1, // Números 1-9
@@ -53,19 +55,19 @@ export default class ConsumableBar {
                 text: null,
                 itemText: null
             };
-            
+
             // Fondo del slot (ahora es interactivo)
             slot.background = this.scene.add.rectangle(x, y, this.slotWidth, this.slotHeight, 0x333333, 0.7);
             slot.background.setOrigin(0);
             slot.background.setScrollFactor(0);
             slot.background.setStrokeStyle(2, 0xffffff, 0.5);
             slot.background.setInteractive();
-            
+
             // Evento de click en el slot
             slot.background.on('pointerdown', () => {
                 this.onSlotClick(i);
             });
-            
+
             // Número del slot (1-9)
             slot.text = this.scene.add.text(x + 5, y + 5, String(slot.index), {
                 fontSize: '16px',
@@ -74,10 +76,10 @@ export default class ConsumableBar {
             });
             slot.text.setOrigin(0);
             slot.text.setScrollFactor(0);
-            
+
             // Sprite del item (vacío por ahora)
             slot.itemSprite = null;
-            
+
             this.slots.push(slot);
         }
     }
@@ -104,19 +106,19 @@ export default class ConsumableBar {
         this.duck.consumables.forEach((consumable, index) => {
             if (index < this.slots.length) {
                 const slot = this.slots[index];
-                
-                // Crear sprite del consumible
+
+                // Crear imagen del consumible
                 const spriteKey = this.getSpriteKey(consumable.type);
                 if (spriteKey) {
-                    slot.itemSprite = this.scene.add.sprite(
-                        slot.x + this.slotWidth / 2, 
-                        slot.y + this.slotHeight / 2, 
+                    slot.itemSprite = this.scene.add.image(
+                        slot.x + this.slotWidth / 2,
+                        slot.y + this.slotHeight / 2,
                         spriteKey
                     );
                     slot.itemSprite.setScale(3); // Escalar para que sea x3 más grande
                     slot.itemSprite.setScrollFactor(0);
                 }
-                
+
                 // Cambiar color del borde si hay item
                 slot.background.setStrokeStyle(2, 0x00FF00, 1);
             }
@@ -164,7 +166,11 @@ export default class ConsumableBar {
      */
     getSpriteKey(type) {
         const spriteMap = {
-            'bread': 'bread_item'
+            'bread': 'bread_item',
+            'attack_potion': 'attack_potion',
+            'speed_potion': 'speed_potion',
+            'health_potion': 'bread_item', // Placeholder
+            'mana_potion': 'bread_item',   // Placeholder
             // Agregar más tipos aquí: 'health': 'health_potion', etc.
         };
         return spriteMap[type] || null;
@@ -180,13 +186,13 @@ export default class ConsumableBar {
         }
 
         const consumable = this.duck.consumables[slotIndex];
-        
+
         // Llamar al efecto de uso del consumable
         this.useConsumable(consumable);
-        
+
         // Remover del inventario
         this.duck.consumables.splice(slotIndex, 1);
-        
+
         // Actualizar la visualización
         this.update();
     }
@@ -210,6 +216,18 @@ export default class ConsumableBar {
             case 'bread':
                 this.useBreadEffect(duck);
                 break;
+            case 'attack_potion':
+                this.useAttackPotionEffect(duck);
+                break;
+            case 'speed_potion':
+                this.useSpeedPotionEffect(duck);
+                break;
+            case 'health_potion':
+                this.useHealthPotionEffect(duck);
+                break;
+            case 'mana_potion':
+                this.useManaPotionEffect(duck);
+                break;
             // Agregar más casos aquí para otros consumibles
             default:
                 console.log(`Efecto de uso no definido para: ${type}`);
@@ -222,16 +240,60 @@ export default class ConsumableBar {
      */
     useBreadEffect(duck) {
         console.log('Usando pan: creando nuevo pan cerca del pato');
-        
+
         // Generar posición aleatoria cerca del pato (radio de 100-200 píxeles)
         const angle = Math.random() * Math.PI * 2;
         const distance = 100 + Math.random() * 100; // Entre 100 y 200 píxeles
-        
+
         const x = duck.x + Math.cos(angle) * distance;
         const y = duck.y + Math.sin(angle) * distance;
-        
+
         // Crear nuevo pan directamente
         new Bread(duck.scene, x, y);
+    }
+
+    /**
+     * Efecto específico de la poción de ataque: duplica el daño por 30 segundos
+     * @param {Duck} duck - El pato que usa el consumible
+     */
+    useAttackPotionEffect(duck) {
+        console.log('Usando poción de ataque: duplicando daño por 30 segundos');
+
+        // Duplicar el multiplicador de daño
+        if (!duck.damageMultiplier) {
+            duck.damageMultiplier = 1;
+        }
+        duck.damageMultiplier *= 2;
+
+        // Resetear después de 30 segundos
+        duck.scene.time.delayedCall(30000, () => {
+            if (duck.damageMultiplier) {
+                duck.damageMultiplier /= 2;
+                console.log('Efecto de poción de ataque terminado: daño restaurado');
+            }
+        });
+    }
+
+    /**
+     * Efecto específico de la poción de velocidad: duplica la velocidad por 15 segundos
+     * @param {Duck} duck - El pato que usa el consumible
+     */
+    useSpeedPotionEffect(duck) {
+        console.log('Usando poción de velocidad: duplicando velocidad por 15 segundos');
+        
+        // Duplicar el multiplicador de velocidad
+        if (!duck.speedMultiplier) {
+            duck.speedMultiplier = 1;
+        }
+        duck.speedMultiplier *= 2;
+
+        // Resetear después de 15 segundos
+        duck.scene.time.delayedCall(15000, () => {
+            if (duck.speedMultiplier) {
+                duck.speedMultiplier /= 2;
+                console.log('Efecto de poción de velocidad terminado: velocidad restaurada');
+            }
+        });
     }
 
     /**

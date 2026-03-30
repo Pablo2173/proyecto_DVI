@@ -40,6 +40,13 @@ export default class Duck extends BaseCharacter {
         this.facingY = 0;
         this.scale = 3;
 
+        // Multiplicadores para consumibles
+        this.damageMultiplier = 1;
+        this.speedMultiplier = 1;
+
+        // Inventario de consumibles
+        this.consumables = [];
+
         // GESTIÓN PLUMAS / VIDA
         this.maxFeathers = 10;
         this.healthPerFeather = 50;
@@ -61,7 +68,7 @@ export default class Duck extends BaseCharacter {
                 this.body.setAllowGravity(false); // Sin gravedad porque estamos haciendo un top-down
                 this.body.setImmovable(false);    // Basicamente lo pongo a false para que le puedan empujar
 
-                this.body.setCircle(6, 6); 
+                this.body.setCircle(6, 6);
                 this.body.setOffset(9, 13);
             }
         }
@@ -256,7 +263,7 @@ export default class Duck extends BaseCharacter {
         }
 
         const isDashing = this.state === DUCK_STATE.DASHING;
-        const speed = isDashing ? this.dashSpeed : this._speed;
+        const speed = (isDashing ? this.dashSpeed : this._speed) * this.speedMultiplier;
 
         let moveDirX = vx;
         let moveDirY = vy;
