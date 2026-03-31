@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import Projectile from './projectile.js';
 
 /**
@@ -6,23 +7,116 @@ import Projectile from './projectile.js';
  * Swing más rápido y corto que el mazo.
  */
 export default class CuchilloSwing extends Projectile {
+    static TEXTURE_KEY = 'bala_mcuaktro'; //cambiar por la animacion de golpe cuando este lista
+
 
     constructor(scene, x, y, config = {}) {
-        super(scene, x, y, null, { damage: config.damage ?? 25, collisionRadius: 20 });
+        super(scene, x, y, CuchilloSwing.TEXTURE_KEY, {
+            damage: config.damage ?? 25,
+            speed: 0,
+            range: 99999,
+            collisionRadius: 1
+        });
 
         this.owner          = config.owner;
-        this.duration       = config.duration      ?? 120;
+        this.team           = config.team ?? (this.owner ? this.owner.team : 'neutral');
+        this.duration       = Math.max(config.duration ?? 120, 500);
         this.swingAmplitude = config.swingAngle    ?? Math.PI * 0.6;   // 108°
-        this.radius         = config.radius        ?? 36;
+        this.radius         = config.radius        ?? Math.floor((config.range ?? 200) / 1.25);
         this.baseRotation   = config.weaponRotation ?? 0;
+        this.attackArcDeg   = config.attackArcDeg  ?? 60;
+        this.hitRange       = config.range         ?? 200;
         this.startTime      = scene.time.now;
 
-        this.setVisible(false);
+        this.setVisible(true);
+        this.setDepth(9997);
+        this.setScale(config.spriteScale ?? 3.5);
+        this.setAlpha(1);
         this.speedX = 0;
         this.speedY = 0;
+
+        if (scene.projectiles) {
+            scene.projectiles.remove(this);
+        }
+
+        if (this.body) {
+            this.body.setEnable(false);
+        }
+
+        this._applyQuarterCircleDamage();
     }
 
-    _update(time, delta) {
+    // esta funcion es la que crea el proyectil y comprueba si hay un enemigo para aplicarle el daño
+    _applyQuarterCircleDamage() {
+        const ownerX = this.owner?.x ?? this.x;
+        const ownerY = this.owner?.y ?? this.y;
+        const forwardAngle = this.baseRotation;
+        const halfArc = Phaser.Math.DegToRad(this.attackArcDeg / 2);
+
+        const targets = this._getPotentialTargets();
+        for (const target of targets) {
+            if (!target || !target.active) continue;
+
+            const dist = Phaser.Math.Distance.Between(ownerX, ownerY, target.x, target.y);
+            if (dist > this.hitRange) continue;
+
+            const toTarget = Phaser.Math.Angle.Between(ownerX, ownerY, target.x, target.y);
+            const delta = Phaser.Math.Angle.Wrap(toTarget - forwardAngle);
+            if (Math.abs(delta) > halfArc) continue;
+
+            this._applyDamageToTarget(target);
+        }
+    }
+
+    _getPotentialTargets() {
+        if (this.owner?.team === 'ally') {
+            return this.scene?.enemies ?? [];
+        }
+
+        const duck = this.scene?.duck;
+        return duck ? [duck] : [];
+    }
+
+    // aqui compruebo para aplicar el daño y el retroceso al enemigo
+    _applyDamageToTarget(target) {
+        if (target.team && this.owner?.team && target.team === this.owner.team) return;
+
+        if (typeof target.isDead === 'function' && target.isDead()) return;
+
+        if (typeof target.takeDamage === 'function') {
+            target.takeDamage(this.damage);
+            this._applyKnockback(target);
+        }
+    }
+
+    // Empuja al objetivo en la direccion opuesta al atacante
+    _applyKnockback(target) {
+        if (!target || !target.body || !this.owner) return;
+
+        const dx = target.x - this.owner.x;
+        const dy = target.y - this.owner.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist <= 0.0001) return;
+
+        const nx = dx / dist;
+        const ny = dy / dist;
+
+        if (typeof target.applyKnockback === 'function') {
+            target.applyKnockback(nx, ny, 180, 180);
+            return;
+        }
+
+        const knockbackSpeed = 180;
+        if (typeof target.body.setVelocity === 'function') {
+            target.body.setVelocity(
+                nx * knockbackSpeed,
+                ny * knockbackSpeed
+            );
+        }
+    }
+
+    // rota el proyectil para dar ese toque de movimiento
+    _update(time, _delta) {
         if (!this.active) return;
 
         const elapsed = time - this.startTime;
@@ -40,5 +134,7 @@ export default class CuchilloSwing extends Projectile {
 
         this.x = ownerX + Math.cos(angle) * this.radius;
         this.y = ownerY + Math.sin(angle) * this.radius;
+        this.setRotation(angle);
+        this.setAlpha(1 - progress * 0.45);
     }
 }

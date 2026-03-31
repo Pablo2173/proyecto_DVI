@@ -56,6 +56,7 @@ export default class Enemy extends BaseCharacter {
         this._state = StatusEnemy.IDLE;
         this._movementType = movementType;
         this._movementData = null; // para almacenar datos específicos del tipo de movimiento (ej. puntos de patrulla)
+        this._knockbackUntil = 0;
 
         this.weaponMap = {
             arco: Arco,
@@ -135,6 +136,20 @@ export default class Enemy extends BaseCharacter {
      */
     stop() {
         this.body?.setVelocity(0, 0);
+    }
+
+    applyKnockback(nx, ny, speed = 100, duration = 120) {
+        if (!this.body) return;
+        if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
+
+        const length = Math.hypot(nx, ny);
+        if (length <= 0.0001) return;
+
+        const dirX = nx / length;
+        const dirY = ny / length;
+
+        this._knockbackUntil = (this.scene?.time?.now ?? 0) + duration;
+        this.body.setVelocity(dirX * speed, dirY * speed);
     }
 
     setVisionRadius(radius) {
@@ -405,6 +420,10 @@ export default class Enemy extends BaseCharacter {
             this.moveTowards(target);
         } else {
             this.stop();
+            // Atacar cuando estamos en rango óptimo
+            if (this.weapon && typeof this.weapon.attack === 'function') {
+                this.weapon.attack();
+            }
         }
         this.setFlipX(this.x >= target.x);
     }
@@ -542,8 +561,10 @@ export default class Enemy extends BaseCharacter {
     */
 
     preUpdate(time, delta) {
+        const isUnderKnockback = time < this._knockbackUntil;
+
         // Ejecutar movimiento si está en IDLE
-        if (this._state === StatusEnemy.IDLE && this._movementType) {
+        if (!isUnderKnockback && this._state === StatusEnemy.IDLE && this._movementType) {
             switch (this._movementType) {
                 case 'pointToPoint':
                     this.movementPointToPoint(this._movementData?.x1 || this.x, this._movementData?.y1 || this.y);
@@ -555,7 +576,7 @@ export default class Enemy extends BaseCharacter {
                     this.movementStayAndLook();
                     break;
             }
-        } else if (this.isAlerted()) {
+        } else if (!isUnderKnockback && this.isAlerted()) {
             if (this.scene.duck) this.movementAlerted(this.scene.duck);
         }
 
