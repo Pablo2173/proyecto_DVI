@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import Weapon from '../weapon.js';
 import ramitaSprite from '../../../../assets/sprites/Weapons/ramita.png';
+import RamitaSwing from '../../Projectiles/ramita_swing.js';
 
 export default class Ramita extends Weapon {
     constructor(scene, owner, bar = null) {
@@ -67,50 +68,20 @@ export default class Ramita extends Weapon {
         if (!this._canAttack()) return;
         this.lastAttackTime = this.scene.time.now;
 
-        this._applyQuarterCircleDamage();
+        new RamitaSwing(this.scene, this.owner.x, this.owner.y, {
+            owner: this.owner,
+            team: this.owner?.team ?? 'neutral',
+            damage: this.getDamage(),
+            range: this.range,
+            attackArcDeg: this.attackArcDeg,
+            weaponRotation: this.rotation,
+            duration: this.swingDuration,
+            swingAngle: Phaser.Math.DegToRad(this.swingAngle)
+        });
+
         this._quarterSwingAnimation();
 
         this.on_shoot();
-    }
-
-    _applyQuarterCircleDamage() {
-        const ownerX = this.owner.x;
-        const ownerY = this.owner.y;
-        const forwardAngle = this.rotation;
-        const halfArc = Phaser.Math.DegToRad(this.attackArcDeg / 2);
-
-        const targets = this._getPotentialTargets();
-        for (const target of targets) {
-            if (!target || !target.active) continue;
-
-            const dist = Phaser.Math.Distance.Between(ownerX, ownerY, target.x, target.y);
-            if (dist > this.range) continue;
-
-            const toTarget = Phaser.Math.Angle.Between(ownerX, ownerY, target.x, target.y);
-            const delta = Phaser.Math.Angle.Wrap(toTarget - forwardAngle);
-            if (Math.abs(delta) > halfArc) continue;
-
-            this._applyDamageToTarget(target);
-        }
-    }
-
-    _getPotentialTargets() {
-        if (this.owner?.team === 'ally') {
-            return this.scene?.enemies ?? [];
-        }
-
-        const duck = this.scene?.duck;
-        return duck ? [duck] : [];
-    }
-
-    _applyDamageToTarget(target) {
-        if (target.team && this.owner?.team && target.team === this.owner.team) return;
-
-        if (typeof target.isDead === 'function' && target.isDead()) return;
-
-        if (typeof target.takeDamage === 'function') {
-            target.takeDamage(this.getDamage());
-        }
     }
 
     _quarterSwingAnimation() {

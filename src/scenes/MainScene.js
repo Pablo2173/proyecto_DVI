@@ -16,7 +16,7 @@ import Bala from '../GameObjects/Projectiles/bala.js';
 import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
 import Bread from '../GameObjects/consumables/bread.js';
 import AttackPotion from '../GameObjects/consumables/attackPotion.js';
-import SpeedPotion from '../GameObjects/consumables/speedPotion.js';
+import SpeedPotion from '../GameObjects/consumables/SpeedPotion.js';
 
 import Enemy from '../GameObjects/enemy.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
