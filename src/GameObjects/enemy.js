@@ -58,7 +58,7 @@ export default class Enemy extends BaseCharacter {
         this._movementType = movementType;
         this._movementData = null; // para almacenar datos específicos del tipo de movimiento (ej. puntos de patrulla)
         this._knockbackUntil = 0;
-        this._showVision = false;
+        this._showVision = true;
         this._visionGraphics = scene.add.graphics();
 
         this.weaponMap = {

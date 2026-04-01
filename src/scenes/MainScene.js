@@ -637,7 +637,10 @@ export default class MainScene extends Phaser.Scene {
                     props.texture ?? 'enemy',
                     null,
                     props.weapon ?? 'arco',
-                    props.movementType ?? 'stay'
+                    props.movementType ?? 'stay',
+                    props.visionRadius,
+                    props.hp,
+                    props.speed
                 );
 
                 this.add.existing(enemy);
@@ -831,6 +834,7 @@ export default class MainScene extends Phaser.Scene {
         // 70% hacia el pato, 30% hacia el ratón
         // ─────────────────────────────────────────
         if (this.duck && this.duck.active) {
+            this.input.activePointer.updateWorldPoint(this.cameras.main);
             const mouseX = this.input.activePointer.worldX;
             const mouseY = this.input.activePointer.worldY;
 

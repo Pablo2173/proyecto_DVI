@@ -5,7 +5,7 @@ import EscobaSwing from '../../Projectiles/escoba_swing.js';
 import WeaponBar from '../../weaponBar.js';
 
 export default class Escoba extends Weapon {
-    static CHARGE_DURATION = 1500;
+    static CHARGE_DURATION = 2500;  // 2.5 segundos para carga completa
 
     constructor(scene, owner, bar = null) {
         // Detectar si el propietario es un enemigo para ajustar parámetros
@@ -14,8 +14,8 @@ export default class Escoba extends Weapon {
         super(scene, owner, {
             texture:         'escoba',
             isRanged:        false,
-            damage:          isEnemy ? 10 : 10,
-            attackSpeed:     isEnemy ? 1000 : 1000,
+            damage:          10,
+            attackSpeed:     1000,
             range:           isEnemy ? 100 : 200,
             optimalDistance: isEnemy ? 30 : 55,
             swingAngle:      80,
@@ -90,17 +90,20 @@ export default class Escoba extends Weapon {
         if (!this.isCharging) return;
         this.isCharging = false;
 
+        // Daño base + multiplicador según carga (1x hasta 1.5x)
+        const damageMult = 1 + (this.chargeLevel * 0.5);
+        
         new EscobaSwing(this.scene, this.owner.x, this.owner.y, {
             owner: this.owner,
             team: this.owner?.team ?? 'neutral',
-            damage: this.getDamage(),
+            damage: this.getDamage() * damageMult,
             range: this.range,
             attackArcDeg: this.attackArcDeg,
             weaponRotation: this.rotation,
             duration: this.swingDuration,
             swingAngle: Phaser.Math.DegToRad(this.swingAngle),
-            knockbackSpeed: 180 + (this.chargeLevel * 360),
-            knockbackDuration: 120 + (this.chargeLevel * 220)
+            knockbackSpeed: 250 + (this.chargeLevel * 500),
+            knockbackDuration: 150 + (this.chargeLevel * 300)
         });
 
         this.lastAttackTime = this.scene.time.now;

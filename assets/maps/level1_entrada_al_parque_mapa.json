@@ -155,7 +155,7 @@
                                 {
                                  "name":"visionRadius",
                                  "type":"int",
-                                 "value":150
+                                 "value":500
                                 }, 
                                 {
                                  "name":"weapon",

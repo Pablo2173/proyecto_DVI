@@ -2,15 +2,15 @@ import Enemy, { StatusEnemy } from "../enemy";
 import DropWeapon from "../Weapons/drops/dropWeapon.js";
 
 export default class Mapache extends Enemy {
-    constructor(scene, name, x, y, texture, frame, weapon, movementType) {
-        super(scene, name, x, y, texture, frame, 150, 100, 80, weapon, movementType);
+    constructor(scene, name, x, y, texture, frame, weapon, movementType, visionRadius = 150, hp = 100, speed = 80) {
+        super(scene, name, x, y, texture, frame, visionRadius, hp, speed, weapon, movementType);
         //visionRadius = 150, hp = 100, speed = 80 para el mapache
 
         // guardamos las estadisticas originales para poder restaurarlas al resucitar
         this._resurrected = false;
         this._originalTexture = texture;
-        this._originalVisionRadius = this._visionRadius;
-        this._maxHP = 100;
+        this._originalVisionRadius = visionRadius;
+        this._maxHP = hp;
         this._originalWeapon = weapon;
     }
 
