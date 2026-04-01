@@ -7,6 +7,7 @@ import Mcuaktro from './Weapons/Distance/mcuaktro.js';
 import Cuchillo from './Weapons/Melee/cuchillo.js';
 import Mazo from './Weapons/Melee/mazo.js';
 import Ramita from './Weapons/Melee/ramita.js';
+import Escoba from './Weapons/Melee/escoba.js';
 
 import DropWeapon from './Weapons/drops/dropWeapon.js'
 
@@ -57,21 +58,30 @@ export default class Enemy extends BaseCharacter {
         this._movementType = movementType;
         this._movementData = null; // para almacenar datos específicos del tipo de movimiento (ej. puntos de patrulla)
         this._knockbackUntil = 0;
+        this._showVision = false;
+        this._visionGraphics = scene.add.graphics();
 
         this.weaponMap = {
             arco: Arco,
             mcuaktro: Mcuaktro,
             cuchillo: Cuchillo,
             mazo: Mazo,
-            ramita: Ramita
+            ramita: Ramita,
+            escoba: Escoba
         };
 
         this._lastQuackTime = 0; // Para evitar alertas duplicadas del mismo quack
         this._quackCooldown = 100; // ms
         this._visionAlertFlashUntil = 0;
+        
+        // Delay antes de atacar cuando está en rango
+        this._inRangeStartTime = 0;    // Cuándo el jugador entró en rango por primera vez
+        this._attackDelay = 800;       // 1 segundo en ms antes de poder atacar
 
         // equipar arma si fue pasada
         this.equipWeapon(weapon);
+
+        this.drawVision({ color: 0xff0000, fillAlpha: 0.08 });
     }
 
     mostrarNombre() {
@@ -179,12 +189,9 @@ export default class Enemy extends BaseCharacter {
         return Math.abs(diff) <= this._visionAngle / 2;
     }
 
-    // Dibuja el radio de visión usando un Phaser 3 Graphics.
-    // Parámetros:
-    //  - graphics: Phaser.GameObjects.Graphics (requerido)
-    //  - options: { color, fillAlpha, lineAlpha, lineWidth, clearBefore }
-    drawVision(graphics, options = {}) {
-        if (!graphics || typeof graphics.clear !== 'function') return;
+    // Dibuja el radio de visión usando el Graphics propio del enemigo.
+    drawVision(options = {}) {
+        if (!this._visionGraphics || typeof this._visionGraphics.clear !== 'function') return;
         const {
             color = 0x00ff00,
             fillAlpha = 0.15,
@@ -193,7 +200,11 @@ export default class Enemy extends BaseCharacter {
             clearBefore = true
         } = options;
 
-        if (clearBefore) graphics.clear();
+        if (clearBefore) this._visionGraphics.clear();
+
+        if (!this._showVision || this._state === StatusEnemy.DEAD || this._visionRadius <= 0) {
+            return;
+        }
 
         const px = this.x;
         const py = this.y;
@@ -202,26 +213,26 @@ export default class Enemy extends BaseCharacter {
         const endAngle = this._facingAngle + (this._visionAngle / 2);
 
         // Si Graphics soporta arc/path
-        if (typeof graphics.beginPath === 'function' && typeof graphics.arc === 'function' && typeof graphics.fillPath === 'function') {
-            graphics.fillStyle(color, fillAlpha);
-            graphics.lineStyle(lineWidth, color, lineAlpha);
-            graphics.beginPath();
-            graphics.moveTo(px, py);
-            graphics.arc(px, py, this._visionRadius, startAngle, endAngle, false);
-            graphics.closePath();
-            graphics.fillPath();
-            graphics.strokePath();
+        if (typeof this._visionGraphics.beginPath === 'function' && typeof this._visionGraphics.arc === 'function' && typeof this._visionGraphics.fillPath === 'function') {
+            this._visionGraphics.fillStyle(color, fillAlpha);
+            this._visionGraphics.lineStyle(lineWidth, color, lineAlpha);
+            this._visionGraphics.beginPath();
+            this._visionGraphics.moveTo(px, py);
+            this._visionGraphics.arc(px, py, this._visionRadius, startAngle, endAngle, false);
+            this._visionGraphics.closePath();
+            this._visionGraphics.fillPath();
+            this._visionGraphics.strokePath();
         } else {
             // Fallback: dibuja el círculo completo si no hay arc
-            if (typeof graphics.fillStyle === 'function') {
-                graphics.fillStyle(color, fillAlpha);
-                graphics.fillCircle(px, py, this._visionRadius);
-            } else if (typeof graphics.fillCircle === 'function') {
-                graphics.fillCircle(px, py, this._visionRadius);
+            if (typeof this._visionGraphics.fillStyle === 'function') {
+                this._visionGraphics.fillStyle(color, fillAlpha);
+                this._visionGraphics.fillCircle(px, py, this._visionRadius);
+            } else if (typeof this._visionGraphics.fillCircle === 'function') {
+                this._visionGraphics.fillCircle(px, py, this._visionRadius);
             }
-            if (typeof graphics.lineStyle === 'function' && typeof graphics.strokeCircle === 'function') {
-                graphics.lineStyle(lineWidth, color, lineAlpha);
-                graphics.strokeCircle(px, py, this._visionRadius);
+            if (typeof this._visionGraphics.lineStyle === 'function' && typeof this._visionGraphics.strokeCircle === 'function') {
+                this._visionGraphics.lineStyle(lineWidth, color, lineAlpha);
+                this._visionGraphics.strokeCircle(px, py, this._visionRadius);
             }
         }
     }
@@ -247,6 +258,7 @@ export default class Enemy extends BaseCharacter {
     updateAwareness(player, time = this.scene?.time?.now ?? 0) {
         this.detectAndAlert(player, time);
         this._updateVisionAlertFlash(time);
+        this.drawVision({ color: 0xff0000, fillAlpha: 0.08 });
     }
 
     _updateVisionAlertFlash(time) {
@@ -374,6 +386,7 @@ export default class Enemy extends BaseCharacter {
 
         // deshabilitar visión y otras lógicas
         this._visionRadius = 0;
+        this.drawVision();
 
         // destruir después de 10 segundos (10000 ms)
         this.scene.time.delayedCall(10000, () => {
@@ -396,6 +409,10 @@ export default class Enemy extends BaseCharacter {
      * Sobre-escribimos destroy para también limpiar arma y barra.
      */
     destroy(fromScene) {
+        if (this._visionGraphics) {
+            this._visionGraphics.destroy();
+            this._visionGraphics = null;
+        }
         super.destroy(fromScene);
     }
 
@@ -416,13 +433,26 @@ export default class Enemy extends BaseCharacter {
 
         if (dist < optimalDist) {
             this.moveAwayFrom(target);
+            // Resetear el contador cuando el jugador sale del rango
+            this._inRangeStartTime = 0;
         } else if (dist > range) {
             this.moveTowards(target);
+            // Resetear el contador cuando el jugador sale del rango
+            this._inRangeStartTime = 0;
         } else {
             this.stop();
-            // Atacar cuando estamos en rango óptimo
+            // Atacar cuando estamos en rango óptimo, pero con delay de 1 segundo
             if (this.weapon && typeof this.weapon.attack === 'function') {
-                this.weapon.attack();
+                // Si es la primera vez que detectamos al jugador en rango, iniciar el contador
+                if (this._inRangeStartTime === 0) {
+                    this._inRangeStartTime = this.scene.time.now;
+                }
+                
+                // Verificar si ya pasó el delay
+                const timeSinceInRange = this.scene.time.now - this._inRangeStartTime;
+                if (timeSinceInRange >= this._attackDelay) {
+                    this.weapon.attack();
+                }
             }
         }
         this.setFlipX(this.x >= target.x);

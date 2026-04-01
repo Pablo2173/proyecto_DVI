@@ -8,6 +8,7 @@ import Mcuaktro from './Weapons/Distance/mcuaktro.js';
 import Cuchillo from './Weapons/Melee/cuchillo.js';
 import Mazo from './Weapons/Melee/mazo.js';
 import Ramita from './Weapons/Melee/ramita.js';
+import Escoba from './Weapons/Melee/escoba.js';
 
 
 export const DUCK_STATE = Object.freeze({
@@ -27,7 +28,8 @@ export default class Duck extends BaseCharacter {
             mcuaktro: Mcuaktro,
             cuchillo: Cuchillo,
             mazo: Mazo,
-            ramita: Ramita
+            ramita: Ramita,
+            escoba: Escoba
         };
 
         this._speed = 320;

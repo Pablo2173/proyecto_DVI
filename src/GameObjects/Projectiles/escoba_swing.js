@@ -1,17 +1,13 @@
 import Phaser from 'phaser';
 import Projectile from './projectile.js';
 
-/**
- * CuchilloSwing — proyectil melee para el cuchillo.
- *
- * Swing más rápido y corto que el mazo.
- */
-export default class CuchilloSwing extends Projectile {
-    static TEXTURE_KEY = 'cuchillo'; //cambiar por la animacion de golpe cuando este lista
+
+export default class EscobaSwing extends Projectile {
+    static TEXTURE_KEY = 'escoba'; //cambiar por la animacion de golpe cuando este lista
 
 
     constructor(scene, x, y, config = {}) {
-        super(scene, x, y, CuchilloSwing.TEXTURE_KEY, {
+        super(scene, x, y, EscobaSwing.TEXTURE_KEY, {
             damage: config.damage ?? 25,
             speed: 0,
             range: 99999,
@@ -27,6 +23,8 @@ export default class CuchilloSwing extends Projectile {
         this.attackArcDeg   = config.attackArcDeg  ?? 60;
         this.hitRange       = config.range         ?? 200;
         this.startTime      = scene.time.now;
+        this.knockbackSpeed = config.knockbackSpeed ?? 180;
+        this.knockbackDuration = config.knockbackDuration ?? 180;
 
         this.setVisible(true);
         this.setDepth(9997);
@@ -102,15 +100,14 @@ export default class CuchilloSwing extends Projectile {
         const ny = dy / dist;
 
         if (typeof target.applyKnockback === 'function') {
-            target.applyKnockback(nx, ny, 180, 180);
+            target.applyKnockback(nx, ny, this.knockbackSpeed, this.knockbackDuration);
             return;
         }
 
-        const knockbackSpeed = 180;
         if (typeof target.body.setVelocity === 'function') {
             target.body.setVelocity(
-                nx * knockbackSpeed,
-                ny * knockbackSpeed
+                nx * this.knockbackSpeed,
+                ny * this.knockbackSpeed
             );
         }
     }

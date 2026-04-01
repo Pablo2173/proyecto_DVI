@@ -7,7 +7,7 @@ import Projectile from './projectile.js';
  * Muy rápido, radio pequeño, daño mínimo.
  */
 export default class RamitaSwing extends Projectile {
-    static TEXTURE_KEY = 'bala_mcuaktro';
+    static TEXTURE_KEY = 'ramita';
 
     constructor(scene, x, y, config = {}) {
         super(scene, x, y, RamitaSwing.TEXTURE_KEY, {
@@ -29,7 +29,7 @@ export default class RamitaSwing extends Projectile {
 
         this.setVisible(true);
         this.setDepth(9997);
-        this.setScale(config.spriteScale ?? 3.5);
+        this.setScale(config.spriteScale ?? 1.3);
         this.setAlpha(1);
         this.speedX = 0;
         this.speedY = 0;

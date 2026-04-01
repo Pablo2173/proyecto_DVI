@@ -7,6 +7,7 @@ import Mcuaktro from '../GameObjects/Weapons/Distance/mcuaktro.js';
 import Cuchillo from '../GameObjects/Weapons/Melee/cuchillo.js';
 import Mazo from '../GameObjects/Weapons/Melee/mazo.js';
 import Ramita from '../GameObjects/Weapons/Melee/ramita.js';
+import Escoba from '../GameObjects/Weapons/Melee/escoba.js';
 
 // Proyectiles
 import Flecha from '../GameObjects/Projectiles/flecha.js';
@@ -162,6 +163,7 @@ export default class MainScene extends Phaser.Scene {
         Ramita.preload(this);
         Flecha.preload(this);
         Bala.preload(this);
+        Escoba.preload(this);
 
         // Preload de consumibles
         Bread.preload(this);
@@ -517,7 +519,7 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         // PLAYER
         // ─────────────────────────────────────────
-        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, 'mcuaktro');
+        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, 'escoba');
 
         // ─────────────────────────────────────────
         // UI
@@ -608,7 +610,6 @@ export default class MainScene extends Phaser.Scene {
         // ENEMIGOS
         // ─────────────────────────────────────────
         this.enemies = [];
-        this.visionGraphics = this.add.graphics();
 
         const enemigosPorCapa = {
             'enemies/Mapache': Mapache,
@@ -814,9 +815,6 @@ export default class MainScene extends Phaser.Scene {
         // BLOQUEO TOTAL SI EL JUGADOR ESTÁ MUERTO
         // ─────────────────────────────────────────
         if (this.isPlayerDead) {
-            if (this.visionGraphics) {
-                this.visionGraphics.clear();
-            }
             return;
         }
 
@@ -865,19 +863,7 @@ export default class MainScene extends Phaser.Scene {
 
                 // Detección y feedback visual manejados por la propia clase Enemy
                 enemy.updateAwareness(this.duck, time);
-
-                // Debug del radio de visión
-                if (this.visionGraphics) {
-                    enemy.drawVision(this.visionGraphics, {
-                        color: 0xff0000,
-                        fillAlpha: 0.08
-                    });
-                }
             });
-        } else {
-            if (this.visionGraphics) {
-                this.visionGraphics.clear();
-            }
         }
 
     }
@@ -920,10 +906,6 @@ export default class MainScene extends Phaser.Scene {
         });
         */
 
-        if (this.visionGraphics) {
-            this.visionGraphics.clear();
-        }
-
         this.showDeathScreen();
         this.deathSound?.play();
 
@@ -938,11 +920,6 @@ export default class MainScene extends Phaser.Scene {
         if (this._onResize) {
             this.scale.off('resize', this._onResize, this);
             this._onResize = null;
-        }
-
-        if (this.visionGraphics) {
-            this.visionGraphics.destroy();
-            this.visionGraphics = null;
         }
 
         if (this.puddleDebug) {
