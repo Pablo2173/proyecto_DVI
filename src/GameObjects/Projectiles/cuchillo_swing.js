@@ -85,6 +85,7 @@ export default class CuchilloSwing extends Projectile {
 
         if (typeof target.takeDamage === 'function') {
             target.takeDamage(this.damage);
+            this.owner?.weapon?.onHitTarget?.(target);
             this._applyKnockback(target);
         }
     }

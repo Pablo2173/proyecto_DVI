@@ -1012,6 +1012,7 @@ export default class MainScene extends Phaser.Scene {
 
         const damage = projectile.damage ?? 1;
         enemy.takeDamage(damage);
+        projectile.owner?.weapon?.onHitTarget?.(enemy);
 
         if (!projectile.piercing) {
             projectile.destroy();
@@ -1044,6 +1045,7 @@ export default class MainScene extends Phaser.Scene {
 
         const damage = projectile.damage ?? 1;
         duck.takeDamage(damage);
+        projectile.owner?.weapon?.onHitTarget?.(duck);
 
         if (!projectile.piercing) {
             projectile.destroy();

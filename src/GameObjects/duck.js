@@ -16,7 +16,8 @@ export const DUCK_STATE = Object.freeze({
     WALKING: 1,
     DASHING: 2,
     QUACKING: 3,
-    SWIMMING: 4
+    SWIMMING: 4,
+    INVISIBLE: 5
 });
 
 export default class Duck extends BaseCharacter {
@@ -38,6 +39,9 @@ export default class Duck extends BaseCharacter {
         this.dashDuration = 200;
         this.lastDashTime = 0;
         this.state = DUCK_STATE.IDLE;
+        this.invisibleUntil = 0;
+        this.invisibleCooldownUntil = 0;
+        this.invisibleAlpha = 0.45;
         this.facingX = 1;
         this.facingY = 0;
         this.scale = 3;
@@ -216,6 +220,7 @@ export default class Duck extends BaseCharacter {
             case DUCK_STATE.WALKING: this.play('duck-walk', true); break;
             case DUCK_STATE.QUACKING: this.play('duck-cuack', true); break;
             case DUCK_STATE.DASHING: this.play('duck-dash', true); break;
+            case DUCK_STATE.INVISIBLE: this.play('duck-idle', true); break;
             case DUCK_STATE.SWIMMING: this.play('duck-idle', true); break;
         }
     }
@@ -234,8 +239,47 @@ export default class Duck extends BaseCharacter {
         this.setState(DUCK_STATE.DASHING);
 
         this.scene.time.delayedCall(this.dashDuration, () => {
-            if (this.state === DUCK_STATE.DASHING) this.setState(DUCK_STATE.IDLE);
+            if (this.state === DUCK_STATE.DASHING) {
+                this.weapon?.onDash?.();
+                if (this.state === DUCK_STATE.DASHING) this.setState(DUCK_STATE.IDLE);
+            }
         });
+    }
+
+    startInvisibleState(duration = 4000) {
+        if (!this.scene?.time) return;
+
+        const now = this.scene.time.now;
+        if (!this.canStartInvisible(now)) return;
+
+        this.invisibleUntil = Math.max(this.invisibleUntil, now + duration);
+        this.invisibleCooldownUntil = 0;
+        this.setState(DUCK_STATE.INVISIBLE);
+        this.setAlpha(this.invisibleAlpha);
+        this.weaponBar?.startCountdown(duration);
+    }
+
+    updateInvisibleState(time = this.scene?.time?.now ?? 0) {
+        if (this.state !== DUCK_STATE.INVISIBLE) return;
+
+        if (time < this.invisibleUntil) {
+            this.setAlpha(this.invisibleAlpha);
+            return;
+        }
+
+        this.invisibleUntil = 0;
+        this.setAlpha(1);
+        this.invisibleCooldownUntil = time + 10000;
+        this.setState(DUCK_STATE.IDLE);
+        this.weaponBar?.startRecharge(10000);
+    }
+
+    isInvisibleState() {
+        return this.state === DUCK_STATE.INVISIBLE;
+    }
+
+    canStartInvisible(time = this.scene?.time?.now ?? 0) {
+        return this.state !== DUCK_STATE.INVISIBLE && time >= this.invisibleCooldownUntil;
     }
 
     // ─────────────────────────────────────────
@@ -289,7 +333,7 @@ export default class Duck extends BaseCharacter {
                 this.y += velY * delta;
             }
 
-            if (!isDashing && (vx !== 0 || vy !== 0)) {
+            if (!isDashing && this.state !== DUCK_STATE.INVISIBLE && (vx !== 0 || vy !== 0)) {
                 this.facingX = vx;
                 this.facingY = vy;
                 if (this.state !== DUCK_STATE.SWIMMING) this.setState(DUCK_STATE.WALKING);
@@ -298,8 +342,16 @@ export default class Duck extends BaseCharacter {
             if (this.body) {
                 this.body.setVelocity(0, 0);
             }
-            if (this.state !== DUCK_STATE.QUACKING && this.state !== DUCK_STATE.SWIMMING) {
+            if (this.state !== DUCK_STATE.QUACKING && this.state !== DUCK_STATE.SWIMMING && this.state !== DUCK_STATE.INVISIBLE) {
                 this.setState(DUCK_STATE.IDLE);
+            }
+        }
+
+        if (this.state === DUCK_STATE.INVISIBLE) {
+            if (isMoving) {
+                this.play('duck-walk', true);
+            } else {
+                this.play('duck-idle', true);
             }
         }
 
@@ -311,6 +363,9 @@ export default class Duck extends BaseCharacter {
         if (this.weapon) {
             this.weapon.update();
         }
+
+        this.updateInvisibleState(time);
+        this.weaponBar?.update();
 
         // ── Detección de drops cercanos (tecla E) ──
         this._checkDropPickup();

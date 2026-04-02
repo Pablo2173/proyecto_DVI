@@ -9,8 +9,9 @@ export default class Mcuaktro extends Weapon {
             isRanged:        true,
             projectileClass: Bala,
             projectileSpeed: 900,
-            damage:          15,
+            damage:          8,
             attackSpeed:     200,   // cadencia alta
+            durability:      70,
             range:           500,
             optimalDistance: 350,
             scale:           1,

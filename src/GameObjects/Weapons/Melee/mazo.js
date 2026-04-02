@@ -13,8 +13,9 @@ export default class Mazo extends Weapon {
         super(scene, owner, {
             texture: 'mazo',
             isRanged: false,
-            damage: 45,
+            damage: 55,
             attackSpeed: 500,
+            durability: 10,
             range: 90,
             optimalDistance: 65,
             swingAngle: 70,

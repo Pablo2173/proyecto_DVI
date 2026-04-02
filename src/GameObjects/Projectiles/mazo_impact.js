@@ -51,6 +51,17 @@ export default class MazoImpact extends Projectile {
         this.gfx.fillCircle(this.x, this.y, this.impactRadius);
     }
 
+    _applyDamageToTarget(target) {
+        if (target.team && this.owner?.team && target.team === this.owner.team) return;
+
+        if (typeof target.isDead === 'function' && target.isDead()) return;
+
+        if (typeof target.takeDamage === 'function') {
+            target.takeDamage(this.damage);
+            this.owner?.weapon?.onHitTarget?.(target);
+        }
+    }
+
     _update(time, _delta) {
         if (!this.active) return;
 

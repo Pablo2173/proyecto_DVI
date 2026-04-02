@@ -14,9 +14,10 @@ export default class Escoba extends Weapon {
         super(scene, owner, {
             texture:         'escoba',
             isRanged:        false,
-            damage:          10,
-            attackSpeed:     1000,
-            range:           isEnemy ? 100 : 200,
+            damage:          13,
+            attackSpeed:     700,
+            durability:      12,
+            range:           isEnemy ? 150 : 200,
             optimalDistance: isEnemy ? 30 : 55,
             swingAngle:      80,
             swingDuration:   100,
