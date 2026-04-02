@@ -21,7 +21,7 @@ export const DUCK_STATE = Object.freeze({
 
 export default class Duck extends BaseCharacter {
 
-    constructor(scene, x, y, weaponKey = 'mcuaktro') {
+    constructor(scene, x, y, weaponKey = 'arco') {
         super(scene, x, y, 'idle_duck', 0, TEAM.ALLY);
         this.weaponMap = {
             arco: Arco,
@@ -345,6 +345,13 @@ export default class Duck extends BaseCharacter {
                 const consumable = consumables[i];
                 if (!consumable.active) continue;
 
+                // Si es una pluma, recoger automáticamente al pasar cerca
+                if (consumable.constructor.name === 'DropFeather' && consumable.isNear(this, 40)) {
+                    consumable.interact(this);
+                    return;
+                }
+
+                // Otros consumibles requieren pulsar E
                 if (consumable.isNear(this, 40) &&
                     this.scene.input.keyboard.checkDown(this.keyE, 250)) {
                     consumable.interact(this);

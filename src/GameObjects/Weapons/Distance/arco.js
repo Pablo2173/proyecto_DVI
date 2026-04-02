@@ -11,10 +11,12 @@ export default class Arco extends Weapon {
             texture:         'arco',
             isRanged:        true,
             projectileClass: Flecha,
+
             projectileSpeed: 400,
             damage:          20,
             attackSpeed:     500,    // para jugador, la carga controla el ritmo
             range:           800,
+
             optimalDistance: 280,
             scale:           1,
             spriteAngleOffset: 0,
