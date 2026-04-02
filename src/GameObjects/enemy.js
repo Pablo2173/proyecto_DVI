@@ -174,6 +174,7 @@ export default class Enemy extends BaseCharacter {
     canSee(target) {
         if (this._state === StatusEnemy.DEAD) return false;
         if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') return false;
+        if (typeof target.isInvisibleState === 'function' && target.isInvisibleState()) return false;
 
         const dx = target.x - this.x;
         const dy = target.y - this.y;
@@ -245,6 +246,11 @@ export default class Enemy extends BaseCharacter {
      */
     detectAndAlert(player, time = this.scene?.time?.now ?? 0) {
         if (!player) return false;
+        if (typeof player.isInvisibleState === 'function' && player.isInvisibleState()) {
+            this.resetAlertState();
+            return false;
+        }
+
         const seen = this.canSee(player);
         if (this._state === StatusEnemy.DEAD) return false;
         if (seen && this._state !== StatusEnemy.ALERTED) {
@@ -288,6 +294,10 @@ export default class Enemy extends BaseCharacter {
      */
     onAudioEvent(audioEvent) {
         if (!audioEvent || typeof audioEvent.time !== 'number') return;
+        if (typeof this.scene?.duck?.isInvisibleState === 'function' && this.scene.duck.isInvisibleState()) {
+            this.resetAlertState();
+            return;
+        }
 
         // Tipos de sonido que alertan al enemigo
         const alertingSounds = ['quack'];
@@ -328,6 +338,19 @@ export default class Enemy extends BaseCharacter {
 
     isStunned() {
         return this._state === StatusEnemy.STUNNED;
+    }
+
+    resetAlertState() {
+        if (this._state !== StatusEnemy.ALERTED) return;
+
+        this._state = StatusEnemy.IDLE;
+        this._visionAlertFlashUntil = 0;
+        this._inRangeStartTime = 0;
+        this.stop();
+
+        if (this.tintTopLeft !== 0xFF0000) {
+            this.clearTint();
+        }
     }
 
     canTakeDamage() {

@@ -14,6 +14,7 @@ export default class Arco extends Weapon {
             projectileSpeed: 400,
             damage:          20,
             attackSpeed:     500,    // para jugador, la carga controla el ritmo
+            durability:      20,
             range:           800,
             optimalDistance: 280,
             scale:           1,

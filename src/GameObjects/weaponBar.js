@@ -12,6 +12,11 @@ export default class WeaponBar {
 
         this.currentCharge = 0;
         this.cooldownTime = 0; // tiempo hasta el que está en cooldown
+        this.timerActive = false;
+        this.timerMode = 'countdown'; // countdown | recharge
+        this.timerStartTime = 0;
+        this.timerEndTime = 0;
+        this.timerDuration = 0;
 
         // Solo crear sprites si no es un enemigo (enemigos tienen barra invisible)
         if (!isEnemy) {
@@ -107,6 +112,35 @@ export default class WeaponBar {
     }
 
     update() {
+        if (this.timerActive) {
+            const now = this.scene.time.now;
+            const remaining = this.timerEndTime - now;
+
+            if (remaining > 0 && this.timerDuration > 0) {
+                const progress = Phaser.Math.Clamp(
+                    (now - this.timerStartTime) / this.timerDuration,
+                    0,
+                    1
+                );
+
+                this.currentCharge = this.timerMode === 'recharge'
+                    ? Phaser.Math.Clamp(progress * WeaponBar.MAX_CHARGE, 0, WeaponBar.MAX_CHARGE)
+                    : Phaser.Math.Clamp((1 - progress) * WeaponBar.MAX_CHARGE, 0, WeaponBar.MAX_CHARGE);
+                this.updateFill();
+            } else {
+                this.timerActive = false;
+                this.timerStartTime = 0;
+                this.timerEndTime = 0;
+                this.timerDuration = 0;
+                if (this.timerMode === 'recharge') {
+                    this.setFull();
+                } else {
+                    this.setEmpty();
+                }
+                this.timerMode = 'countdown';
+            }
+        }
+
         // Manejar cooldown de recarga
         if (this.cooldownTime > 0 && this.scene.time.now >= this.cooldownTime) {
             this.setFull();
@@ -129,6 +163,42 @@ export default class WeaponBar {
         this.currentCharge = 0;
         this.updateFill();
         this.cooldownTime = this.scene.time.now + ms;
+    }
+
+    startTimedEffect(duration = 0) {
+        if (duration <= 0) return;
+
+        this.timerActive = true;
+        this.timerMode = 'countdown';
+        this.timerStartTime = this.scene.time.now;
+        this.timerDuration = duration;
+        this.timerEndTime = this.timerStartTime + duration;
+        this.currentCharge = WeaponBar.MAX_CHARGE;
+        this.updateFill();
+    }
+
+    startCountdown(duration = 0) {
+        this.startTimedEffect(duration);
+    }
+
+    startRecharge(duration = 0) {
+        if (duration <= 0) return;
+
+        this.timerActive = true;
+        this.timerMode = 'recharge';
+        this.timerStartTime = this.scene.time.now;
+        this.timerDuration = duration;
+        this.timerEndTime = this.timerStartTime + duration;
+        this.currentCharge = 0;
+        this.updateFill();
+    }
+
+    clearTimedEffect() {
+        this.timerActive = false;
+        this.timerMode = 'countdown';
+        this.timerStartTime = 0;
+        this.timerEndTime = 0;
+        this.timerDuration = 0;
     }
 
     destroy() {

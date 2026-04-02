@@ -12,8 +12,9 @@ export default class Cuchillo extends Weapon {
             texture:         'cuchillo',
             isRanged:        false,
             damage:          isEnemy ? 20 : 25,
-            attackSpeed:     isEnemy ? 1000 : 1000,
-            range:           isEnemy ? 100 : 200,
+            attackSpeed:     1000,
+            durability:      12,
+            range:           isEnemy ? 150 : 200,
             optimalDistance: isEnemy ? 30 : 55,
             swingAngle:      80,
             swingDuration:   100,
@@ -47,6 +48,14 @@ export default class Cuchillo extends Weapon {
         this._quarterSwingAnimation();
 
         this.on_shoot();
+    }
+
+    onDash() {
+        if (!this.owner?.startInvisibleState) return;
+        if (!this.owner.canStartInvisible?.()) return;
+
+        this.owner.startInvisibleState(4000);
+        this.owner.scene?.enemies?.forEach(enemy => enemy?.resetAlertState?.());
     }
 
     _quarterSwingAnimation() {
