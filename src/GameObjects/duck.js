@@ -241,7 +241,14 @@ export default class Duck extends BaseCharacter {
         this.scene.time.delayedCall(this.dashDuration, () => {
             if (this.state === DUCK_STATE.DASHING) {
                 this.weapon?.onDash?.();
-                if (this.state === DUCK_STATE.DASHING) this.setState(DUCK_STATE.IDLE);
+                if (this.state === DUCK_STATE.DASHING) {
+                    if (this.invisibleUntil > this.scene.time.now) {
+                        this.setState(DUCK_STATE.INVISIBLE);
+                        this.setAlpha(this.invisibleAlpha);
+                    } else {
+                        this.setState(DUCK_STATE.IDLE);
+                    }
+                }
             }
         });
     }
@@ -279,7 +286,8 @@ export default class Duck extends BaseCharacter {
     }
 
     canStartInvisible(time = this.scene?.time?.now ?? 0) {
-        return this.state !== DUCK_STATE.INVISIBLE && time >= this.invisibleCooldownUntil;
+        const invisibleActive = time < this.invisibleUntil;
+        return !invisibleActive && this.state !== DUCK_STATE.INVISIBLE && time >= this.invisibleCooldownUntil;
     }
 
     // ─────────────────────────────────────────
@@ -333,10 +341,12 @@ export default class Duck extends BaseCharacter {
                 this.y += velY * delta;
             }
 
-            if (!isDashing && this.state !== DUCK_STATE.INVISIBLE && (vx !== 0 || vy !== 0)) {
+            if (!isDashing && (vx !== 0 || vy !== 0)) {
                 this.facingX = vx;
                 this.facingY = vy;
-                if (this.state !== DUCK_STATE.SWIMMING) this.setState(DUCK_STATE.WALKING);
+                if (this.state !== DUCK_STATE.INVISIBLE && this.state !== DUCK_STATE.SWIMMING) {
+                    this.setState(DUCK_STATE.WALKING);
+                }
             }
         } else {
             if (this.body) {

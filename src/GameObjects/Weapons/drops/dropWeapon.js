@@ -53,11 +53,13 @@ export default class DropWeapon extends DropItem {
         player.setWeapon(newWeapon);
         newWeapon.setBar(player.weaponBar);
 
-        // Siempre crear drop si el jugador tenía arma válida
+        // Crear drop solo si el arma anterior no es la ramita por defecto
         if (
             previousWeapon &&
             previousWeapon.constructor &&
-            previousWeapon.texture && previousWeapon.texture.key
+            previousWeapon.texture &&
+            previousWeapon.texture.key &&
+            previousWeapon.texture.key !== 'ramita'
         ) {
             new DropWeapon(scene, dropX, dropY, previousWeapon.constructor, previousWeapon.texture.key);
         }

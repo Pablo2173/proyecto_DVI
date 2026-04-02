@@ -84,6 +84,11 @@ import waterFountain from '../../assets/tilesets/water-fountain.png';
 import woodFenceInteriorCorner4 from '../../assets/tilesets/wood-fence-interior-corner-4.png';
 import tallGrassMiddle from '../../assets/tilesets/tall-grass-middle.png';
 import bush from '../../assets/tilesets/bush.png';
+import Overworld from '../../assets/tilesets/Overworld.png';
+import objects from '../../assets/tilesets/objects.png';
+import carGreenBack from '../../assets/tilesets/car-green-back.png';
+import carBlueBack from '../../assets/tilesets/car-blue-back.png';
+import truckRedFront from '../../assets/tilesets/truck-red-front.png';
 
 //Plumas
 import feather_icon from '../../assets/sprites/UI/pluma.png';
@@ -102,7 +107,7 @@ export default class MainScene extends Phaser.Scene {
         // ── Mapa ──
         this.load.tilemapTiledJSON('level1', mapaJson);
 
-        this.load.image('dark-grass-middle-middle', darkGrassMiddleMiddle);
+        //this.load.image('dark-grass-middle-middle', darkGrassMiddleMiddle);
         this.load.image('sidewalk-1', sidewalk1);
         this.load.image('asphalt-road-1', asphaltRoad1);
         this.load.image('asphalt-road-3', asphaltRoad3);
@@ -137,6 +142,12 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('wood-fence-interior-corner-4', woodFenceInteriorCorner4);
         this.load.image('tall-grass-middle', tallGrassMiddle);
         this.load.image('bush', bush);
+
+        this.load.image('Overworld', Overworld);
+        this.load.image('objects', objects);
+        this.load.image('car-green-back', carGreenBack);
+        this.load.image('car-blue-back', carBlueBack);
+        this.load.image('truck-red-front', truckRedFront);
 
         this.load.spritesheet('idle_duck', player_sprite, {
             frameWidth: 32,
@@ -410,13 +421,13 @@ export default class MainScene extends Phaser.Scene {
     }*/
 
     create() {
-        const SCALE = 3;
+        const SCALE = 4;
 
         // ─────────────────────────────────────────
         // CONFIG GENERAL DE LA ESCENA
         // ─────────────────────────────────────────
         this.isPlayerDead = false;
-        this.playerSpawn = { x: 1229, y: 5588 };
+        this.playerSpawn = { x: 1229, y: 7500 };
         this.positionText = null;
 
         // Limpia listeners anteriores por seguridad al reiniciar la escena
@@ -441,7 +452,8 @@ export default class MainScene extends Phaser.Scene {
             'wood-fence-interior-corner-2', 'wood-fence-interior-corner-3',
             'wood-fence-top-left-corner', 'apartment-building', 'grocery-store',
             'tree-1', 'small-bushes-blue-berries', 'water-fountain',
-            'wood-fence-interior-corner-4', 'tall-grass-middle', 'bush'
+            'wood-fence-interior-corner-4', 'tall-grass-middle', 'bush',
+            'Overworld', 'objects', 'car-green-back', 'car-blue-back', 'truck-red-front'   
         ];
 
         const tilesets = tilesetNames.map(name => map.addTilesetImage(name, name));
@@ -449,15 +461,38 @@ export default class MainScene extends Phaser.Scene {
         this.baseLayer = map.createLayer('base', tilesets, 0, 0);
         this.baseLayer.setScale(SCALE);
 
-        this.patronesLayer = map.createLayer('Capa de patrones 1', tilesets, 0, 0);
-        this.patronesLayer.setScale(SCALE);
+        this.patrones1Layer = map.createLayer('Capa de patrones 1', tilesets, 0, 0);
+        this.patrones1Layer.setScale(SCALE);
+
+        this.patrones2Layer = map.createLayer('Capa de patrones 2', tilesets, 0, 0);
+        this.patrones2Layer.setScale(SCALE);
+
+        this.zonasAcuaticasLayer = map.createLayer('Zonas aquaticas', tilesets, 0, 0);
+        this.zonasAcuaticasLayer.setScale(SCALE);
+
+        this.sombreado1Layer = map.createLayer('Sombreado1', tilesets, 0, 0);
+        this.sombreado1Layer.setScale(SCALE);
 
         this.colisionLayer = map.createLayer('Zonas con colision', tilesets, 0, 0);
         this.colisionLayer.setScale(SCALE);
 
-        this.esteticaLayer = map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
-        this.esteticaLayer.setScale(SCALE);
-        this.esteticaLayer.setDepth(200); //le he añadido esto para que el patete este por debajo
+        this.estetica1Layer = map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
+        this.estetica1Layer.setScale(SCALE);
+
+        this.vallaLayer = map.createLayer('Valla', tilesets, 0, 0);
+        this.vallaLayer.setScale(SCALE);
+
+        this.sombreado2Layer = map.createLayer('Sombreado2', tilesets, 0, 0);
+        this.sombreado2Layer.setScale(SCALE);
+        this.sombreado2Layer.setDepth(200);
+
+        this.estetica2Layer = map.createLayer('Objetos estéticos sin colision 2', tilesets, 0, 0);
+        this.estetica2Layer.setScale(SCALE);
+        this.estetica2Layer.setDepth(201); //le he añadido esto para que el patete este por debajo
+
+        this.techo1Layer = map.createLayer('Techo1', tilesets, 0, 0);
+        this.techo1Layer.setScale(SCALE);
+        this.techo1Layer.setDepth(202);
 
         // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
         // Esto evita depender de propiedades "collides" en cada tile del tileset.
@@ -534,7 +569,7 @@ export default class MainScene extends Phaser.Scene {
         // PLAYER
         // ─────────────────────────────────────────
 
-        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, 'escoba');
+        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, 'cuchillo');
 
 
         // ─────────────────────────────────────────
