@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 // Importar consumibles directamente
 import Bread from './bread.js';
 import AttackPotion from './attackPotion.js';
-import SpeedPotion from './SpeedPotion.js';
+import SpeedPotion from './speedPotion.js';
 
 export default class ConsumableBar {
 
@@ -81,7 +81,7 @@ export default class ConsumableBar {
 
 
             slot.text.setDepth(9102);
-            
+
 
             // Sprite del item (vacío por ahora)
             slot.itemSprite = null;

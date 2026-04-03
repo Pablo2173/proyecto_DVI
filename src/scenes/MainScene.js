@@ -19,8 +19,8 @@ import Bread from '../GameObjects/consumables/bread.js';
 
 import AttackPotion from '../GameObjects/consumables/attackPotion.js';
 
-import SpeedPotion from '../GameObjects/consumables/SpeedPotion.js';
-import SpeedAttackPotion from '../GameObjects/consumables/SpeedAttackPotion.js';
+import SpeedPotion from '../GameObjects/consumables/speedPotion.js';
+import SpeedAttackPotion from '../GameObjects/consumables/speedAttackPotion.js';
 
 
 import DropBread from '../GameObjects/consumables/dropBread.js';
@@ -455,7 +455,7 @@ export default class MainScene extends Phaser.Scene {
             'wood-fence-top-left-corner', 'apartment-building', 'grocery-store',
             'tree-1', 'small-bushes-blue-berries', 'water-fountain',
             'wood-fence-interior-corner-4', 'tall-grass-middle', 'bush',
-            'Overworld', 'objects', 'car-green-back', 'car-blue-back', 'truck-red-front'   
+            'Overworld', 'objects', 'car-green-back', 'car-blue-back', 'truck-red-front'
         ];
 
         const tilesets = tilesetNames.map(name => map.addTilesetImage(name, name));
@@ -996,7 +996,7 @@ export default class MainScene extends Phaser.Scene {
     _updateDuckSwimmingState() {
         if (!this.duck || !this.duck.active || !this.zonasAcuaticasLayer) return;
 
-        const tileSize = 16 * 4; 
+        const tileSize = 16 * 4;
         const tileX = Math.floor(this.duck.x / tileSize);
         const tileY = Math.floor(this.duck.y / tileSize);
 
