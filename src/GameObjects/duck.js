@@ -221,7 +221,7 @@ export default class Duck extends BaseCharacter {
             case DUCK_STATE.QUACKING: this.play('duck-cuack', true); break;
             case DUCK_STATE.DASHING: this.play('duck-dash', true); break;
             case DUCK_STATE.INVISIBLE: this.play('duck-idle', true); break;
-            case DUCK_STATE.SWIMMING: this.play('duck-idle', true); break;
+            case DUCK_STATE.SWIMMING: this.play('duck-swimming', true); break;
         }
     }
 

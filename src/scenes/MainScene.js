@@ -28,6 +28,7 @@ import DropMask from '../GameObjects/consumables/dropMask.js';
 
 
 import Enemy from '../GameObjects/enemy.js';
+import { DUCK_STATE } from '../GameObjects/duck.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
 import sprint_sprite from '../../assets/sprites/duck/sprint_duck.png';
 import cuack_sprite from '../../assets/sprites/duck/Cuack_duck.png';
@@ -427,7 +428,8 @@ export default class MainScene extends Phaser.Scene {
         // CONFIG GENERAL DE LA ESCENA
         // ─────────────────────────────────────────
         this.isPlayerDead = false;
-        this.playerSpawn = { x: 1229, y: 7500 };
+        this.playerSpawn = null;
+        this.playerWeapon = 'cuchillo';
         this.positionText = null;
 
         // Limpia listeners anteriores por seguridad al reiniciar la escena
@@ -493,6 +495,40 @@ export default class MainScene extends Phaser.Scene {
         this.techo1Layer = map.createLayer('Techo1', tilesets, 0, 0);
         this.techo1Layer.setScale(SCALE);
         this.techo1Layer.setDepth(202);
+
+        const duckLayer = map.getObjectLayer('duck');
+        if (!duckLayer || duckLayer.objects.length === 0) {
+            throw new Error('Falta la capa de objetos duck o esta vacia. Debes definir el jugador desde el mapa.');
+        }
+
+        const duckObj = duckLayer.objects.find(obj => (obj.name || '').trim().toLowerCase() === 'duck');
+        if (!duckObj) {
+            throw new Error('Falta un objeto llamado duck dentro de la capa duck.');
+        }
+
+        this.playerSpawn = {
+            x: duckObj.x * SCALE,
+            y: duckObj.y * SCALE
+        };
+
+        if (duckObj.properties) {
+            const duckProps = {};
+            duckObj.properties.forEach(p => duckProps[p.name] = p.value);
+            if (Object.prototype.hasOwnProperty.call(duckProps, 'weapon')) {
+                const weaponFromMap = duckProps.weapon;
+
+                if (weaponFromMap === null) {
+                    this.playerWeapon = 'ramita';
+                } else if (typeof weaponFromMap === 'string') {
+                    const normalizedWeapon = weaponFromMap.trim().toLowerCase();
+                    this.playerWeapon = normalizedWeapon === '' || normalizedWeapon === 'null'
+                        ? 'ramita'
+                        : normalizedWeapon;
+                } else {
+                    this.playerWeapon = weaponFromMap;
+                }
+            }
+        }
 
         // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
         // Esto evita depender de propiedades "collides" en cada tile del tileset.
@@ -569,7 +605,7 @@ export default class MainScene extends Phaser.Scene {
         // PLAYER
         // ─────────────────────────────────────────
 
-        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, 'cuchillo');
+        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon);
 
 
         // ─────────────────────────────────────────
@@ -664,28 +700,31 @@ export default class MainScene extends Phaser.Scene {
         // ENEMIGOS
         // ─────────────────────────────────────────
         this.enemies = [];
-
-        const enemigosPorCapa = {
-            'enemies/Mapache': Mapache,
-            'enemies/Zorro': Zorro,
-        };
-
-
-        Object.entries(enemigosPorCapa).forEach(([nombreCapa, Clase]) => {
-            const capa = map.getObjectLayer(nombreCapa);
-            if (!capa) return; // si la capa no existe, salta
-
-            capa.objects.forEach(obj => {
+        const enemiesLayer = map.getObjectLayer('enemies');
+        if (enemiesLayer) {
+            enemiesLayer.objects.forEach(obj => {
                 const props = {};
                 if (obj.properties) {
                     obj.properties.forEach(p => props[p.name] = p.value);
                 }
 
-                console.log('Creando enemigo:', obj.name, 'en', obj.x, obj.y, 'props:', props);
+                const enemyName = (obj.name || '').trim();
+                const enemyType = enemyName.toLowerCase();
+                const EnemyClass = {
+                    zorro: Zorro,
+                    mapache: Mapache
+                }[enemyType];
 
-                const enemy = new Clase(
+                if (!EnemyClass) {
+                    console.warn('Enemigo sin tipo válido en la capa enemies:', obj);
+                    return;
+                }
+
+                console.log('Creando enemigo:', enemyName, 'en', obj.x, obj.y, 'props:', props);
+
+                const enemy = new EnemyClass(
                     this,
-                    obj.name,
+                    enemyName,
                     obj.x * SCALE,
                     obj.y * SCALE,
                     props.texture ?? 'enemy',
@@ -700,9 +739,8 @@ export default class MainScene extends Phaser.Scene {
 
                 this.add.existing(enemy);
                 this.enemies.push(enemy);
-
             });
-        });
+        }
 
 
         // ─────────────────────────────────────────
@@ -885,6 +923,11 @@ export default class MainScene extends Phaser.Scene {
         }
 
         // ─────────────────────────────────────────
+        // ESTADO SWIMMING SEGÚN CAPA ACUÁTICA
+        // ─────────────────────────────────────────
+        this._updateDuckSwimmingState();
+
+        // ─────────────────────────────────────────
         // RECOGIDA DE CONSUMIBLES
         // Usa isNear() (igual que el duck con las plumas) para detectar rango.
         // - pickupType 'auto'     → interact() se llama inmediatamente (DropBread)
@@ -948,6 +991,28 @@ export default class MainScene extends Phaser.Scene {
             });
         }
 
+    }
+
+    _updateDuckSwimmingState() {
+        if (!this.duck || !this.duck.active || !this.zonasAcuaticasLayer) return;
+
+        const tileSize = 16 * 4; 
+        const tileX = Math.floor(this.duck.x / tileSize);
+        const tileY = Math.floor(this.duck.y / tileSize);
+
+        const waterTile = this.zonasAcuaticasLayer.getTileAt(tileX, tileY);
+        const isInWater = !!waterTile;
+
+        if (isInWater) {
+            if (this.duck.state !== DUCK_STATE.SWIMMING && this.duck.state !== DUCK_STATE.DASHING) {
+                this.duck.setState(DUCK_STATE.SWIMMING);
+            }
+            return;
+        }
+
+        if (this.duck.state === DUCK_STATE.SWIMMING) {
+            this.duck.setState(DUCK_STATE.IDLE);
+        }
     }
 
     showDeathScreen() {
