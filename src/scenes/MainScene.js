@@ -320,13 +320,17 @@ export default class MainScene extends Phaser.Scene {
             }
         });
 
-        // ── Enemigo ──
-        this.enemy = new Mapache(this, 'Mapache', 2000, 9500, 'enemy', null, 'mcuaktro'); //de momento el weapon se lo pongo a null hasta que este implementado
-        this.enemy.setFlipX(true);
+        // ── Enemigos desde rutas ──
+        this.enemies = this.physics.add.group();
+        this.setupEnemiesFromRoutes(SCALE);
 
-        // ── Eventos de audio para el enemigo ──
+        // ── Eventos de audio para todos los enemigos ──
         this.events.on('audio:event', (audioEvent) => {
-            if (this.enemy) this.enemy.onAudioEvent(audioEvent);
+            if (this.enemies) {
+                this.enemies.getChildren().forEach(enemy => {
+                    if (enemy) enemy.onAudioEvent(audioEvent);
+                });
+            }
         });
 
         // ── Graphics para radio de visión ──
@@ -382,15 +386,15 @@ export default class MainScene extends Phaser.Scene {
         );
 
         this.physics.add.collider(this.duck, colisionLayer); //colisiones del mapa
-        this.physics.add.collider(this.enemy, colisionLayer);
+        this.physics.add.collider(this.enemies, colisionLayer);
 
         // contacto enemigo → pato
-        this.physics.add.overlap(this.duck, this.enemy, (duck, enemy) => {
+        this.physics.add.overlap(this.duck, this.enemies, (duck, enemy) => {
             this._onEnemyHitDuck(duck, enemy);
         });
 
         // proyectil → enemigo
-        this.physics.add.overlap(this.projectiles, this.enemy, (projectile, enemy) => {
+        this.physics.add.overlap(this.projectiles, this.enemies, (projectile, enemy) => {
             this._onProjectileHitEnemy(projectile, enemy);
         });
 
@@ -438,7 +442,7 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         // MAPA
         // ─────────────────────────────────────────
-        const map = this.make.tilemap({
+        this.map = this.make.tilemap({
             key: 'level1',
             tileWidth: 16,
             tileHeight: 16
@@ -458,45 +462,45 @@ export default class MainScene extends Phaser.Scene {
             'Overworld', 'objects', 'car-green-back', 'car-blue-back', 'truck-red-front'
         ];
 
-        const tilesets = tilesetNames.map(name => map.addTilesetImage(name, name));
+        const tilesets = tilesetNames.map(name => this.map.addTilesetImage(name, name));
 
-        this.baseLayer = map.createLayer('base', tilesets, 0, 0);
+        this.baseLayer = this.map.createLayer('base', tilesets, 0, 0);
         this.baseLayer.setScale(SCALE);
 
-        this.patrones1Layer = map.createLayer('Capa de patrones 1', tilesets, 0, 0);
+        this.patrones1Layer = this.map.createLayer('Capa de patrones 1', tilesets, 0, 0);
         this.patrones1Layer.setScale(SCALE);
 
-        this.patrones2Layer = map.createLayer('Capa de patrones 2', tilesets, 0, 0);
+        this.patrones2Layer = this.map.createLayer('Capa de patrones 2', tilesets, 0, 0);
         this.patrones2Layer.setScale(SCALE);
 
-        this.zonasAcuaticasLayer = map.createLayer('Zonas aquaticas', tilesets, 0, 0);
+        this.zonasAcuaticasLayer = this.map.createLayer('Zonas aquaticas', tilesets, 0, 0);
         this.zonasAcuaticasLayer.setScale(SCALE);
 
-        this.sombreado1Layer = map.createLayer('Sombreado1', tilesets, 0, 0);
+        this.sombreado1Layer = this.map.createLayer('Sombreado1', tilesets, 0, 0);
         this.sombreado1Layer.setScale(SCALE);
 
-        this.colisionLayer = map.createLayer('Zonas con colision', tilesets, 0, 0);
+        this.colisionLayer = this.map.createLayer('Zonas con colision', tilesets, 0, 0);
         this.colisionLayer.setScale(SCALE);
 
-        this.estetica1Layer = map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
+        this.estetica1Layer = this.map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
         this.estetica1Layer.setScale(SCALE);
 
-        this.vallaLayer = map.createLayer('Valla', tilesets, 0, 0);
+        this.vallaLayer = this.map.createLayer('Valla', tilesets, 0, 0);
         this.vallaLayer.setScale(SCALE);
 
-        this.sombreado2Layer = map.createLayer('Sombreado2', tilesets, 0, 0);
+        this.sombreado2Layer = this.map.createLayer('Sombreado2', tilesets, 0, 0);
         this.sombreado2Layer.setScale(SCALE);
         this.sombreado2Layer.setDepth(200);
 
-        this.estetica2Layer = map.createLayer('Objetos estéticos sin colision 2', tilesets, 0, 0);
+        this.estetica2Layer = this.map.createLayer('Objetos estéticos sin colision 2', tilesets, 0, 0);
         this.estetica2Layer.setScale(SCALE);
         this.estetica2Layer.setDepth(201); //le he añadido esto para que el patete este por debajo
 
-        this.techo1Layer = map.createLayer('Techo1', tilesets, 0, 0);
+        this.techo1Layer = this.map.createLayer('Techo1', tilesets, 0, 0);
         this.techo1Layer.setScale(SCALE);
         this.techo1Layer.setDepth(202);
 
-        const duckLayer = map.getObjectLayer('duck');
+        const duckLayer = this.map.getObjectLayer('duck');
         if (!duckLayer || duckLayer.objects.length === 0) {
             throw new Error('Falta la capa de objetos duck o esta vacia. Debes definir el jugador desde el mapa.');
         }
@@ -534,8 +538,8 @@ export default class MainScene extends Phaser.Scene {
         // Esto evita depender de propiedades "collides" en cada tile del tileset.
         this.colisionLayer.setCollisionByExclusion([-1], true);
 
-        const worldWidth = map.widthInPixels * SCALE;
-        const worldHeight = map.heightInPixels * SCALE;
+        const worldWidth = this.map.widthInPixels * SCALE;
+        const worldHeight = this.map.heightInPixels * SCALE;
 
         this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
         this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
@@ -697,51 +701,10 @@ export default class MainScene extends Phaser.Scene {
         this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
 
         // ─────────────────────────────────────────
-        // ENEMIGOS
+        // ENEMIGOS DESDE RUTAS
         // ─────────────────────────────────────────
-        this.enemies = [];
-        const enemiesLayer = map.getObjectLayer('enemies');
-        if (enemiesLayer) {
-            enemiesLayer.objects.forEach(obj => {
-                const props = {};
-                if (obj.properties) {
-                    obj.properties.forEach(p => props[p.name] = p.value);
-                }
-
-                const enemyName = (obj.name || '').trim();
-                const enemyType = enemyName.toLowerCase();
-                const EnemyClass = {
-                    zorro: Zorro,
-                    mapache: Mapache
-                }[enemyType];
-
-                if (!EnemyClass) {
-                    console.warn('Enemigo sin tipo válido en la capa enemies:', obj);
-                    return;
-                }
-
-                console.log('Creando enemigo:', enemyName, 'en', obj.x, obj.y, 'props:', props);
-
-                const enemy = new EnemyClass(
-                    this,
-                    enemyName,
-                    obj.x * SCALE,
-                    obj.y * SCALE,
-                    props.texture ?? 'enemy',
-                    null,
-                    props.weapon ?? 'arco',
-                    props.movementType ?? 'stay',
-                    props.visionRadius,
-                    props.hp,
-                    props.speed,
-                    props.hasFeather ?? false
-                );
-
-                this.add.existing(enemy);
-                this.enemies.push(enemy);
-            });
-        }
-
+        this.enemies = this.physics.add.group();
+        this.setupEnemiesFromRoutes(SCALE);
 
         // ─────────────────────────────────────────
         // CONSUMIBLES DESDE TILED
@@ -750,7 +713,8 @@ export default class MainScene extends Phaser.Scene {
         this.availableConsumableTypes = ['bread', 'speed_potion', 'attack_potion', 'speed_attack_potion'];
         this.usedConsumableTypes = [];
 
-        const consumableLayer = map.getObjectLayer('consumables') || map.getObjectLayer('consummable') || map.getObjectLayer('consumable');
+        const consumableLayer = this.map.getObjectLayer('consumables') || this.map.getObjectLayer('consummable') || this.map.getObjectLayer('consumable');
+
         if (consumableLayer) {
             consumableLayer.objects.forEach(obj => {
                 const objectName = (obj.name || '').toLowerCase();
@@ -818,7 +782,7 @@ export default class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.duck, this.colisionLayer);
 
         // Colisiones con todos los enemigos
-        this.enemies.forEach(enemy => {
+        this.enemies.getChildren().forEach(enemy => {
             this.physics.add.collider(this.duck, enemy);
             this.physics.add.collider(enemy, this.colisionLayer);
             this.physics.add.overlap(this.projectiles, enemy, (projectile, en) => {
@@ -983,7 +947,7 @@ export default class MainScene extends Phaser.Scene {
         // IA / VISIÓN DEL ENEMIGO
         // ─────────────────────────────────────────
         if (this.duck && this.duck.active) {
-            this.enemies.forEach(enemy => {
+            this.enemies.getChildren().forEach(enemy => {
                 if (!enemy || !enemy.active || enemy.isDead?.()) return;
 
                 // Detección y feedback visual manejados por la propia clase Enemy
@@ -1152,6 +1116,113 @@ export default class MainScene extends Phaser.Scene {
         }
 
         console.log(`¡El pato recibió daño! Daño: ${damage}, Vida restante: ${duck.health}, Plumas restantes: ${duck.feathers}`);
+    }
+
+    /**
+     * Crea enemigos basándose en los polígonos de la capa "routes" en Tiled
+     * 
+     * Cada polígono DEBE tener las siguientes propiedades personalizadas en Tiled:
+     * - enemyType (string): "mapache" o "zorro"
+     * - weaponType (string): "cuchillo", "arco", "mazo", "ramita", "escoba", "mcuaktro"
+     * 
+     * @param {number} scale - Escala del mapa
+     */
+    setupEnemiesFromRoutes(scale) {
+        const routesLayer = this.map.getObjectLayer('routes');
+
+        if (!routesLayer || !routesLayer.objects) {
+            console.warn('⚠️ No se encontró la capa "routes" en el mapa');
+            return;
+        }
+
+        console.log(`📍 Capa routes encontrada con ${routesLayer.objects.length} objeto(s)`);
+
+        let enemyCount = 0;
+
+        routesLayer.objects.forEach((obj, index) => {
+            console.log(`\n🔍 Procesando objeto ${index}:`, obj);
+
+            // Validar que sea un polígono
+            if (!obj.polygon || !Array.isArray(obj.polygon) || obj.polygon.length < 2) {
+                console.warn(`⚠️ Objeto en routes ${index} no es un polígono válido (polygon: ${obj.polygon}), ignorando...`);
+                return;
+            }
+
+            console.log(`✓ Es polígono con ${obj.polygon.length} puntos`);
+
+            // Extraer propiedades - soporta varios formatos de Tiled
+            let enemyType = 'mapache';
+            let weaponType = 'cuchillo';
+
+            console.log(`📦 Propiedades del objeto:`, obj.properties);
+
+            // Formato 1: propiedades como array de objetos {name, value}
+            if (obj.properties && Array.isArray(obj.properties)) {
+                console.log(`  Format: Array de propiedades`);
+                obj.properties.forEach(prop => {
+                    console.log(`    - ${prop.name}: ${prop.value}`);
+                    if (prop.name === 'enemyType' && prop.value) enemyType = String(prop.value).toLowerCase();
+                    if (prop.name === 'weaponType' && prop.value) weaponType = String(prop.value).toLowerCase();
+                });
+            }
+            // Formato 2: propiedades como objeto directo
+            else if (obj.properties && typeof obj.properties === 'object') {
+                console.log(`  Format: Objeto directo`);
+                if (obj.properties.enemyType) enemyType = String(obj.properties.enemyType).toLowerCase();
+                if (obj.properties.weaponType) weaponType = String(obj.properties.weaponType).toLowerCase();
+            } else {
+                console.warn(`  ⚠️ Sin propiedades detectadas`);
+            }
+
+            console.log(`  → enemyType: ${enemyType}, weaponType: ${weaponType}`);
+
+            // Convertir puntos del polígono a coordenadas del mundo
+            const routePoints = obj.polygon.map(point => ({
+                x: (obj.x + point.x) * scale,
+                y: (obj.y + point.y) * scale
+            }));
+
+            const startX = routePoints[0].x;
+            const startY = routePoints[0].y;
+            const enemyName = `${enemyType.charAt(0).toUpperCase() + enemyType.slice(1)}_${index}`;
+
+            // Mapeo de tipos de armas a clases
+            const weaponClassMap = {
+                'arco': Arco,
+                'mcuaktro': Mcuaktro,
+                'cuchillo': Cuchillo,
+                'mazo': Mazo,
+                'ramita': Ramita,
+                'escoba': Escoba
+            };
+
+            const WeaponClass = weaponClassMap[weaponType] || Cuchillo;
+
+            // Crear el enemigo del tipo especificado
+            let enemy;
+            if (enemyType === 'zorro') {
+                enemy = new Zorro(this, enemyName, startX, startY, 'enemy', null, WeaponClass, 'followRoute');
+            } else {
+                enemy = new Mapache(this, enemyName, startX, startY, 'enemy', null, WeaponClass, 'followRoute');
+            }
+
+            // Asignar la ruta al enemigo
+            enemy._movementData = {
+                routePoints: routePoints,
+                currentPointIndex: 0,
+                pauseTimer: 0
+            };
+
+            this.enemies.add(enemy);
+            enemyCount++;
+
+            console.log(`✅ ${enemyName} (${enemyType} con ${weaponType}) creado en (${startX}, ${startY}) con ruta de ${routePoints.length} puntos`);
+        });
+
+        console.log(`\n📊 Total de enemigos creados: ${enemyCount}`);
+        if (enemyCount === 0) {
+            console.warn(`\n⚠️ SIN ENEMIGOS CREADOS. Revisa:\n  1. La capa se llama "routes" en Tiled? (case-sensitive)\n  2. Los objetos tienen propiedades "enemyType" y "weaponType"?\n  3. Son polígonos (polygon), no otros tipos de objeto?`);
+        }
     }
 
     /**

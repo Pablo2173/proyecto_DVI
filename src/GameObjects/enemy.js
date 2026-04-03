@@ -67,7 +67,7 @@ export default class Enemy extends BaseCharacter {
 
         this._quackCooldown = 100; // ms
         this._visionAlertFlashUntil = 0;
-        
+
         // Delay antes de atacar cuando está en rango
         this._inRangeStartTime = 0;    // Cuándo el jugador entró en rango por primera vez
         this._attackDelay = 800;       // 1 segundo en ms antes de poder atacar
@@ -186,8 +186,8 @@ export default class Enemy extends BaseCharacter {
         const px = this.x;
         const py = this.y;
         const startAngle = this._facingAngle - (this._visionAngle / 2);
-        const endAngle   = this._facingAngle + (this._visionAngle / 2);
-        
+        const endAngle = this._facingAngle + (this._visionAngle / 2);
+
         // Si Graphics soporta arc/path
         if (typeof this._visionGraphics.beginPath === 'function' && typeof this._visionGraphics.arc === 'function' && typeof this._visionGraphics.fillPath === 'function') {
             this._visionGraphics.fillStyle(color, fillAlpha);
@@ -278,12 +278,12 @@ export default class Enemy extends BaseCharacter {
         // Tipos de sonido que alertan al enemigo
         const alertingSounds = ['quack'];
         if (!alertingSounds.includes(audioEvent.soundType)) return;
-        
+
         // Evita procesar múltiples eventos del mismo sonido
         if (audioEvent.time <= this._lastQuackTime + this._quackCooldown) return;
 
         this._lastQuackTime = audioEvent.time;
-        
+
         // Verifica si el enemigo está dentro del radio del sonido
         if (!audioEvent.position) return;
 
@@ -291,17 +291,17 @@ export default class Enemy extends BaseCharacter {
         const dy = audioEvent.position.y - this.y;
         const distance = Math.hypot(dx, dy);
         const soundRadius = audioEvent.radius || 0;
-        
+
         // Si está dentro del radio del sonido, se alerta
         if (distance <= soundRadius && this._state !== StatusEnemy.ALERTED) {
             this._state = StatusEnemy.ALERTED;
         }
     }
 
-    getState()       { return this._state; }
-    setState(state)  { this._state = state; }
-    isDead()         { return this._state === StatusEnemy.DEAD; }
-    isStunned()      { return this._state === StatusEnemy.STUNNED; }
+    getState() { return this._state; }
+    setState(state) { this._state = state; }
+    isDead() { return this._state === StatusEnemy.DEAD; }
+    isStunned() { return this._state === StatusEnemy.STUNNED; }
 
 
     getState() {
@@ -365,7 +365,7 @@ export default class Enemy extends BaseCharacter {
      * Devuelve un offset aleatorio para dispersar los drops.
      */
     _randomDropOffset(minRadius = 10, maxRadius = 50) {
-        const angle  = Phaser.Math.FloatBetween(0, Math.PI * 2);
+        const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
         const radius = Phaser.Math.FloatBetween(minRadius, maxRadius);
         return { dx: Math.cos(angle) * radius, dy: Math.sin(angle) * radius };
     }
@@ -487,7 +487,7 @@ export default class Enemy extends BaseCharacter {
                 if (this._inRangeStartTime === 0) {
                     this._inRangeStartTime = this.scene.time.now;
                 }
-                
+
                 // Verificar si ya pasó el delay
                 const timeSinceInRange = this.scene.time.now - this._inRangeStartTime;
                 if (timeSinceInRange >= this._attackDelay) {
@@ -498,107 +498,51 @@ export default class Enemy extends BaseCharacter {
         this.setFlipX(this.x >= target.x);
     }
 
-    //se mueve 3 segundos hacia un lado y se para 2 segundos, luego repite hacia el otro lado.
-    movementPointToPoint() {
-        if (!this._movementData) {
-            this._movementData = { cycleTimer: 0, isMoving: true, isMovingRight: true };
+
+
+
+
+
+
+
+
+    /**
+     * Sigue una ruta poligonal establecida
+     * El polígono es un array de puntos [{x, y}, {x, y}, ...]
+     * El enemigo patrulla entre los puntos en orden
+     */
+    movementFollowRoute() {
+        if (!this._movementData || !this._movementData.routePoints || this._movementData.routePoints.length < 2) {
+            return;
         }
 
         if (this.isAlerted()) return;
 
         const data = this._movementData;
-        data.cycleTimer += this.scene.game.loop.delta;
+        const points = data.routePoints;
+        const currentTarget = points[data.currentPointIndex];
 
-        const moveDuration  = 3000;
-        const pauseDuration = 2000;
-        const cycleDuration = moveDuration + pauseDuration;
-        
-        // Reinicia el ciclo
-        if (data.cycleTimer >= cycleDuration) {
-            data.cycleTimer = 0;
-            data.isMovingRight = !data.isMovingRight;
+        // Distancia al punto objetivo
+        const dist = Phaser.Math.Distance.Between(this.x, this.y, currentTarget.x, currentTarget.y);
+
+        // Si llegamos al punto, pasar al siguiente
+        if (dist < 10) {
+            data.currentPointIndex = (data.currentPointIndex + 1) % points.length;
+            data.pauseTimer = 0;
+            return;
         }
-        
-        // Determina si está en fase de movimiento o pausa
-        data.isMoving = data.cycleTimer < moveDuration;
 
-        if (data.isMoving) {
-            // Moverse 3 segundos
-            const dir = data.isMovingRight ? 1 : -1;
-            this.body.setVelocity(dir * this._speed, 0);
-            this.setFlipX(!data.isMovingRight);
-            this._facingAngle = data.isMovingRight ? 0 : Math.PI;
-        } else {
-            // Parar 2 segundos
+        // Hacer pausa en cada punto durante 1 segundo
+        if (data.pauseTimer === undefined) data.pauseTimer = 0;
+        data.pauseTimer += this.scene.game.loop.delta;
+
+        if (data.pauseTimer < 1000) {
             this.stop();
-            this.setFlipX(!data.isMovingRight);
-            this._facingAngle = data.isMovingRight ? 0 : Math.PI;
-        }
-    }
-
-    //movimientos aleatorios en un radio de 150 px.
-    movementRandomAroundPoint(radius = 150) {
-        if (!this._movementData) {
-            this._movementData = {
-                centerX: this.x, centerY: this.y, radius,
-                targetPoint: { x: this.x, y: this.y },
-                changeTimer: 0, changeInterval: 2000
-            };
-        }
-        if (this.isAlerted()) { this._movementData.changeTimer = 0; return; }
-        const data = this._movementData;
-        data.changeTimer += this.scene.game.loop.delta;
-        if (data.changeTimer >= data.changeInterval) {
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * data.radius;
-            data.targetPoint = {
-                x: data.centerX + Math.cos(angle) * distance,
-                y: data.centerY + Math.sin(angle) * distance
-            };
-            data.changeTimer = 0;
-        }
-        const dist = Phaser.Math.Distance.Between(this.x, this.y, data.targetPoint.x, data.targetPoint.y);
-        if (dist > 5) this.moveTowards(data.targetPoint);
-        else          this.stop();
-    }
-
-    //mirar hacia un lado durante 3 segundos y luego hacia el otro también 3 segundos
-    movementStayAndLook(lookInterval = 3000) {
-        if (!this._movementData) {
-            this._movementData = {
-                initialX: this.x, initialY: this.y,
-                lookInterval, lookTimer: 0,
-                isMovingRight: true,
-                movementDuration: 200, // ms para moverse un poco antes de quedarse mirando
-                movementTimer: 0
-            };
+            return;
         }
 
-        if (this.isAlerted()) return;
-
-        const data = this._movementData;
-        data.lookTimer     += this.scene.game.loop.delta;
-        data.movementTimer += this.scene.game.loop.delta;
-        
-        // Cambia de dirección cada lookInterval
-        if (data.lookTimer >= data.lookInterval) {
-            data.isMovingRight = !data.isMovingRight;
-            data.lookTimer = 0;
-            data.movementTimer = 0;
-        }
-        
-        // Mueve durante los primeros 200ms del intervalo
-        if (data.movementTimer < data.movementDuration) {
-            const dir = data.isMovingRight ? 1 : -1;
-            this.body.setVelocity(dir * this._speed, 0);
-            this.setFlipX(!data.isMovingRight);
-            this._facingAngle = data.isMovingRight ? 0 : Math.PI;
-        } else {
-            // Se detiene el resto del intervalo
-            this.stop();
-            this.setFlipX(!data.isMovingRight);
-            this._facingAngle = data.isMovingRight ? 0 : Math.PI;
-        }
+        // Moverse hacia el siguiente punto
+        this.moveTowards(currentTarget);
     }
 
     /*
@@ -612,10 +556,8 @@ export default class Enemy extends BaseCharacter {
 
         // Ejecutar movimiento si está en IDLE
         if (!isUnderKnockback && this._state === StatusEnemy.IDLE && this._movementType) {
-            switch (this._movementType) {
-                case 'pointToPoint':  this.movementPointToPoint(); break;
-                case 'AroundPoint':   this.movementRandomAroundPoint(); break;
-                case 'StayAndLook':   this.movementStayAndLook(); break;
+            if (this._movementType === 'followRoute') {
+                this.movementFollowRoute();
             }
         } else if (!isUnderKnockback && this.isAlerted()) {
             if (this.scene.duck) this.movementAlerted(this.scene.duck);
