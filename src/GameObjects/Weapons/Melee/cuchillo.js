@@ -18,7 +18,7 @@ export default class Cuchillo extends Weapon {
             optimalDistance: isEnemy ? 30 : 55,
             swingAngle:      80,
             swingDuration:   100,
-            scale:           1,
+            scale:           1.5,
             debug:           true,
             bar:             bar
         });

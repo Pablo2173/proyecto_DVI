@@ -11,15 +11,22 @@ import Weapon   from '../weapon.js';
  */
 export default class DropWeapon extends DropItem {
 
-    constructor(scene, x, y, weaponClass, texture) {
+    static SCALE_BY_TEXTURE = {
+        arco: 1.5,
+        mazo: 1.5,
+        cuchillo: 1.5
+    };
+
+    constructor(scene, x, y, weaponClass, texture, scale = null) {
 
         const textureKey = texture;
+        const dropScale = scale ?? DropWeapon.SCALE_BY_TEXTURE[textureKey] ?? 1;
 
         super(scene, x, y, textureKey);
 
         this.weaponClass = weaponClass;
 
-        this.setScale(1);
+        this.setScale(dropScale);
         this.setDepth(1);
 
         if (scene.dropItems) {
@@ -61,7 +68,14 @@ export default class DropWeapon extends DropItem {
             previousWeapon.texture.key &&
             previousWeapon.texture.key !== 'ramita'
         ) {
-            new DropWeapon(scene, dropX, dropY, previousWeapon.constructor, previousWeapon.texture.key);
+            new DropWeapon(
+                scene,
+                dropX,
+                dropY,
+                previousWeapon.constructor,
+                previousWeapon.texture.key,
+                previousWeapon.scaleX ?? null
+            );
         }
 
         // Destruir el drop actual para que desaparezca del suelo
