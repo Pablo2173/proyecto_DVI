@@ -56,7 +56,7 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
 
         // ── Visual ──
         this.spriteAngleOffset = config.spriteAngleOffset ?? 0;
-        this.setScale(1);
+        this.setScale(config.scale ?? 1);
         this.setOrigin(0, 0.5);  // origen en la "empuñadura"
 
         // ── Debug ──

@@ -684,14 +684,16 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         // INPUTS
         // ─────────────────────────────────────────
-        this.input.on('pointerdown', () => {
+        this.input.on('pointerdown', (pointer) => {
             if (this.isPlayerDead) return;
+            if (pointer?.button !== 0) return;
             if (this.duck && this.duck.weapon) {
                 this.duck.weapon.attack();
             }
         });
 
-        this.input.on('pointerup', () => {
+        this.input.on('pointerup', (pointer) => {
+            if (pointer?.button !== 0) return;
             if (this.duck && this.duck.weapon && this.duck.weapon.releaseAttack) {
                 this.duck.weapon.releaseAttack();
             }
@@ -810,6 +812,7 @@ export default class MainScene extends Phaser.Scene {
         new Bread(this, 500, 9400);
         new Bread(this, 1800, 9200);
         new DropWeapon(this, 1500, 9600, Mazo, 'mazo');
+        new DropWeapon(this, this.playerSpawn.x + 120, this.playerSpawn.y + 40, Arco, 'arco');
 
         //inicialización de la cámara centrada en el jugador antes del update
         //como el movimiento depende del ratón inicializaremos el puntero en la posición del jugador
@@ -935,7 +938,7 @@ export default class MainScene extends Phaser.Scene {
         // gestionar internamente no reiniciarse mal.
         // ─────────────────────────────────────────
         if (
-            this.input.activePointer.isDown &&
+            this.input.activePointer.leftButtonDown() &&
             this.duck &&
             this.duck.active &&
             this.duck.weapon
