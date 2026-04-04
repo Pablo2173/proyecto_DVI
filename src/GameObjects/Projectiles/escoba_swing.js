@@ -52,6 +52,10 @@ export default class EscobaSwing extends Projectile {
         const halfArc = Phaser.Math.DegToRad(this.attackArcDeg / 2);
 
         const targets = this._getPotentialTargets();
+        if (!targets || typeof targets[Symbol.iterator] !== 'function') {
+            return;
+        }
+
         for (const target of targets) {
             if (!target || !target.active) continue;
 
@@ -68,7 +72,14 @@ export default class EscobaSwing extends Projectile {
 
     _getPotentialTargets() {
         if (this.owner?.team === 'ally') {
-            return this.scene?.enemies ?? [];
+            const enemies = this.scene?.enemies;
+            if (!enemies) return [];
+
+            if (Array.isArray(enemies)) return enemies;
+            if (typeof enemies.getChildren === 'function') return enemies.getChildren();
+            if (typeof enemies[Symbol.iterator] === 'function') return enemies;
+
+            return [];
         }
 
         const duck = this.scene?.duck;
