@@ -35,7 +35,7 @@ export default class Duck extends BaseCharacter {
 
         this._speed = 320;
         this._maxSpeed = 360;
-        this.dashSpeed = 600;
+        this.dashSpeed = 1800;
         this.dashDuration = 200;
         this.lastDashTime = 0;
         this.state = DUCK_STATE.IDLE;

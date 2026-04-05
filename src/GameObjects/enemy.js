@@ -50,6 +50,10 @@ export default class Enemy extends BaseCharacter {
         this._knockbackUntil = 0;
         this._showVision = true;
         this._visionGraphics = scene.add.graphics();
+        this._spriteBaseKey = this._resolveSpriteBaseKey(texture);
+        this._isShowingHit = false;
+        this._hitUntil = 0;
+        this._hitDuration = 120;
 
         this.hasFeather = hasFeather;
 
@@ -81,6 +85,22 @@ export default class Enemy extends BaseCharacter {
 
     mostrarNombre() {
         console.log(`Mi nombre es ${this._nombre}`);
+    }
+
+    _resolveSpriteBaseKey(textureKey) {
+        if (typeof textureKey !== 'string') return null;
+        const match = textureKey.match(/^(.*)_(idle|run|hit|ded)$/);
+        return match ? match[1] : null;
+    }
+
+    _textureKeyFor(state) {
+        if (!this._spriteBaseKey) return null;
+        return `${this._spriteBaseKey}_${state}`;
+    }
+
+    _animKeyFor(state) {
+        if (!this._spriteBaseKey) return null;
+        return `${this._spriteBaseKey}-${state}`;
     }
 
     /**
@@ -356,9 +376,27 @@ export default class Enemy extends BaseCharacter {
         this._hp -= damage;
         if (this._state !== StatusEnemy.ALERTED) this._state = StatusEnemy.ALERTED; // Si recibe daño, se alerta aunque no haya visto al jugador
         console.log(`${this._nombre} recibió ${damage} de daño. HP actual: ${this._hp}`);
-        // parpadeo rojo momentáneo
         this.flashRed();
+        this._showHitVisual();
         if (this._hp <= 0) this.die();
+    }
+
+    _showHitVisual(duration = this._hitDuration) {
+        if (this._state === StatusEnemy.DEAD) return;
+
+        const hitTexture = this._textureKeyFor('hit');
+        const now = this.scene?.time?.now ?? 0;
+
+        if (hitTexture && this.scene?.textures?.exists(hitTexture)) {
+            this._isShowingHit = true;
+            this._hitUntil = now + duration;
+            this.anims?.stop();
+            this.setTexture(hitTexture);
+            return;
+        }
+
+        // Fallback para texturas antiguas sin sprite hit
+        this.flashRed(duration);
     }
 
     /**
@@ -394,6 +432,7 @@ export default class Enemy extends BaseCharacter {
         if (this._state === StatusEnemy.DEAD) return; // evitar doble llamada
 
         this._state = StatusEnemy.DEAD;
+        this._isShowingHit = false;
         this._visionAlertFlashUntil = 0;
         console.log(`${this._nombre} ha muerto`);
 
@@ -402,11 +441,17 @@ export default class Enemy extends BaseCharacter {
         this.dropBread();
 
         // Cambiar sprite al de muerto si existe
-        const deadTexture = `${this.texture.key}_corpse`;
-        if (this.scene.textures.exists(deadTexture)) {
-            this.setTexture(deadTexture);
-        } else if (this.scene.textures.exists('enemy_corpse')) {
-            this.setTexture('enemy_corpse');
+        const dedTexture = this._textureKeyFor('ded');
+        if (dedTexture && this.scene.textures.exists(dedTexture)) {
+            this.anims?.stop();
+            this.setTexture(dedTexture);
+        } else {
+            const deadTexture = `${this.texture.key}_corpse`;
+            if (this.scene.textures.exists(deadTexture)) {
+                this.setTexture(deadTexture);
+            } else if (this.scene.textures.exists('enemy_corpse')) {
+                this.setTexture('enemy_corpse');
+            }
         }
 
         // Desactivar física
@@ -495,7 +540,6 @@ export default class Enemy extends BaseCharacter {
                 }
             }
         }
-        this.setFlipX(this.x >= target.x);
     }
 
 
@@ -563,12 +607,54 @@ export default class Enemy extends BaseCharacter {
             if (this.scene.duck) this.movementAlerted(this.scene.duck);
         }
 
+        // Los sprites de enemigos vienen invertidos respecto a la dirección de movimiento.
+        this._updateFacingFromVelocity();
+
+        // Actualizar estado visual (idle/run/hit/dead)
+        this._updateVisualState(time);
+
         // el arma también debe actualizarse para seguir al enemigo
         if (this.weapon && typeof this.weapon.update === 'function') this.weapon.update();
         // actualizar posición de la barra si existe
         if (this.weaponBar && typeof this.weaponBar.update === 'function') this.weaponBar.update();
 
         if (super.preUpdate) super.preUpdate(time, delta);
+    }
+
+    _updateFacingFromVelocity() {
+        if (!this.body) return;
+        const vx = this.body.velocity?.x ?? 0;
+        if (Math.abs(vx) < 1) return;
+
+        // Misma convención que el pato para que la dirección visual coincida con el movimiento.
+        if (vx > 0) this.setFlipX(true);
+        if (vx < 0) this.setFlipX(false);
+    }
+
+    _updateVisualState(time = this.scene?.time?.now ?? 0) {
+        if (!this.body || !this.anims || this._state === StatusEnemy.DEAD) return;
+        if (!this._spriteBaseKey) return;
+
+        if (this._isShowingHit) {
+            if (time < this._hitUntil) return;
+            this._isShowingHit = false;
+        }
+
+        const speed = Math.hypot(this.body.velocity.x, this.body.velocity.y);
+        const isMoving = speed > 1;
+        const targetState = isMoving ? 'run' : 'idle';
+        const targetTexture = this._textureKeyFor(targetState);
+        const targetAnim = this._animKeyFor(targetState);
+
+        if (targetTexture && this.texture?.key !== targetTexture && this.scene.textures.exists(targetTexture)) {
+            this.setTexture(targetTexture);
+        }
+
+        if (targetAnim && this.scene.anims.exists(targetAnim)) {
+            if (!this.anims.isPlaying || this.anims.currentAnim?.key !== targetAnim) {
+                this.play(targetAnim, true);
+            }
+        }
     }
 }
 

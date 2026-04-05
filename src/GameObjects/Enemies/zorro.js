@@ -4,6 +4,7 @@ export default class Zorro extends Enemy {
 
     constructor(scene, name, x, y, texture, frame, weapon, movementType, visionRadius = 150, hp = 80, speed = 80, hasFeather) {
         super(scene, name, x, y, texture, frame, visionRadius, hp, speed, weapon, movementType, hasFeather);
+        this.setScale(4);
 
     }
 }
