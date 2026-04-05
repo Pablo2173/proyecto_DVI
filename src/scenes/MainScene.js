@@ -34,6 +34,17 @@ import sprint_sprite from '../../assets/sprites/duck/sprint_duck.png';
 import cuack_sprite from '../../assets/sprites/duck/Cuack_duck.png';
 import enemy_sprite from '../../assets/sprites/player.png';
 
+// Sprites de enemigos específicos
+import zorro_idle from '../../assets/Sprites/Zorro/zorro_idle.png';
+import zorro_run from '../../assets/Sprites/Zorro/zorro_run.png';
+import zorro_hit from '../../assets/Sprites/Zorro/zorro_hit.png';
+import zorro_ded from '../../assets/Sprites/Zorro/zorro_ded.png';
+
+import mapache_idle from '../../assets/Sprites/Mapache/mapache_idle.png';
+import mapache_run from '../../assets/Sprites/Mapache/mapache_run.png';
+import mapache_hit from '../../assets/Sprites/Mapache/mapache_hit.png';
+import mapache_ded from '../../assets/Sprites/Mapache/mapache_ded.png';
+
 //Sounds
 import cuackSound from '../../assets/sounds/cuack.mp3';
 import deathSound from '../../assets/sounds/YouDied.mp3';
@@ -171,6 +182,35 @@ export default class MainScene extends Phaser.Scene {
         });
 
         this.load.image('enemy', enemy_sprite);
+        
+        // Cargar spritesheets de zorro (4 frames cada uno, 32x32)
+        this.load.spritesheet('zorro_idle', zorro_idle, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.spritesheet('zorro_run', zorro_run, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.image('zorro_hit', zorro_hit);
+        this.load.image('zorro_ded', zorro_ded);
+        // Alias para el sprite muerto (usado en Enemy.die())
+        this.load.image('zorro_idle_corpse', zorro_ded);
+        
+        // Cargar spritesheets de mapache (4 frames cada uno, 32x32)
+        this.load.spritesheet('mapache_idle', mapache_idle, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.spritesheet('mapache_run', mapache_run, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.image('mapache_hit', mapache_hit);
+        this.load.image('mapache_ded', mapache_ded);
+        // Alias para el sprite muerto (usado en Enemy.die())
+        this.load.image('mapache_idle_corpse', mapache_ded);
+        
         this.load.audio('cuack', cuackSound);
         this.load.audio('death_sound', deathSound);
 
@@ -281,6 +321,36 @@ export default class MainScene extends Phaser.Scene {
             key: 'duck-swimming',
             frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
             frameRate: 8,
+            repeat: -1
+        });
+
+        // Animaciones de Zorro
+        this.anims.create({
+            key: 'zorro-idle',
+            frames: this.anims.generateFrameNumbers('zorro_idle', { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'zorro-run',
+            frames: this.anims.generateFrameNumbers('zorro_run', { start: 0, end: 3 }),
+            frameRate: 12,
+            repeat: -1
+        });
+
+        // Animaciones de Mapache
+        this.anims.create({
+            key: 'mapache-idle',
+            frames: this.anims.generateFrameNumbers('mapache_idle', { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'mapache-run',
+            frames: this.anims.generateFrameNumbers('mapache_run', { start: 0, end: 3 }),
+            frameRate: 12,
             repeat: -1
         });
 
@@ -583,6 +653,42 @@ export default class MainScene extends Phaser.Scene {
             });
         }
 
+        if (!this.anims.exists('zorro-idle') && this.textures.exists('zorro_idle')) {
+            this.anims.create({
+                key: 'zorro-idle',
+                frames: this.anims.generateFrameNumbers('zorro_idle', { start: 0, end: 3 }),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
+
+        if (!this.anims.exists('zorro-run') && this.textures.exists('zorro_run')) {
+            this.anims.create({
+                key: 'zorro-run',
+                frames: this.anims.generateFrameNumbers('zorro_run', { start: 0, end: 3 }),
+                frameRate: 12,
+                repeat: -1
+            });
+        }
+
+        if (!this.anims.exists('mapache-idle') && this.textures.exists('mapache_idle')) {
+            this.anims.create({
+                key: 'mapache-idle',
+                frames: this.anims.generateFrameNumbers('mapache_idle', { start: 0, end: 3 }),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
+
+        if (!this.anims.exists('mapache-run') && this.textures.exists('mapache_run')) {
+            this.anims.create({
+                key: 'mapache-run',
+                frames: this.anims.generateFrameNumbers('mapache_run', { start: 0, end: 3 }),
+                frameRate: 12,
+                repeat: -1
+            });
+        }
+
         /* if (!this.anims.exists('duck-swimming') && this.textures.exists('duck-swimming')) {
              this.anims.create({
                  key: 'duck-swimming',
@@ -707,6 +813,19 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         this.enemies = this.physics.add.group();
         this.setupEnemiesFromRoutes(SCALE);
+
+        // Mapache extra cerca del spawn del pato
+        const spawnMapache = new Mapache(
+            this,
+            'Mapache_spawn',
+            this.playerSpawn.x + 180,
+            this.playerSpawn.y + 40,
+            'mapache_idle',
+            null,
+            Cuchillo,
+            null
+        );
+        this.enemies.add(spawnMapache);
 
         // ─────────────────────────────────────────
         // CONSUMIBLES DESDE TILED
@@ -1203,10 +1322,13 @@ export default class MainScene extends Phaser.Scene {
 
             // Crear el enemigo del tipo especificado
             let enemy;
+            let texture;
             if (enemyType === 'zorro') {
-                enemy = new Zorro(this, enemyName, startX, startY, 'enemy', null, WeaponClass, 'followRoute');
+                texture = 'zorro_idle';
+                enemy = new Zorro(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute');
             } else {
-                enemy = new Mapache(this, enemyName, startX, startY, 'enemy', null, WeaponClass, 'followRoute');
+                texture = 'mapache_idle';
+                enemy = new Mapache(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute');
             }
 
             // Asignar la ruta al enemigo
