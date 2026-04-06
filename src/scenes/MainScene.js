@@ -19,8 +19,8 @@ import Bread from '../GameObjects/consumables/bread.js';
 
 import AttackPotion from '../GameObjects/consumables/attackPotion.js';
 
-import SpeedPotion from '../GameObjects/consumables/speedPotion.js';
-import SpeedAttackPotion from '../GameObjects/consumables/speedAttackPotion.js';
+import SpeedPotion from '../GameObjects/consumables/SpeedPotion.js';
+import SpeedAttackPotion from '../GameObjects/consumables/SpeedAttackPotion.js';
 
 
 import DropBread from '../GameObjects/consumables/dropBread.js';
