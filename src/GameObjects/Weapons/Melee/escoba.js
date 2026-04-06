@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import Weapon from '../weapon.js';
 import escobaSprite from '../../../../assets/sprites/Weapons/mazo.png';
-import EscobaSwing from '../../Projectiles/escoba_swing.js';
-import WeaponBar from '../../weaponBar.js';
+import EscobaSwing from '../../Projectiles/escobaSwing.js';
+import WeaponBar from '../weaponBar.js';
 
 export default class Escoba extends Weapon {
     static CHARGE_DURATION = 2500;  // 2.5 segundos para carga completa

@@ -1,4 +1,4 @@
-import ConsumableItem from './consumable_drop.js';
+import ConsumableItem from './consumableDrop.js';
 import speedPotionSprite from '../../../assets/sprites/consumables/bread_item.png'; // Placeholder, usar bread_item por ahora
 
 export default class SpeedPotion extends ConsumableItem {

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import BaseCharacter from './BaseCharacter.js';
+import BaseCharacter from './baseCharacter.js';
 import { TEAM } from './team.js';
 
 import Arco from './Weapons/Distance/arco.js';
@@ -9,11 +9,11 @@ import Mazo from './Weapons/Melee/mazo.js';
 import Ramita from './Weapons/Melee/ramita.js';
 import Escoba from './Weapons/Melee/escoba.js';
 
-import DropWeapon from './Weapons/drops/dropWeapon.js';
-import DropFeather from './consumables/dropFeather.js';
-import DropBread from './consumables/dropBread.js';
-import DropMask from './consumables/dropMask.js';
-import DropTail from './consumables/dropTail.js';
+import DropWeapon from './Consumables/dropWeapon.js';
+import DropFeather from './Consumables/dropFeather.js';
+import DropBread from './Consumables/dropBread.js';
+import DropMask from './Consumables/dropMask.js';
+import DropTail from './Consumables/dropTail.js';
 
 const StatusEnemy = {
     IDLE: 0,

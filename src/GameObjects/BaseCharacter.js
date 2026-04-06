@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { TEAM } from './team.js';
-import WeaponBar from './weaponBar.js';
+import WeaponBar from './Weapons/weaponBar.js';
 
 export default class BaseCharacter extends Phaser.GameObjects.Sprite {
     constructor(scene, x, y, texture, frame, team = TEAM.NEUTRAL) {

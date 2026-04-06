@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import Weapon from '../weapon.js';
-import MazoImpact from '../../Projectiles/mazo_impact.js';
-import WeaponBar from '../../weaponBar.js';
+import MazoImpact from '../../Projectiles/mazoImpact.js';
+import WeaponBar from '../weaponBar.js';
 import mazoSprite from '../../../../assets/sprites/Weapons/mazo.png';
 
 export default class Mazo extends Weapon {

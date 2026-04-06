@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import Weapon from '../weapon.js';
 import ramitaSprite from '../../../../assets/sprites/Weapons/ramita.png';
-import RamitaSwing from '../../Projectiles/ramita_swing.js';
+import RamitaSwing from '../../Projectiles/ramitaSwing.js';
 
 export default class Ramita extends Weapon {
     constructor(scene, owner, bar = null) {

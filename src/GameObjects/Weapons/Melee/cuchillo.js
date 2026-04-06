@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import Weapon from '../weapon.js';
 import cuchilloSprite from '../../../../assets/sprites/Weapons/cuchillo.png';
-import CuchilloSwing from '../../Projectiles/cuchillo_swing.js';
+import CuchilloSwing from '../../Projectiles/cuchilloSwing.js';
 
 export default class Cuchillo extends Weapon {
     constructor(scene, owner, bar = null) {
