@@ -1,4 +1,4 @@
-import ConsumableItem from './consumable_drop.js';
+import ConsumableItem from './Drops/consumableDrop.js';
 import attackPotionSprite from '../../../assets/sprites/consumables/bread_item.png'; // Placeholder, usar bread_item por ahora
 
 export default class AttackPotion extends ConsumableItem {

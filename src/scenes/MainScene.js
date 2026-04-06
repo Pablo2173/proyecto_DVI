@@ -14,17 +14,16 @@ import Flecha from '../GameObjects/Projectiles/flecha.js';
 import Bala from '../GameObjects/Projectiles/bala.js';
 
 // Drops
-import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
-import Bread from '../GameObjects/consumables/bread.js';
-import FoxTail from '../GameObjects/consumables/foxTail.js';
+import DropWeapon from '../GameObjects/Consumables/Drops/dropWeapon.js';
+import Bread from '../GameObjects/Consumables/bread.js';
 
-import AttackPotion from '../GameObjects/consumables/attackPotion.js';
+import AttackPotion from '../GameObjects/Consumables/attackPotion.js';
 
-import SpeedPotion from '../GameObjects/consumables/SpeedPotion.js';
-import SpeedAttackPotion from '../GameObjects/consumables/SpeedAttackPotion.js';
+import SpeedPotion from '../GameObjects/Consumables/speedPotion.js';
+import SpeedAttackPotion from '../GameObjects/Consumables/speedAttackPotion.js';
 
 
-import DropBread from '../GameObjects/consumables/dropBread.js';
+import DropBread from '../GameObjects/Consumables/Drops/dropBread.js';
 
 
 import Enemy from '../GameObjects/enemy.js';
@@ -53,11 +52,15 @@ import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
 import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
 import up_bar from '../../assets/sprites/UI/up_bar.png';
 import Puddle from '../GameObjects/puddle.js';
-import ConsumableBar from '../GameObjects/consumables/ConsumableBar.js';
+import ConsumableBar from '../GameObjects/Consumables/consumableBar.js';
 
 // Enemigos
 import Zorro from '../GameObjects/Enemies/zorro.js';
 import Mapache from '../GameObjects/Enemies/mapache.js';
+
+// Drops de enemigos
+import mask_icon from '../../assets/sprites/consumables/Mask.png';
+import fox_tail from '../../assets/sprites/consumables/fox_tail.png';
 
 // Tilesets
 import mapaJson from '../../assets/maps/level1_entrada_al_parque_mapa.json';
@@ -105,9 +108,6 @@ import truckRedFront from '../../assets/tilesets/truck-red-front.png';
 //Plumas
 import feather_icon from '../../assets/sprites/UI/pluma.png';
 import FeatherUI from '../GameObjects/featherUI.js';
-
-// Drops de enemigos
-import mask_icon from '../../assets/sprites/consumables/Mask.png';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -226,7 +226,6 @@ export default class MainScene extends Phaser.Scene {
 
         // Preload de consumibles
         Bread.preload(this);
-        FoxTail.preload(this);
         
         AttackPotion.preload(this);
         SpeedPotion.preload(this);
@@ -245,6 +244,7 @@ export default class MainScene extends Phaser.Scene {
 
         // Preload de drops de enemigos
         this.load.image('mask_icon', mask_icon);
+        this.load.image('fox_tail', fox_tail);
     }
 
     /*
@@ -1405,10 +1405,7 @@ export default class MainScene extends Phaser.Scene {
                 break;
             case 'speed_attack_potion':
                 new SpeedAttackPotion(this, x, y);
-                break;
-            case 'fox_tail':
-                new FoxTail(this, x, y);
-                break;    
+                break;  
             default:
                 console.warn(`Tipo de consumible desconocido: ${type}`);
         }

@@ -1,4 +1,4 @@
-import ConsumableItem from './consumable_drop.js';
+import ConsumableItem from './Drops/consumableDrop.js';
 import bread_sprite from '../../../assets/sprites/consumables/bread_item.png';
 
 export default class Bread extends ConsumableItem {

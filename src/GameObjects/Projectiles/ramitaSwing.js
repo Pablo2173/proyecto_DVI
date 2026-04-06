@@ -1,4 +1,4 @@
-import MeleeSwing from './melee_swing.js';
+import MeleeSwing from './meleeSwing.js';
 
 /**
  * RamitaSwing — proyectil melee para la ramita.

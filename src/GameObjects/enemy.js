@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import BaseCharacter from './BaseCharacter.js';
+import BaseCharacter from './baseCharacter.js';
 import { TEAM } from './team.js';
 
 import Arco from './Weapons/Distance/arco.js';
@@ -9,11 +9,11 @@ import Mazo from './Weapons/Melee/mazo.js';
 import Ramita from './Weapons/Melee/ramita.js';
 import Escoba from './Weapons/Melee/escoba.js';
 
-import DropWeapon from './Weapons/drops/dropWeapon.js';
-import DropFeather from './consumables/dropFeather.js';
-import DropBread from './consumables/dropBread.js';
-import DropMask from './consumables/dropMask.js';
-import DropTail from './consumables/dropTail.js';
+import DropWeapon from './Consumables/Drops/dropWeapon.js';
+import DropFeather from './Consumables/Drops/dropFeather.js';
+import DropBread from './Consumables/Drops/dropBread.js';
+import DropMask from './Consumables/Drops/dropMask.js';
+import DropTail from './Consumables/Drops/dropTail.js';
 
 const StatusEnemy = {
     IDLE: 0,
@@ -62,6 +62,10 @@ export default class Enemy extends BaseCharacter {
         // Tabla de loot de items de uso. Las subclases pueden sobreescribirla.
         // Cada entrada: { id: string, probability: number }
         this.lootTable = [];
+
+        // Item especial que suelta este enemigo al morir.
+        // Las subclases deben asignar el id correspondiente (ej. 'mask', 'tail').
+        this.specialDrop = null;
 
         this.weaponMap = {
             arco: Arco,
@@ -436,6 +440,29 @@ export default class Enemy extends BaseCharacter {
     }
 
     /**
+     * Suelta el item especial de este enemigo según this.specialDrop.
+     * Añadir soporte para un nuevo drop especial es trivial:
+     * basta con añadir un nuevo case aquí y asignar this.specialDrop en la subclase.
+     */
+    dropSpecialItem() {
+        if (!this.specialDrop) return;
+
+        const { dx, dy } = this._randomDropOffset();
+        const spawnX = this.x + dx;
+        const spawnY = this.y + dy;
+
+        switch (this.specialDrop) {
+            case 'mask':
+                new DropMask(this.scene, spawnX, spawnY);
+                break;
+            case 'tail':
+                new DropTail(this.scene, spawnX, spawnY);
+                break;
+            // Añadir nuevos drops especiales aquí en el futuro
+        }
+    }
+
+    /**
      * Ejecuta el algoritmo de probabilidad acumulada sobre this.lootTable
      * y spawnea el item de uso correspondiente si hay drop.
      *
@@ -507,7 +534,7 @@ export default class Enemy extends BaseCharacter {
         this.dropWeapon();
         this.dropFeather();
         this.dropBread();
-        this.dropUseItem();
+        this.dropSpecialItem(); // sistema unificado: suelta el item especial del enemigo
 
         // Cambiar sprite al de muerto si existe
         const dedTexture = this._textureKeyFor('ded');

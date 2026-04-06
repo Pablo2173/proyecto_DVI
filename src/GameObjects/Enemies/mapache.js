@@ -1,5 +1,4 @@
 import Enemy, { StatusEnemy } from "../enemy";
-import DropMask from "../consumables/dropMask.js";
 
 export default class Mapache extends Enemy {
 
@@ -11,6 +10,9 @@ export default class Mapache extends Enemy {
         this.lootTable = [
             { id: 'mask', probability: 30 }
         ];
+
+        // Item especial que suelta al morir (usado por dropSpecialItem en Enemy)
+        this.specialDrop = 'mask';
 
         // guardamos las estadisticas originales para poder restaurarlas al resucitar
         this._resurrected = false;
@@ -24,7 +26,8 @@ export default class Mapache extends Enemy {
     // Drop del mapache
     dropMask() {
         const { dx, dy } = this._randomDropOffset();
-        new DropMask(this.scene, this.x + dx, this.y + dy);
+        // Delega al sistema unificado de drops
+        this.dropSpecialItem();
     }
 
     //como la habilidad del mapache es resucitar, sobreescribo el metodo die para que en vez de morir a la primera, se "resucite" una vez, y a la segunda muerte si muera de verdad

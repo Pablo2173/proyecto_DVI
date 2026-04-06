@@ -1,20 +1,12 @@
 import Enemy from "../enemy";
-import FoxTail from '../consumables/foxTail.js';
 
 export default class Zorro extends Enemy {
     constructor(scene, name, x, y, texture, frame, weapon, movementType, visionRadius = 150, hp = 80, speed = 80, hasFeather) {
         super(scene, name, x, y, texture, frame, visionRadius, hp, speed, weapon, movementType, hasFeather);
         this.setScale(4);
-    }
 
-    dropFoxTail() {
-        const angle = Math.random() * Math.PI * 2;
-        const distance = 48;
-
-        const dx = Math.cos(angle) * distance;
-        const dy = Math.sin(angle) * distance;
-
-        new FoxTail(this.scene, this.x + dx, this.y + dy);
+        // Item especial que suelta al morir (usado por dropSpecialItem en Enemy)
+        this.specialDrop = 'tail';
     }
 
     die() {
@@ -28,7 +20,7 @@ export default class Zorro extends Enemy {
 
         this.dropWeapon();
         this.dropFeather();
-        this.dropFoxTail(); // en vez de pan
+        this.dropSpecialItem(); // sistema unificado: suelta tail según this.specialDrop
 
         const dedTexture = this._textureKeyFor('ded');
         if (dedTexture && this.scene.textures.exists(dedTexture)) {

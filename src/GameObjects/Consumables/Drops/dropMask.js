@@ -1,8 +1,8 @@
-import DropItem from '../dropItem.js';
+import DropItem from '../../dropItem.js';
 
-export default class DropTail extends DropItem {
+export default class DropMask extends DropItem {
     constructor(scene, x, y) {
-        super(scene, x, y, 'tail_icon');
+        super(scene, x, y, 'mask_icon');
         this.setScale(3);
 
         // interact pickup: se recoge con la tecla E
@@ -15,7 +15,7 @@ export default class DropTail extends DropItem {
     }
 
     interact(player) {
-        // Añadir la cola a la barra de consumibles del jugador
+        // Añadir la máscara a la barra de consumibles del jugador
         if (!player.consumables) {
             player.consumables = [];
         }
@@ -25,8 +25,8 @@ export default class DropTail extends DropItem {
             return;
         }
 
-        player.consumables.push({ type: 'tail', value: 1 });
-        console.log(`Cola recogida. Items en inventario: ${player.consumables.length}/9`);
+        player.consumables.push({ type: 'mask', value: 1 });
+        console.log(`Máscara recogida. Items en inventario: ${player.consumables.length}/9`);
 
         this.destroy();
     }

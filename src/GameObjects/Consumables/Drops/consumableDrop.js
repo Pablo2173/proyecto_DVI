@@ -1,4 +1,4 @@
-import DropItem from '../dropItem.js';
+import DropItem from '../../dropItem.js';
 
 export default class ConsumableItem extends DropItem {
     

@@ -1,5 +1,5 @@
 import DropItem from '../../dropItem.js';
-import Weapon   from '../weapon.js';
+import Weapon   from '../../Weapons/weapon.js';
 
 /**
  * DropWeapon — arma que yace en el suelo esperando ser recogida.

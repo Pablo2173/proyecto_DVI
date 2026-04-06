@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import BaseCharacter from './BaseCharacter.js';
+import BaseCharacter from './baseCharacter.js';
 import { TEAM } from './team.js';
 
 // Importa las armas concretas
