@@ -19,8 +19,8 @@ import Bread from '../GameObjects/consumables/bread.js';
 
 import AttackPotion from '../GameObjects/consumables/attackPotion.js';
 
-import SpeedPotion from '../GameObjects/consumables/speedPotion.js';
-import SpeedAttackPotion from '../GameObjects/consumables/speedAttackPotion.js';
+import SpeedPotion from '../GameObjects/consumables/SpeedPotion.js';
+import SpeedAttackPotion from '../GameObjects/consumables/SpeedAttackPotion.js';
 
 
 import DropBread from '../GameObjects/consumables/dropBread.js';
@@ -613,6 +613,9 @@ export default class MainScene extends Phaser.Scene {
 
         this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
         this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+        // Esto es para arreglar que el dash atraviesa paredes al ir muy rapido
+        this.physics.world.setFPS(120);
+        this.physics.world.TILE_BIAS = Math.max(this.physics.world.TILE_BIAS, 48);
 
         // ─────────────────────────────────────────
         // ANIMACIONES
@@ -904,7 +907,13 @@ export default class MainScene extends Phaser.Scene {
 
         // Colisiones con todos los enemigos
         this.enemies.getChildren().forEach(enemy => {
-            this.physics.add.collider(this.duck, enemy);
+            this.physics.add.collider(
+                this.duck,
+                enemy,
+                null,
+                (duck) => duck?.state !== DUCK_STATE.DASHING, // si estas haciendo dash no tienes colision con los enemigos
+                this
+            );
             this.physics.add.collider(enemy, this.colisionLayer);
             this.physics.add.overlap(this.projectiles, enemy, (projectile, en) => {
                 if (this.isPlayerDead) return;
@@ -1212,6 +1221,7 @@ export default class MainScene extends Phaser.Scene {
         if (!duck || !enemy) return;
         if (!duck.active || !enemy.active) return;
         if (enemy.isDead && enemy.isDead()) return;
+        if (duck.state === DUCK_STATE.DASHING) return;
         if (duck.isInvulnerable) return;
 
         const contactDamage = enemy.contactDamage ?? 10;
@@ -1224,6 +1234,7 @@ export default class MainScene extends Phaser.Scene {
         if (this.isPlayerDead) return;
         if (!projectile || !duck) return;
         if (!projectile.active || !duck.active) return;
+        if (duck.state === DUCK_STATE.DASHING) return;
         if (projectile.team && duck.team && projectile.team === duck.team) {
             return; // No se golpea equipo propio
         }
