@@ -1,5 +1,5 @@
-import DropItem from '../dropItem.js';
-import bread_sprite from '../../../assets/sprites/consumables/bread_item.png';
+import DropItem from '../../dropItem.js';
+import bread_sprite from '../../../../assets/sprites/consumables/bread_item.png';
 
 export default class DropBread extends DropItem {
 

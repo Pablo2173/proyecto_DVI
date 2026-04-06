@@ -14,7 +14,7 @@ import Flecha from '../GameObjects/Projectiles/flecha.js';
 import Bala from '../GameObjects/Projectiles/bala.js';
 
 // Drops
-import DropWeapon from '../GameObjects/Consumables/dropWeapon.js';
+import DropWeapon from '../GameObjects/Consumables/Drops/dropWeapon.js';
 import Bread from '../GameObjects/Consumables/bread.js';
 
 import AttackPotion from '../GameObjects/Consumables/attackPotion.js';
@@ -23,7 +23,7 @@ import SpeedPotion from '../GameObjects/Consumables/speedPotion.js';
 import SpeedAttackPotion from '../GameObjects/Consumables/speedAttackPotion.js';
 
 
-import DropBread from '../GameObjects/Consumables/dropBread.js';
+import DropBread from '../GameObjects/Consumables/Drops/dropBread.js';
 
 
 import Enemy from '../GameObjects/enemy.js';
