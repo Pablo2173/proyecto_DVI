@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 // Importar consumibles directamente
 import Bread from './bread.js';
 import AttackPotion from './attackPotion.js';
-import SpeedPotion from './speedPotion.js';
+//import SpeedPotion from './speedPotion.js';
 
 export default class ConsumableBar {
 
@@ -121,7 +121,7 @@ export default class ConsumableBar {
                         slot.y + this.slotHeight / 2,
                         spriteKey
                     );
-                    slot.itemSprite.setScale(3); // Escalar para que sea x3 más grande
+                    slot.itemSprite.setScale(this.getItemScale(consumable.type));
                     slot.itemSprite.setScrollFactor(0);
                     slot.itemSprite.setDepth(9101);
                 }
@@ -132,6 +132,18 @@ export default class ConsumableBar {
         });
     }
 
+    getItemScale(type) {
+        const scaleMap = {
+            bread: 3,
+            attack_potion: 3,
+            speed_potion: 3,
+            speed_attack_potion: 3,
+            mask: 3,
+            fox_tail: 0.1
+        };
+
+        return scaleMap[type] ?? 3;
+    }
     /**
      * Verifica el input de teclado para consumir items
      */
@@ -178,6 +190,7 @@ export default class ConsumableBar {
             'attack_potion': 'attack_potion',
             'speed_potion': 'speed_potion',
             'speed_attack_potion': 'speed_attack_potion',
+            'fox_tail': 'fox_tail',
             // Agregar más tipos aquí cuando se necesite
 
             'mask': 'mask_icon'
@@ -236,6 +249,9 @@ export default class ConsumableBar {
             case 'speed_attack_potion':
                 this.useSpeedAttackPotionEffect(duck);
                 break;
+            case 'fox_tail':
+                this.useFoxTailEffect(duck);
+                break;    
             // Agregar más casos aquí para otros consumibles
             default:
                 console.log(`Efecto de uso no definido para: ${type}`);
@@ -328,6 +344,62 @@ export default class ConsumableBar {
             }
         });
     }
+
+    /*Invencivilidad Drop Cola del Zorro*/
+    useFoxTailEffect(duck) {
+        const radius = 250;
+        const duration = 8000; // 8 segundos
+        const interval = 100;  // cada 100ms limpia proyectiles
+
+        if (!duck?.scene) return;
+
+        console.log('Fox tail activa durante 8 segundos');
+
+        const event = duck.scene.time.addEvent({
+            delay: interval,
+            repeat: duration / interval,
+            callback: () => {
+
+                if (!duck.active) return;
+
+                duck.scene.projectiles.getChildren().forEach(projectile => {
+                    if (!projectile || !projectile.active) return;
+
+                    const dx = projectile.x - duck.x;
+                    const dy = projectile.y - duck.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (dist <= radius) {
+                        projectile.destroy();
+                    }
+                });
+            }
+        });
+
+        // OPCIONAL: efecto visual mientras dura
+        const aura = duck.scene.add.circle(duck.x, duck.y, radius, 0xffffff, 0.1);
+        aura.setDepth(9998);
+
+        const followEvent = duck.scene.time.addEvent({
+            delay: 16,
+            callback: () => {
+                if (!duck.active) {
+                    aura.destroy();
+                    return;
+                }
+                aura.setPosition(duck.x, duck.y);
+            },
+            loop: true
+        });
+
+        // destruir aura al acabar
+        duck.scene.time.delayedCall(duration, () => {
+            aura.destroy();
+            followEvent.remove();
+            event.remove();
+        });
+    }
+
 
     /**
      * Destruye la barra de consumibles

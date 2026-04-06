@@ -16,6 +16,7 @@ import Bala from '../GameObjects/Projectiles/bala.js';
 // Drops
 import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
 import Bread from '../GameObjects/consumables/bread.js';
+import FoxTail from '../GameObjects/consumables/foxTail.js';
 
 import AttackPotion from '../GameObjects/consumables/attackPotion.js';
 
@@ -226,7 +227,8 @@ export default class MainScene extends Phaser.Scene {
 
         // Preload de consumibles
         Bread.preload(this);
-
+        FoxTail.preload(this);
+        
         AttackPotion.preload(this);
         SpeedPotion.preload(this);
         SpeedAttackPotion.preload(this);
@@ -1381,6 +1383,9 @@ export default class MainScene extends Phaser.Scene {
             case 'speed_attack_potion':
                 new SpeedAttackPotion(this, x, y);
                 break;
+            case 'fox_tail':
+                new FoxTail(this, x, y);
+                break;    
             default:
                 console.warn(`Tipo de consumible desconocido: ${type}`);
         }
