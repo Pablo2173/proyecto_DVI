@@ -51,12 +51,17 @@ export default class Projectile extends Phaser.GameObjects.Image {
         if (!this.active) return;
 
         const deltaS = delta / 1000;
-        const dx = this.speedX * deltaS;
-        const dy = this.speedY * deltaS;
-
-        this.x += dx;
-        this.y += dy;
-        this.distanceMoved += Math.hypot(dx, dy);
+        if (this.body) {
+            const dx = this.body.velocity.x * deltaS;
+            const dy = this.body.velocity.y * deltaS;
+            this.distanceMoved += Math.hypot(dx, dy);
+        } else {
+            const dx = this.speedX * deltaS;
+            const dy = this.speedY * deltaS;
+            this.x += dx;
+            this.y += dy;
+            this.distanceMoved += Math.hypot(dx, dy);
+        }
 
         if (this.distanceMoved >= this.range) {
             this.destroy();

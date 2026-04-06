@@ -10,8 +10,9 @@ export default class BaseCharacter extends Phaser.GameObjects.Sprite {
         scene.add.existing(this);
 
         this.weapon = null;
-        this.weaponBar = new WeaponBar(scene, this);
+        this.weaponBar = new WeaponBar(scene, this, team === TEAM.ENEMY);
         this._isSwitchingWeapon = false;
+        this._isBeingDestroyed = false;
 
         this.team = team;
 
@@ -19,7 +20,23 @@ export default class BaseCharacter extends Phaser.GameObjects.Sprite {
         this.weaponMap = {};
     }
 
+    _canCreateWeapon() {
+        if (this._isBeingDestroyed) return false;
+        if (!this.scene || !this.scene.sys) return false;
+        if (!this.scene.add) return false;
+        return true;
+    }
+
+    _canScheduleFallbackEquip() {
+        if (!this._canCreateWeapon()) return false;
+        if (!this.scene.time) return false;
+        if (typeof this.scene.sys.isActive === 'function' && !this.scene.sys.isActive()) return false;
+        return true;
+    }
+
     equipWeapon(weaponKeyOrClass) {
+        if (!this._canCreateWeapon()) return;
+
         const WeaponClass = typeof weaponKeyOrClass === 'string'
             ? this.weaponMap[weaponKeyOrClass]
             : weaponKeyOrClass;
@@ -47,7 +64,9 @@ export default class BaseCharacter extends Phaser.GameObjects.Sprite {
         }
 
         if (!newWeapon) {
-            this.equipWeapon('ramita');
+            if (this._canCreateWeapon()) {
+                this.equipWeapon('ramita');
+            }
             return;
         }
 
@@ -56,24 +75,104 @@ export default class BaseCharacter extends Phaser.GameObjects.Sprite {
 
     onWeaponDestroyed(weapon) {
         if (this._isSwitchingWeapon) return;
+        if (this._isBeingDestroyed) return;
         if (this.weapon !== weapon) return;
 
         this.weapon = null;
 
-        // Solo equipar la ramita automáticamente si es un jugador (no un enemigo)
-        const isPlayer = this.team === TEAM.PLAYER || this.constructor.name === 'Duck';
-        if (isPlayer) {
-            if (this.scene && this.scene.time) {
-                this.scene.time.delayedCall(1, () => {
-                    if (!this.weapon && !this._isSwitchingWeapon) {
-                        this._isSwitchingWeapon = true;
-                        this.equipWeapon('ramita');
-                        this._isSwitchingWeapon = false;
-                    }
-                });
-            } else {
-                this.equipWeapon('ramita');
-            }
+        if (this._canScheduleFallbackEquip()) {
+            this.scene.time.delayedCall(1, () => {
+                if (!this._canScheduleFallbackEquip()) return;
+                if (!this.weapon && !this._isSwitchingWeapon && !this._isBeingDestroyed) {
+                    this._isSwitchingWeapon = true;
+                    this.equipWeapon('ramita');
+                    this._isSwitchingWeapon = false;
+                }
+            });
         }
+    }
+
+    getHealthValue() {
+        if (typeof this.health === 'number') return this.health;
+        if (typeof this._hp === 'number') return this._hp;
+        return null;
+    }
+
+    setHealthValue(value) {
+        if (typeof this.health === 'number') {
+            this.health = value;
+            return;
+        }
+        if (typeof this._hp === 'number') {
+            this._hp = value;
+        }
+    }
+
+    canTakeDamage() {
+        return !this._isBeingDestroyed && this.active;
+    }
+
+    beforeTakeDamage(amount, previousHealth) {
+        return { amount, previousHealth };
+    }
+
+    afterTakeDamage(amount, previousHealth, newHealth) {
+        return { amount, previousHealth, newHealth };
+    }
+
+    onHealthDepleted() {
+        if (typeof this.die === 'function') {
+            this.die();
+        }
+    }
+
+    flashRed(duration = 100) {
+        if (!this.scene) return;
+
+        this.setTint(0xff0000);
+
+        if (!this.scene.time) return;
+
+        this.scene.time.delayedCall(duration, () => {
+            if (!this.active || this._isBeingDestroyed) return;
+            this.clearTint();
+        });
+    }
+
+    takeDamage(amount = 1) {
+        if (typeof amount !== 'number' || amount <= 0) return;
+        if (!this.canTakeDamage()) return;
+
+        const previousHealth = this.getHealthValue();
+        if (typeof previousHealth !== 'number') return;
+
+        this.beforeTakeDamage(amount, previousHealth);
+
+        const newHealth = Math.max(0, previousHealth - amount);
+        this.setHealthValue(newHealth);
+
+        this.flashRed();
+        this.afterTakeDamage(amount, previousHealth, newHealth);
+
+        if (newHealth <= 0) {
+            this.onHealthDepleted();
+        }
+    }
+
+    destroy(fromScene) {
+        this._isBeingDestroyed = true;
+
+        if (this.weapon) {
+            const weapon = this.weapon;
+            this.weapon = null;
+            weapon.destroy(undefined, { notifyOwner: false });
+        }
+
+        if (this.weaponBar) {
+            this.weaponBar.destroy();
+            this.weaponBar = null;
+        }
+
+        super.destroy(fromScene);
     }
 }

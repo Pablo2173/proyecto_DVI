@@ -2,16 +2,18 @@ import Enemy, { StatusEnemy } from "../enemy";
 import DropMask from "../consumables/dropMask.js";
 
 export default class Mapache extends Enemy {
-    constructor(scene, name, x, y, texture, frame, weapon, movementType, hasFeather) {
-        super(scene, name, x, y, texture, frame, 150, 100, 80, weapon, movementType, hasFeather);
-        //visionRadius = 150, hp = 100, speed = 80 para el mapache
+
+    constructor(scene, name, x, y, texture, frame, weapon, movementType, visionRadius = 150, hp = 100, speed = 80, hasFeather) {
+        super(scene, name, x, y, texture, frame, visionRadius, hp, speed, weapon, movementType, hasFeather);
+        this.setScale(4);
+      
 
         // guardamos las estadisticas originales para poder restaurarlas al resucitar
-        this._resurrected        = false;
-        this._originalTexture    = texture;
-        this._originalVisionRadius = this._visionRadius;
-        this._maxHP              = 100;
-        this._originalWeapon     = weapon;
+        this._resurrected = false;
+        this._originalTexture = texture;
+        this._originalVisionRadius = visionRadius;
+        this._maxHP = hp;
+        this._originalWeapon = weapon;
         this.hasFeather          = true;
     }
 
@@ -31,11 +33,17 @@ export default class Mapache extends Enemy {
             this._state = StatusEnemy.DEAD;
             console.log(`${this._nombre} ha muerto (primera vez, resucitará)`);
 
-            const deadTexture = `${this.texture.key}_corpse`;
-            if (this.scene.textures.exists(deadTexture)) {
-                this.setTexture(deadTexture);
-            } else if (this.scene.textures.exists('enemy_corpse')) {
-                this.setTexture('enemy_corpse');
+            const dedTexture = this._textureKeyFor('ded');
+            if (dedTexture && this.scene.textures.exists(dedTexture)) {
+                this.anims?.stop();
+                this.setTexture(dedTexture);
+            } else {
+                const deadTexture = `${this.texture.key}_corpse`;
+                if (this.scene.textures.exists(deadTexture)) {
+                    this.setTexture(deadTexture);
+                } else if (this.scene.textures.exists('enemy_corpse')) {
+                    this.setTexture('enemy_corpse');
+                }
             }
 
             if (this.body) {
@@ -62,6 +70,7 @@ export default class Mapache extends Enemy {
         if (!this.scene) return;
 
         this._state         = StatusEnemy.IDLE;
+        this._isShowingHit  = false;
         this._hp            = this._maxHP;
         this._visionRadius  = this._originalVisionRadius;
 

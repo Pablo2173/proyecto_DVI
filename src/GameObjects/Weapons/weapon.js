@@ -10,6 +10,7 @@ import Phaser from 'phaser';
  *   projectileSpeed: number        — velocidad del proyectil (default 600)
  *   damage         : number        — daño base (default 10)
  *   attackSpeed    : number        — ms entre ataques (default 500)
+ *   durability     : number        — golpes que puede soportar el arma (default null)
  *   range          : number        — radio máximo del arma (default 800)
  *   optimalDistance: number        — distancia mínima recomendada (default range*0.7)
  *   swingAngle     : number        — amplitud del swing melee en grados (default 60)
@@ -40,8 +41,11 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         this.attackSpeed = config.attackSpeed ?? 500;
         this.lastAttackTime = 0;
         this.isAttacking = false;
+        this.maxDurability = this.isEnemy ? null : (config.durability ?? null);
+        this.durability = this.maxDurability;
 
-        // ── Radios de combate ──
+        // ── Método para obtener daño con multiplicadores ──
+        this.getDamage = () => this.damage * (this.owner.damageMultiplier || 1);
         this.range = config.range ?? 800;
         this.optimalDistance = config.optimalDistance ?? this.range * 0.7;
         this.accuracy = Phaser.Math.Clamp(config.accuracy ?? 0, 0, 180);
@@ -52,7 +56,7 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
 
         // ── Visual ──
         this.spriteAngleOffset = config.spriteAngleOffset ?? 0;
-        this.setScale(1);
+        this.setScale(config.scale ?? 1);
         this.setOrigin(0, 0.5);  // origen en la "empuñadura"
 
         // ── Debug ──
@@ -218,7 +222,7 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
             direction,
             speed: this.projectileSpeed,
             range: this.range,
-            damage: this.damage,
+            damage: this.getDamage(),
             owner: this.owner,
             team: this.owner?.team ?? 'neutral'
         });
@@ -280,6 +284,24 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         super.destroy(fromScene);
     }
 
+    consumeDurability(amount = 1) {
+        if (typeof this.durability !== 'number') return false;
+        if (amount <= 0) return false;
+
+        this.durability = Math.max(0, this.durability - amount);
+
+        if (this.durability <= 0) {
+            this.destroy();
+            return true;
+        }
+
+        return false;
+    }
+
+    onHitTarget(_target) {
+        return this.consumeDurability(1);
+    }
+
     // ─────────────────────────────────────────
     //  PRELOAD (override en subclases o helpers)
     // ─────────────────────────────────────────
@@ -298,6 +320,7 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
 
     on_equip() { }    // Called when you equip the weapon
     on_shoot() { }    // Called when shooting a bullet
+    onDash() { }      // Called when the owner finishes a dash
     on_wait() { }     // Called while not shooting
     barCanShoot() { return true }  // Called before shoot, after cooldown, to see if the bar state is acceptable for the weapon
 

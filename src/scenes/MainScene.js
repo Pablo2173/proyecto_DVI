@@ -7,6 +7,7 @@ import Mcuaktro from '../GameObjects/Weapons/Distance/mcuaktro.js';
 import Cuchillo from '../GameObjects/Weapons/Melee/cuchillo.js';
 import Mazo from '../GameObjects/Weapons/Melee/mazo.js';
 import Ramita from '../GameObjects/Weapons/Melee/ramita.js';
+import Escoba from '../GameObjects/Weapons/Melee/escoba.js';
 
 // Proyectiles
 import Flecha from '../GameObjects/Projectiles/flecha.js';
@@ -15,14 +16,34 @@ import Bala from '../GameObjects/Projectiles/bala.js';
 // Drops
 import DropWeapon from '../GameObjects/Weapons/drops/dropWeapon.js';
 import Bread from '../GameObjects/consumables/bread.js';
+
+import AttackPotion from '../GameObjects/consumables/attackPotion.js';
+
+import SpeedPotion from '../GameObjects/consumables/speedPotion.js';
+import SpeedAttackPotion from '../GameObjects/consumables/speedAttackPotion.js';
+
+
 import DropBread from '../GameObjects/consumables/dropBread.js';
 import DropMask from '../GameObjects/consumables/dropMask.js';
 
+
 import Enemy from '../GameObjects/enemy.js';
+import { DUCK_STATE } from '../GameObjects/duck.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
 import sprint_sprite from '../../assets/sprites/duck/sprint_duck.png';
 import cuack_sprite from '../../assets/sprites/duck/Cuack_duck.png';
 import enemy_sprite from '../../assets/sprites/player.png';
+
+// Sprites de enemigos específicos
+import zorro_idle from '../../assets/Sprites/Zorro/zorro_idle.png';
+import zorro_run from '../../assets/Sprites/Zorro/zorro_run.png';
+import zorro_hit from '../../assets/Sprites/Zorro/zorro_hit.png';
+import zorro_ded from '../../assets/Sprites/Zorro/zorro_ded.png';
+
+import mapache_idle from '../../assets/Sprites/Mapache/mapache_idle.png';
+import mapache_run from '../../assets/Sprites/Mapache/mapache_run.png';
+import mapache_hit from '../../assets/Sprites/Mapache/mapache_hit.png';
+import mapache_ded from '../../assets/Sprites/Mapache/mapache_ded.png';
 
 //Sounds
 import cuackSound from '../../assets/sounds/cuack.mp3';
@@ -75,9 +96,14 @@ import waterFountain from '../../assets/tilesets/water-fountain.png';
 import woodFenceInteriorCorner4 from '../../assets/tilesets/wood-fence-interior-corner-4.png';
 import tallGrassMiddle from '../../assets/tilesets/tall-grass-middle.png';
 import bush from '../../assets/tilesets/bush.png';
+import Overworld from '../../assets/tilesets/Overworld.png';
+import objects from '../../assets/tilesets/objects.png';
+import carGreenBack from '../../assets/tilesets/car-green-back.png';
+import carBlueBack from '../../assets/tilesets/car-blue-back.png';
+import truckRedFront from '../../assets/tilesets/truck-red-front.png';
 
 //Plumas
-import feather_icon from '../../assets/sprites/ui/pluma.png';
+import feather_icon from '../../assets/sprites/UI/pluma.png';
 import FeatherUI from '../GameObjects/featherUI.js';
 
 // Drops de enemigos
@@ -93,7 +119,7 @@ export default class MainScene extends Phaser.Scene {
         // ── Mapa ──
         this.load.tilemapTiledJSON('level1', mapaJson);
 
-        this.load.image('dark-grass-middle-middle', darkGrassMiddleMiddle);
+        //this.load.image('dark-grass-middle-middle', darkGrassMiddleMiddle);
         this.load.image('sidewalk-1', sidewalk1);
         this.load.image('asphalt-road-1', asphaltRoad1);
         this.load.image('asphalt-road-3', asphaltRoad3);
@@ -129,6 +155,12 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('tall-grass-middle', tallGrassMiddle);
         this.load.image('bush', bush);
 
+        this.load.image('Overworld', Overworld);
+        this.load.image('objects', objects);
+        this.load.image('car-green-back', carGreenBack);
+        this.load.image('car-blue-back', carBlueBack);
+        this.load.image('truck-red-front', truckRedFront);
+
         this.load.spritesheet('idle_duck', player_sprite, {
             frameWidth: 32,
             frameHeight: 32
@@ -150,6 +182,35 @@ export default class MainScene extends Phaser.Scene {
         });
 
         this.load.image('enemy', enemy_sprite);
+        
+        // Cargar spritesheets de zorro (4 frames cada uno, 32x32)
+        this.load.spritesheet('zorro_idle', zorro_idle, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.spritesheet('zorro_run', zorro_run, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.image('zorro_hit', zorro_hit);
+        this.load.image('zorro_ded', zorro_ded);
+        // Alias para el sprite muerto (usado en Enemy.die())
+        this.load.image('zorro_idle_corpse', zorro_ded);
+        
+        // Cargar spritesheets de mapache (4 frames cada uno, 32x32)
+        this.load.spritesheet('mapache_idle', mapache_idle, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.spritesheet('mapache_run', mapache_run, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.image('mapache_hit', mapache_hit);
+        this.load.image('mapache_ded', mapache_ded);
+        // Alias para el sprite muerto (usado en Enemy.die())
+        this.load.image('mapache_idle_corpse', mapache_ded);
+        
         this.load.audio('cuack', cuackSound);
         this.load.audio('death_sound', deathSound);
 
@@ -161,10 +222,17 @@ export default class MainScene extends Phaser.Scene {
         Ramita.preload(this);
         Flecha.preload(this);
         Bala.preload(this);
+        Escoba.preload(this);
 
         // Preload de consumibles
         Bread.preload(this);
+
+        AttackPotion.preload(this);
+        SpeedPotion.preload(this);
+        SpeedAttackPotion.preload(this);
+
         DropBread.preload(this);
+
 
         // Preload de la barra de arma del jugador
         this.load.image('weapon_bar_border', bar);
@@ -256,6 +324,36 @@ export default class MainScene extends Phaser.Scene {
             repeat: -1
         });
 
+        // Animaciones de Zorro
+        this.anims.create({
+            key: 'zorro-idle',
+            frames: this.anims.generateFrameNumbers('zorro_idle', { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'zorro-run',
+            frames: this.anims.generateFrameNumbers('zorro_run', { start: 0, end: 3 }),
+            frameRate: 12,
+            repeat: -1
+        });
+
+        // Animaciones de Mapache
+        this.anims.create({
+            key: 'mapache-idle',
+            frames: this.anims.generateFrameNumbers('mapache_idle', { start: 0, end: 3 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'mapache-run',
+            frames: this.anims.generateFrameNumbers('mapache_run', { start: 0, end: 3 }),
+            frameRate: 12,
+            repeat: -1
+        });
+
         // ── Fondo ──
         //const bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x87CEEB);
         //bg.setOrigin(0);
@@ -278,6 +376,8 @@ export default class MainScene extends Phaser.Scene {
         // ── Barra de consumibles ──
         this.consumableBar = new ConsumableBar(this, this.duck);
 
+
+
         // ── Atacar con click izquierdo (puntual o mantenido) ──
         this.input.on('pointerdown', () => {
             if (this.duck && this.duck.weapon) this.duck.weapon.attack();
@@ -290,13 +390,17 @@ export default class MainScene extends Phaser.Scene {
             }
         });
 
-        // ── Enemigo ──
-        this.enemy = new Mapache(this, 'Mapache', 2000, 9500, 'enemy', null, 'mcuaktro'); //de momento el weapon se lo pongo a null hasta que este implementado
-        this.enemy.setFlipX(true);
+        // ── Enemigos desde rutas ──
+        this.enemies = this.physics.add.group();
+        this.setupEnemiesFromRoutes(SCALE);
 
-        // ── Eventos de audio para el enemigo ──
+        // ── Eventos de audio para todos los enemigos ──
         this.events.on('audio:event', (audioEvent) => {
-            if (this.enemy) this.enemy.onAudioEvent(audioEvent);
+            if (this.enemies) {
+                this.enemies.getChildren().forEach(enemy => {
+                    if (enemy) enemy.onAudioEvent(audioEvent);
+                });
+            }
         });
 
         // ── Graphics para radio de visión ──
@@ -312,6 +416,12 @@ export default class MainScene extends Phaser.Scene {
         new Bread(this, 350, 400);    // Centro-abajo
         new Bread(this, 600, 150);    // Derecha-arriba
         new Bread(this, 250, 500);    // Abajo-centro
+        
+        // AttackPotion para testing
+        new AttackPotion(this, 1700, 9600); // Cerca del duck
+        
+        // SpeedPotion para testing
+        new SpeedPotion(this, 1750, 9600); // Cerca del duck
         
         // Mazo en posición fija
         new DropWeapon(this, 450, 450, Mazo, 'mazo');
@@ -346,15 +456,15 @@ export default class MainScene extends Phaser.Scene {
         );
 
         this.physics.add.collider(this.duck, colisionLayer); //colisiones del mapa
-        this.physics.add.collider(this.enemy, colisionLayer);
+        this.physics.add.collider(this.enemies, colisionLayer);
 
         // contacto enemigo → pato
-        this.physics.add.overlap(this.duck, this.enemy, (duck, enemy) => {
+        this.physics.add.overlap(this.duck, this.enemies, (duck, enemy) => {
             this._onEnemyHitDuck(duck, enemy);
         });
 
         // proyectil → enemigo
-        this.physics.add.overlap(this.projectiles, this.enemy, (projectile, enemy) => {
+        this.physics.add.overlap(this.projectiles, this.enemies, (projectile, enemy) => {
             this._onProjectileHitEnemy(projectile, enemy);
         });
 
@@ -386,13 +496,15 @@ export default class MainScene extends Phaser.Scene {
     }*/
 
     create() {
-        const SCALE = 3;
+        const SCALE = 4;
 
         // ─────────────────────────────────────────
         // CONFIG GENERAL DE LA ESCENA
         // ─────────────────────────────────────────
         this.isPlayerDead = false;
-        this.playerSpawn = { x: 1700, y: 9500 };
+        this.playerSpawn = null;
+        this.playerWeapon = 'cuchillo';
+        this.positionText = null;
 
         // Limpia listeners anteriores por seguridad al reiniciar la escena
         this.input.removeAllListeners();
@@ -400,7 +512,7 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         // MAPA
         // ─────────────────────────────────────────
-        const map = this.make.tilemap({
+        this.map = this.make.tilemap({
             key: 'level1',
             tileWidth: 16,
             tileHeight: 16
@@ -416,27 +528,88 @@ export default class MainScene extends Phaser.Scene {
             'wood-fence-interior-corner-2', 'wood-fence-interior-corner-3',
             'wood-fence-top-left-corner', 'apartment-building', 'grocery-store',
             'tree-1', 'small-bushes-blue-berries', 'water-fountain',
-            'wood-fence-interior-corner-4', 'tall-grass-middle', 'bush'
+            'wood-fence-interior-corner-4', 'tall-grass-middle', 'bush',
+            'Overworld', 'objects', 'car-green-back', 'car-blue-back', 'truck-red-front'
         ];
 
-        const tilesets = tilesetNames.map(name => map.addTilesetImage(name, name));
+        const tilesets = tilesetNames.map(name => this.map.addTilesetImage(name, name));
 
-        this.baseLayer = map.createLayer('base', tilesets, 0, 0);
+        this.baseLayer = this.map.createLayer('base', tilesets, 0, 0);
         this.baseLayer.setScale(SCALE);
 
-        this.patronesLayer = map.createLayer('Capa de patrones 1', tilesets, 0, 0);
-        this.patronesLayer.setScale(SCALE);
+        this.patrones1Layer = this.map.createLayer('Capa de patrones 1', tilesets, 0, 0);
+        this.patrones1Layer.setScale(SCALE);
 
-        this.colisionLayer = map.createLayer('Zonas con colision', tilesets, 0, 0);
+        this.patrones2Layer = this.map.createLayer('Capa de patrones 2', tilesets, 0, 0);
+        this.patrones2Layer.setScale(SCALE);
+
+        this.zonasAcuaticasLayer = this.map.createLayer('Zonas aquaticas', tilesets, 0, 0);
+        this.zonasAcuaticasLayer.setScale(SCALE);
+
+        this.sombreado1Layer = this.map.createLayer('Sombreado1', tilesets, 0, 0);
+        this.sombreado1Layer.setScale(SCALE);
+
+        this.colisionLayer = this.map.createLayer('Zonas con colision', tilesets, 0, 0);
         this.colisionLayer.setScale(SCALE);
 
-        this.esteticaLayer = map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
-        this.esteticaLayer.setScale(SCALE);
+        this.estetica1Layer = this.map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
+        this.estetica1Layer.setScale(SCALE);
 
-        this.colisionLayer.setCollisionByProperty({ collides: true });
+        this.vallaLayer = this.map.createLayer('Valla', tilesets, 0, 0);
+        this.vallaLayer.setScale(SCALE);
 
-        const worldWidth = map.widthInPixels * SCALE;
-        const worldHeight = map.heightInPixels * SCALE;
+        this.sombreado2Layer = this.map.createLayer('Sombreado2', tilesets, 0, 0);
+        this.sombreado2Layer.setScale(SCALE);
+        this.sombreado2Layer.setDepth(200);
+
+        this.estetica2Layer = this.map.createLayer('Objetos estéticos sin colision 2', tilesets, 0, 0);
+        this.estetica2Layer.setScale(SCALE);
+        this.estetica2Layer.setDepth(201); //le he añadido esto para que el patete este por debajo
+
+        this.techo1Layer = this.map.createLayer('Techo1', tilesets, 0, 0);
+        this.techo1Layer.setScale(SCALE);
+        this.techo1Layer.setDepth(202);
+
+        const duckLayer = this.map.getObjectLayer('duck');
+        if (!duckLayer || duckLayer.objects.length === 0) {
+            throw new Error('Falta la capa de objetos duck o esta vacia. Debes definir el jugador desde el mapa.');
+        }
+
+        const duckObj = duckLayer.objects.find(obj => (obj.name || '').trim().toLowerCase() === 'duck');
+        if (!duckObj) {
+            throw new Error('Falta un objeto llamado duck dentro de la capa duck.');
+        }
+
+        this.playerSpawn = {
+            x: duckObj.x * SCALE,
+            y: duckObj.y * SCALE
+        };
+
+        if (duckObj.properties) {
+            const duckProps = {};
+            duckObj.properties.forEach(p => duckProps[p.name] = p.value);
+            if (Object.prototype.hasOwnProperty.call(duckProps, 'weapon')) {
+                const weaponFromMap = duckProps.weapon;
+
+                if (weaponFromMap === null) {
+                    this.playerWeapon = 'ramita';
+                } else if (typeof weaponFromMap === 'string') {
+                    const normalizedWeapon = weaponFromMap.trim().toLowerCase();
+                    this.playerWeapon = normalizedWeapon === '' || normalizedWeapon === 'null'
+                        ? 'ramita'
+                        : normalizedWeapon;
+                } else {
+                    this.playerWeapon = weaponFromMap;
+                }
+            }
+        }
+
+        // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
+        // Esto evita depender de propiedades "collides" en cada tile del tileset.
+        this.colisionLayer.setCollisionByExclusion([-1], true);
+
+        const worldWidth = this.map.widthInPixels * SCALE;
+        const worldHeight = this.map.heightInPixels * SCALE;
 
         this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
         this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
@@ -480,8 +653,42 @@ export default class MainScene extends Phaser.Scene {
             });
         }
 
-        // Ojo: en tu preload actual no he visto cargado 'duck-swimming'.
-        // Déjalo solo si realmente existe ese spritesheet cargado.
+        if (!this.anims.exists('zorro-idle') && this.textures.exists('zorro_idle')) {
+            this.anims.create({
+                key: 'zorro-idle',
+                frames: this.anims.generateFrameNumbers('zorro_idle', { start: 0, end: 3 }),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
+
+        if (!this.anims.exists('zorro-run') && this.textures.exists('zorro_run')) {
+            this.anims.create({
+                key: 'zorro-run',
+                frames: this.anims.generateFrameNumbers('zorro_run', { start: 0, end: 3 }),
+                frameRate: 12,
+                repeat: -1
+            });
+        }
+
+        if (!this.anims.exists('mapache-idle') && this.textures.exists('mapache_idle')) {
+            this.anims.create({
+                key: 'mapache-idle',
+                frames: this.anims.generateFrameNumbers('mapache_idle', { start: 0, end: 3 }),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
+
+        if (!this.anims.exists('mapache-run') && this.textures.exists('mapache_run')) {
+            this.anims.create({
+                key: 'mapache-run',
+                frames: this.anims.generateFrameNumbers('mapache_run', { start: 0, end: 3 }),
+                frameRate: 12,
+                repeat: -1
+            });
+        }
+
         /* if (!this.anims.exists('duck-swimming') && this.textures.exists('duck-swimming')) {
              this.anims.create({
                  key: 'duck-swimming',
@@ -507,7 +714,9 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         // PLAYER
         // ─────────────────────────────────────────
-        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, 'arco');
+
+        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon);
+
 
         // ─────────────────────────────────────────
         // UI
@@ -515,6 +724,9 @@ export default class MainScene extends Phaser.Scene {
         this.consumableBar = new ConsumableBar(this, this.duck);
         this.featherUI = new FeatherUI(this, this.duck);
         this.enemiesKilled = 0;
+
+        // Dar poción de velocidad al pato para depurar
+        this.duck.consumables.push({ type: 'speed_potion', value: 1 });
 
         const upBar = this.add.image(960, 0, 'up_bar');
         upBar.setOrigin(0.5, 0);
@@ -562,22 +774,32 @@ export default class MainScene extends Phaser.Scene {
         this.deathOverlay.add([deathBg, deathText]);
 
         // Si la ventana cambia, reajustamos overlay
-        this.scale.on('resize', (gameSize) => {
+        if (this._onResize) {
+            this.scale.off('resize', this._onResize, this);
+        }
+        this._onResize = (gameSize) => {
             deathBg.setSize(gameSize.width, gameSize.height);
             deathText.setPosition(gameSize.width / 2, gameSize.height / 2);
-        });
+        };
+        this.scale.on('resize', this._onResize, this);
+
+        // Limpieza segura al reiniciar/destruir la escena
+        this.events.once('shutdown', this._cleanupScene, this);
+        this.events.once('destroy', this._cleanupScene, this);
 
         // ─────────────────────────────────────────
         // INPUTS
         // ─────────────────────────────────────────
-        this.input.on('pointerdown', () => {
+        this.input.on('pointerdown', (pointer) => {
             if (this.isPlayerDead) return;
+            if (pointer?.button !== 0) return;
             if (this.duck && this.duck.weapon) {
                 this.duck.weapon.attack();
             }
         });
 
-        this.input.on('pointerup', () => {
+        this.input.on('pointerup', (pointer) => {
+            if (pointer?.button !== 0) return;
             if (this.duck && this.duck.weapon && this.duck.weapon.releaseAttack) {
                 this.duck.weapon.releaseAttack();
             }
@@ -587,47 +809,82 @@ export default class MainScene extends Phaser.Scene {
         this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
 
         // ─────────────────────────────────────────
-        // ENEMIGOS
+        // ENEMIGOS DESDE RUTAS
         // ─────────────────────────────────────────
-        this.enemies = [];
-        this.visionGraphics = this.add.graphics();
-        this.enemyAlertTimes = {};
+        this.enemies = this.physics.add.group();
+        this.setupEnemiesFromRoutes(SCALE);
 
-        const enemigosPorCapa = {
-            'enemies/Mapache': Mapache,
-            'enemies/Zorro': Zorro,
-        };
+        // Mapache extra cerca del spawn del pato
+        const spawnMapache = new Mapache(
+            this,
+            'Mapache_spawn',
+            this.playerSpawn.x + 180,
+            this.playerSpawn.y + 40,
+            'mapache_idle',
+            null,
+            Cuchillo,
+            null
+        );
+        this.enemies.add(spawnMapache);
 
+        // ─────────────────────────────────────────
+        // CONSUMIBLES DESDE TILED
+        // ─────────────────────────────────────────
+        // Sistema para evitar repeticiones: tipos disponibles y usados
+        this.availableConsumableTypes = ['bread', 'speed_potion', 'attack_potion', 'speed_attack_potion'];
+        this.usedConsumableTypes = [];
 
-        Object.entries(enemigosPorCapa).forEach(([nombreCapa, Clase]) => {
-            const capa = map.getObjectLayer(nombreCapa);
-            if (!capa) return; // si la capa no existe, salta
+        const consumableLayer = this.map.getObjectLayer('consumables') || this.map.getObjectLayer('consummable') || this.map.getObjectLayer('consumable');
 
-            capa.objects.forEach(obj => {
-                const props = {};
-                if (obj.properties) {
-                    obj.properties.forEach(p => props[p.name] = p.value);
+        if (consumableLayer) {
+            consumableLayer.objects.forEach(obj => {
+                const objectName = (obj.name || '').toLowerCase();
+                const objectTypeRaw = (obj.type || '').toLowerCase();
+                const objectTypeProp = (obj.properties && obj.properties.find(p => p.name === 'type')?.value || '').toLowerCase();
+                const objectType = objectTypeRaw || objectTypeProp;
+
+                // Aceptar nombre/tipo 'consumable' o 'consummable' (se aceptan ambos por si hay typo)
+                const isConsumableObject =
+                    objectName === 'consumable' || objectName === 'consummable' ||
+                    objectType === 'consumable' || objectType === 'consummable';
+                if (!isConsumableObject) {
+                    return;
                 }
 
-                console.log('Creando enemigo:', obj.name, 'en', obj.x, obj.y, 'props:', props);
+                let selectedType = null;
 
-                const enemy = new Clase(
-                    this,
-                    obj.name,
-                    obj.x * SCALE,
-                    obj.y * SCALE,
-                    props.texture ?? 'enemy',
-                    null,
-                    props.weapon ?? 'arco',
-                    props.movementType ?? 'stay',
-                    props.hasFeather ?? false
-                );
+                // Si en Tiled el objeto viene con obj.type: 'speed_potion', use eso.
+                if (objectType && this.availableConsumableTypes.includes(objectType)) {
+                    selectedType = objectType;
+                }
 
-                this.add.existing(enemy);
-                this.enemies.push(enemy);
+                if (!selectedType) {
+                    // Elegir tipo aleatorio sin repetición
+                    if (this.availableConsumableTypes.length > 0) {
+                        const randomIndex = Phaser.Math.Between(0, this.availableConsumableTypes.length - 1);
+                        selectedType = this.availableConsumableTypes.splice(randomIndex, 1)[0];
+                        this.usedConsumableTypes.push(selectedType);
+                    } else {
+                        // Si se agotaron, resetear y permitir repeticiones
+                        this.availableConsumableTypes = [...this.usedConsumableTypes];
+                        this.usedConsumableTypes = [];
+                        const randomIndex = Phaser.Math.Between(0, this.availableConsumableTypes.length - 1);
+                        selectedType = this.availableConsumableTypes.splice(randomIndex, 1)[0];
+                        this.usedConsumableTypes.push(selectedType);
+                    }
+                }
 
+                if (!selectedType) {
+                    console.warn('Consumable sin tipo válido:', obj);
+                    return;
+                }
+
+                console.log('Spawn consumable:', selectedType, 'en', obj.x, obj.y, 'layer', consumableLayer.name);
+                this.createConsumable(selectedType, obj.x * SCALE, obj.y * SCALE);
             });
-        });
+        } else {
+            console.warn('No se encontró una capa de consumables en Tiled. Nombres válidos: consumables, consummable, consumable.');
+        }
 
 
         // Eventos de audio para todos los enemigos
@@ -646,7 +903,7 @@ export default class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.duck, this.colisionLayer);
 
         // Colisiones con todos los enemigos
-        this.enemies.forEach(enemy => {
+        this.enemies.getChildren().forEach(enemy => {
             this.physics.add.collider(this.duck, enemy);
             this.physics.add.collider(enemy, this.colisionLayer);
             this.physics.add.overlap(this.projectiles, enemy, (projectile, en) => {
@@ -664,10 +921,17 @@ export default class MainScene extends Phaser.Scene {
             this._onProjectileHitDuck(projectile, duck);
         });
 
+        // proyectil -> capa de colisión del mapa
+        this.physics.add.collider(this.projectiles, this.colisionLayer, (projectile) => {
+            if (!projectile || !projectile.active) return;
+            projectile.destroy();
+        });
+
         // Consumibles y drops
         new Bread(this, 500, 9400);
         new Bread(this, 1800, 9200);
         new DropWeapon(this, 1500, 9600, Mazo, 'mazo');
+        new DropWeapon(this, this.playerSpawn.x + 120, this.playerSpawn.y + 40, Arco, 'arco');
 
         //inicialización de la cámara centrada en el jugador antes del update
         //como el movimiento depende del ratón inicializaremos el puntero en la posición del jugador
@@ -676,33 +940,66 @@ export default class MainScene extends Phaser.Scene {
         this.input.activePointer.worldY = this.playerSpawn.y;
     }
 
+    /*update(time, delta) {
+        // ── Actualizar barra de consumibles ──
+        if (this.consumableBar) {
+            this.consumableBar.update();
+        }
 
+        // ── Cámara entre pato y ratón ──
+        if (this.duck) {
+            const mouseX = this.input.activePointer.worldX;
+            const mouseY = this.input.activePointer.worldY;
+            
+            // 70% hacia el pato, 30% hacia el ratón
+            const camX = this.duck.x * 0.7 + mouseX * 0.3;
+            const camY = this.duck.y * 0.7 + mouseY * 0.3;
+            
+            this.cameras.main.centerOn(camX, camY, 1, 1); // suavizado
+        }
+
+        // ── Ataque continuo mientras se mantiene el botón izquierdo ──
+        // Para armas con carga (arco), attack() solo inicia la carga una vez
+        if (this.input.activePointer.isDown && this.duck && this.duck.weapon) {
+            this.duck.weapon.attack();
+        }
+
+        if (this.enemy) {
+            this.enemy.detectAndAlert(this.duck);
+
+            // Parpadeo amarillo 0.5s al alertarse
+            if (this.enemy.isAlerted()) {
+                if (this.enemyAlertTime === null) {
+                    this.enemyAlertTime = time;
+                    this.enemy.setTint(0xFFFF01);
+                }
+                if (time - this.enemyAlertTime > 500) {
+                    // only clear if not currently flashing red
+                    if (this.enemy.tintTopLeft !== 0xFF0000) {
+                        this.enemy.clearTint();
+                    }
+                }
+            } else {
+                this.enemyAlertTime = null;
+                // clear only if not flashing damage
+                if (this.enemy.tintTopLeft !== 0xFF0000) {
+                    this.enemy.clearTint();
+                }
+            }
+
+            // Radio de visión debug
+            this.visionGraphics.clear();
+            this.enemy.drawVision(this.visionGraphics, { color: 0xff0000, fillAlpha: 0.08 });
+        }
+    }*/
     update(time, delta) {
         // ─────────────────────────────────────────
         // BLOQUEO TOTAL SI EL JUGADOR ESTÁ MUERTO
         // ─────────────────────────────────────────
         if (this.isPlayerDead) {
-            if (this.visionGraphics) {
-                this.visionGraphics.clear();
-            }
             return;
         }
 
-        // ───────────────────────────────────────────────────────────────────
-        // DEBUG: MOSTRAR POSICIÓN DEL PATO PARA UBICAR POSICIONES EN EL MAPA
-        // ───────────────────────────────────────────────────────────────────
-        if (!this.positionText) {
-            this.positionText = this.add.text(10, 50, '', {
-                fontSize: '16px',
-                fill: '#00ff00',
-                backgroundColor: '#000000',
-                padding: { x: 5, y: 5 }
-            }).setScrollFactor(0).setDepth(10000);
-        }
-
-        if (this.duck) {
-            this.positionText.setText(`Pato: (${Math.round(this.duck.x)}, ${Math.round(this.duck.y)})`);
-        }
 
         // ─────────────────────────────────────────
         // ACTUALIZAR BARRA DE CONSUMIBLES
@@ -710,6 +1007,11 @@ export default class MainScene extends Phaser.Scene {
         if (this.consumableBar) {
             this.consumableBar.update();
         }
+
+        // ─────────────────────────────────────────
+        // ESTADO SWIMMING SEGÚN CAPA ACUÁTICA
+        // ─────────────────────────────────────────
+        this._updateDuckSwimmingState();
 
         // ─────────────────────────────────────────
         // RECOGIDA DE CONSUMIBLES
@@ -739,6 +1041,7 @@ export default class MainScene extends Phaser.Scene {
         // 70% hacia el pato, 30% hacia el ratón
         // ─────────────────────────────────────────
         if (this.duck && this.duck.active) {
+            this.input.activePointer.updateWorldPoint(this.cameras.main);
             const mouseX = this.input.activePointer.worldX;
             const mouseY = this.input.activePointer.worldY;
 
@@ -754,7 +1057,7 @@ export default class MainScene extends Phaser.Scene {
         // gestionar internamente no reiniciarse mal.
         // ─────────────────────────────────────────
         if (
-            this.input.activePointer.isDown &&
+            this.input.activePointer.leftButtonDown() &&
             this.duck &&
             this.duck.active &&
             this.duck.weapon
@@ -766,46 +1069,36 @@ export default class MainScene extends Phaser.Scene {
         // IA / VISIÓN DEL ENEMIGO
         // ─────────────────────────────────────────
         if (this.duck && this.duck.active) {
-            this.enemies.forEach(enemy => {
+            this.enemies.getChildren().forEach(enemy => {
                 if (!enemy || !enemy.active || enemy.isDead?.()) return;
 
-                // Solo detectar si se alerta
-                enemy.detectAndAlert(this.duck);
-
-                // Parpadeo al alertarse
-                if (enemy.isAlerted()) {
-                    if (!this.enemyAlertTimes[enemy.name]) {
-                        this.enemyAlertTimes[enemy.name] = time;
-                        enemy.setTint(0xFFFF01);
-                    }
-
-                    if (time - this.enemyAlertTimes[enemy.name] > 500) {
-                        if (enemy.tintTopLeft !== 0xFF0000) {
-                            enemy.clearTint();
-                        }
-                    }
-                } else {
-                    delete this.enemyAlertTimes[enemy.name];
-                    if (enemy.tintTopLeft !== 0xFF0000) {
-                        enemy.clearTint();
-                    }
-                }
-
-                // Debug del radio de visión
-                if (this.visionGraphics) {
-                    enemy.drawVision(this.visionGraphics, {
-                        color: 0xff0000,
-                        fillAlpha: 0.08
-                    });
-                }
+                // Detección y feedback visual manejados por la propia clase Enemy
+                enemy.updateAwareness(this.duck, time);
             });
-        } else {
-            this.enemyAlertTimes = {};
-            if (this.visionGraphics) {
-                this.visionGraphics.clear();
-            }
         }
 
+    }
+
+    _updateDuckSwimmingState() {
+        if (!this.duck || !this.duck.active || !this.zonasAcuaticasLayer) return;
+
+        const tileSize = 16 * 4;
+        const tileX = Math.floor(this.duck.x / tileSize);
+        const tileY = Math.floor(this.duck.y / tileSize);
+
+        const waterTile = this.zonasAcuaticasLayer.getTileAt(tileX, tileY);
+        const isInWater = !!waterTile;
+
+        if (isInWater) {
+            if (this.duck.state !== DUCK_STATE.SWIMMING && this.duck.state !== DUCK_STATE.DASHING) {
+                this.duck.setState(DUCK_STATE.SWIMMING);
+            }
+            return;
+        }
+
+        if (this.duck.state === DUCK_STATE.SWIMMING) {
+            this.duck.setState(DUCK_STATE.IDLE);
+        }
     }
 
     showDeathScreen() {
@@ -846,10 +1139,6 @@ export default class MainScene extends Phaser.Scene {
         });
         */
 
-        if (this.visionGraphics) {
-            this.visionGraphics.clear();
-        }
-
         this.showDeathScreen();
         this.deathSound?.play();
 
@@ -861,11 +1150,9 @@ export default class MainScene extends Phaser.Scene {
     _cleanupScene() {
         this.input.removeAllListeners();
 
-        this.scale.off('resize');
-
-        if (this.visionGraphics) {
-            this.visionGraphics.destroy();
-            this.visionGraphics = null;
+        if (this._onResize) {
+            this.scale.off('resize', this._onResize, this);
+            this._onResize = null;
         }
 
         if (this.puddleDebug) {
@@ -876,6 +1163,16 @@ export default class MainScene extends Phaser.Scene {
         if (this.deathOverlay) {
             this.deathOverlay.destroy();
             this.deathOverlay = null;
+        }
+
+        if (this.positionText) {
+            this.positionText.destroy();
+            this.positionText = null;
+        }
+
+        if (this.controlsText) {
+            this.controlsText.destroy();
+            this.controlsText = null;
         }
     }
 
@@ -901,6 +1198,7 @@ export default class MainScene extends Phaser.Scene {
 
         const damage = projectile.damage ?? 1;
         enemy.takeDamage(damage);
+        projectile.owner?.weapon?.onHitTarget?.(enemy);
 
         if (!projectile.piercing) {
             projectile.destroy();
@@ -933,12 +1231,148 @@ export default class MainScene extends Phaser.Scene {
 
         const damage = projectile.damage ?? 1;
         duck.takeDamage(damage);
+        projectile.owner?.weapon?.onHitTarget?.(duck);
 
         if (!projectile.piercing) {
             projectile.destroy();
         }
 
         console.log(`¡El pato recibió daño! Daño: ${damage}, Vida restante: ${duck.health}, Plumas restantes: ${duck.feathers}`);
+    }
+
+    /**
+     * Crea enemigos basándose en los polígonos de la capa "routes" en Tiled
+     * 
+     * Cada polígono DEBE tener las siguientes propiedades personalizadas en Tiled:
+     * - enemyType (string): "mapache" o "zorro"
+     * - weaponType (string): "cuchillo", "arco", "mazo", "ramita", "escoba", "mcuaktro"
+     * 
+     * @param {number} scale - Escala del mapa
+     */
+    setupEnemiesFromRoutes(scale) {
+        const routesLayer = this.map.getObjectLayer('routes');
+
+        if (!routesLayer || !routesLayer.objects) {
+            console.warn('⚠️ No se encontró la capa "routes" en el mapa');
+            return;
+        }
+
+        console.log(`📍 Capa routes encontrada con ${routesLayer.objects.length} objeto(s)`);
+
+        let enemyCount = 0;
+
+        routesLayer.objects.forEach((obj, index) => {
+            console.log(`\n🔍 Procesando objeto ${index}:`, obj);
+
+            // Validar que sea un polígono
+            if (!obj.polygon || !Array.isArray(obj.polygon) || obj.polygon.length < 2) {
+                console.warn(`⚠️ Objeto en routes ${index} no es un polígono válido (polygon: ${obj.polygon}), ignorando...`);
+                return;
+            }
+
+            console.log(`✓ Es polígono con ${obj.polygon.length} puntos`);
+
+            // Extraer propiedades - soporta varios formatos de Tiled
+            let enemyType = 'mapache';
+            let weaponType = 'cuchillo';
+
+            console.log(`📦 Propiedades del objeto:`, obj.properties);
+
+            // Formato 1: propiedades como array de objetos {name, value}
+            if (obj.properties && Array.isArray(obj.properties)) {
+                console.log(`  Format: Array de propiedades`);
+                obj.properties.forEach(prop => {
+                    console.log(`    - ${prop.name}: ${prop.value}`);
+                    if (prop.name === 'enemyType' && prop.value) enemyType = String(prop.value).toLowerCase();
+                    if (prop.name === 'weaponType' && prop.value) weaponType = String(prop.value).toLowerCase();
+                });
+            }
+            // Formato 2: propiedades como objeto directo
+            else if (obj.properties && typeof obj.properties === 'object') {
+                console.log(`  Format: Objeto directo`);
+                if (obj.properties.enemyType) enemyType = String(obj.properties.enemyType).toLowerCase();
+                if (obj.properties.weaponType) weaponType = String(obj.properties.weaponType).toLowerCase();
+            } else {
+                console.warn(`  ⚠️ Sin propiedades detectadas`);
+            }
+
+            console.log(`  → enemyType: ${enemyType}, weaponType: ${weaponType}`);
+
+            // Convertir puntos del polígono a coordenadas del mundo
+            const routePoints = obj.polygon.map(point => ({
+                x: (obj.x + point.x) * scale,
+                y: (obj.y + point.y) * scale
+            }));
+
+            const startX = routePoints[0].x;
+            const startY = routePoints[0].y;
+            const enemyName = `${enemyType.charAt(0).toUpperCase() + enemyType.slice(1)}_${index}`;
+
+            // Mapeo de tipos de armas a clases
+            const weaponClassMap = {
+                'arco': Arco,
+                'mcuaktro': Mcuaktro,
+                'cuchillo': Cuchillo,
+                'mazo': Mazo,
+                'ramita': Ramita,
+                'escoba': Escoba
+            };
+
+            const WeaponClass = weaponClassMap[weaponType] || Cuchillo;
+
+            // Crear el enemigo del tipo especificado
+            let enemy;
+            let texture;
+            if (enemyType === 'zorro') {
+                texture = 'zorro_idle';
+                enemy = new Zorro(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute');
+            } else {
+                texture = 'mapache_idle';
+                enemy = new Mapache(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute');
+            }
+
+            // Asignar la ruta al enemigo
+            enemy._movementData = {
+                routePoints: routePoints,
+                currentPointIndex: 0,
+                pauseTimer: 0
+            };
+
+            this.enemies.add(enemy);
+            enemyCount++;
+
+            console.log(`✅ ${enemyName} (${enemyType} con ${weaponType}) creado en (${startX}, ${startY}) con ruta de ${routePoints.length} puntos`);
+        });
+
+        console.log(`\n📊 Total de enemigos creados: ${enemyCount}`);
+        if (enemyCount === 0) {
+            console.warn(`\n⚠️ SIN ENEMIGOS CREADOS. Revisa:\n  1. La capa se llama "routes" en Tiled? (case-sensitive)\n  2. Los objetos tienen propiedades "enemyType" y "weaponType"?\n  3. Son polígonos (polygon), no otros tipos de objeto?`);
+        }
+    }
+
+    /**
+     * Crea un consumible basado en el tipo especificado
+     * @param {string} type - Tipo del consumible ('bread', 'attack_potion', 'speed_potion', etc.)
+     * @param {number} x - Posición X
+     * @param {number} y - Posición Y
+     */
+    createConsumable(type, x, y) {
+        switch (type) {
+            case 'bread':
+                new Bread(this, x, y);
+                break;
+            case 'attack_potion':
+                new AttackPotion(this, x, y);
+                break;
+            case 'speed_potion':
+                new SpeedPotion(this, x, y);
+                break;
+            case 'speed_attack_potion':
+                new SpeedAttackPotion(this, x, y);
+                break;
+            default:
+                console.warn(`Tipo de consumible desconocido: ${type}`);
+        }
     }
 
 }
