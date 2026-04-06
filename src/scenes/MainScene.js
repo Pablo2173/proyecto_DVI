@@ -32,6 +32,7 @@ import { DUCK_STATE } from '../GameObjects/duck.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
 import sprint_sprite from '../../assets/sprites/duck/sprint_duck.png';
 import cuack_sprite from '../../assets/sprites/duck/Cuack_duck.png';
+import duck_swimming_sprite from '../../assets/sprites/duck/swimming_duck.png';
 import enemy_sprite from '../../assets/sprites/player.png';
 
 // Sprites de enemigos específicos
@@ -172,6 +173,11 @@ export default class MainScene extends Phaser.Scene {
         });
 
         this.load.spritesheet('duck-cuack', cuack_sprite, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+
+        this.load.spritesheet('duck-swimming', duck_swimming_sprite, {
             frameWidth: 32,
             frameHeight: 32
         });
@@ -543,6 +549,12 @@ export default class MainScene extends Phaser.Scene {
         this.patrones2Layer = this.map.createLayer('Capa de patrones 2', tilesets, 0, 0);
         this.patrones2Layer.setScale(SCALE);
 
+        this.carreteraLayer = this.map.createLayer('carretera', tilesets, 0, 0);
+        this.carreteraLayer.setScale(SCALE);
+
+        this.desnivelLayer = this.map.createLayer('Desnivel', tilesets, 0, 0);
+        this.desnivelLayer.setScale(SCALE);
+
         this.zonasAcuaticasLayer = this.map.createLayer('Zonas aquaticas', tilesets, 0, 0);
         this.zonasAcuaticasLayer.setScale(SCALE);
 
@@ -607,6 +619,9 @@ export default class MainScene extends Phaser.Scene {
         // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
         // Esto evita depender de propiedades "collides" en cada tile del tileset.
         this.colisionLayer.setCollisionByExclusion([-1], true);
+        this.vallaLayer.setCollisionByExclusion([-1], true);
+        this.desnivelLayer.setCollisionByExclusion([-1], true);
+        this.zonasAcuaticasLayer.setCollisionByExclusion([-1], true);
 
         const worldWidth = this.map.widthInPixels * SCALE;
         const worldHeight = this.map.heightInPixels * SCALE;
@@ -653,6 +668,15 @@ export default class MainScene extends Phaser.Scene {
                 frames: this.anims.generateFrameNumbers('duck-dash', { start: 0, end: 3 }),
                 frameRate: 16,
                 repeat: 0
+            });
+        }
+
+        if (!this.anims.exists('duck-swimming')) {
+            this.anims.create({
+                key: 'duck-swimming',
+                frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
+                frameRate: 8,
+                repeat: -1
             });
         }
 
@@ -904,6 +928,21 @@ export default class MainScene extends Phaser.Scene {
         // COLISIONES
         // ─────────────────────────────────────────
         this.physics.add.collider(this.duck, this.colisionLayer);
+        this.physics.add.collider(
+            this.duck,
+            this.desnivelLayer,
+            null,
+            (duck) => duck?.body?.velocity?.y < 0,
+            this
+        );
+        
+        this.physics.add.collider(
+                this.duck,
+                this.vallaLayer,
+                null,
+                (duck) => duck?.state !== DUCK_STATE.DASHING, // si estas haciendo dash no tienes colision con las vallas
+                this
+            );
 
         // Colisiones con todos los enemigos
         this.enemies.getChildren().forEach(enemy => {
@@ -915,6 +954,7 @@ export default class MainScene extends Phaser.Scene {
                 this
             );
             this.physics.add.collider(enemy, this.colisionLayer);
+            this.physics.add.collider(enemy, this.vallaLayer);
             this.physics.add.overlap(this.projectiles, enemy, (projectile, en) => {
                 if (this.isPlayerDead) return;
                 this._onProjectileHitEnemy(projectile, en);
@@ -923,6 +963,7 @@ export default class MainScene extends Phaser.Scene {
                 if (this.isPlayerDead) return;
                 this._onEnemyHitDuck(duck, en);
             });
+            this.physics.add.collider(enemy, this.zonasAcuaticasLayer);
         });
 
         this.physics.add.overlap(this.projectiles, this.duck, (projectile, duck) => {
