@@ -17,6 +17,10 @@ export default class ConsumableBar {
         this.startY = 30;  // Posición inicial en Y (dentro de up_bar)
 
         this.slots = []; // Array de objetos gráficos para cada slot
+
+        // Índice del slot actualmente seleccionado (0-8). -1 = ninguno seleccionado
+        this.selectedSlotIndex = -1;
+
         this.createSlots();
         this.setupKeyboardInput();
     }
@@ -35,6 +39,9 @@ export default class ConsumableBar {
         this.key7 = this.scene.input.keyboard.addKey('SEVEN');
         this.key8 = this.scene.input.keyboard.addKey('EIGHT');
         this.key9 = this.scene.input.keyboard.addKey('NINE');
+
+        // Tecla F: usar el item del slot seleccionado
+        this.keyF = this.scene.input.keyboard.addKey('F');
     }
 
     /**
@@ -130,6 +137,11 @@ export default class ConsumableBar {
                 slot.background.setStrokeStyle(2, 0x00FF00, 1);
             }
         });
+
+        // Resaltar el slot seleccionado con borde dorado
+        if (this.selectedSlotIndex >= 0 && this.selectedSlotIndex < this.slots.length) {
+            this.slots[this.selectedSlotIndex].background.setStrokeStyle(3, 0xFFD700, 1);
+        }
     }
 
     /**
@@ -138,32 +150,71 @@ export default class ConsumableBar {
     checkKeyboardInput() {
         // Usar checkDown con cooldown para evitar consumos múltiples
         if (this.scene.input.keyboard.checkDown(this.key1, 250)) {
-            this.onSlotClick(0); // Slot 1 (índice 0)
+            this.selectSlot(0); // Slot 1 (índice 0)
         }
         if (this.scene.input.keyboard.checkDown(this.key2, 250)) {
-            this.onSlotClick(1); // Slot 2 (índice 1)
+            this.selectSlot(1); // Slot 2 (índice 1)
         }
         if (this.scene.input.keyboard.checkDown(this.key3, 250)) {
-            this.onSlotClick(2); // Slot 3 (índice 2)
+            this.selectSlot(2); // Slot 3 (índice 2)
         }
         if (this.scene.input.keyboard.checkDown(this.key4, 250)) {
-            this.onSlotClick(3); // Slot 4 (índice 3)
+            this.selectSlot(3); // Slot 4 (índice 3)
         }
         if (this.scene.input.keyboard.checkDown(this.key5, 250)) {
-            this.onSlotClick(4); // Slot 5 (índice 4)
+            this.selectSlot(4); // Slot 5 (índice 4)
         }
         if (this.scene.input.keyboard.checkDown(this.key6, 250)) {
-            this.onSlotClick(5); // Slot 6 (índice 5)
+            this.selectSlot(5); // Slot 6 (índice 5)
         }
         if (this.scene.input.keyboard.checkDown(this.key7, 250)) {
-            this.onSlotClick(6); // Slot 7 (índice 6)
+            this.selectSlot(6); // Slot 7 (índice 6)
         }
         if (this.scene.input.keyboard.checkDown(this.key8, 250)) {
-            this.onSlotClick(7); // Slot 8 (índice 7)
+            this.selectSlot(7); // Slot 8 (índice 7)
         }
         if (this.scene.input.keyboard.checkDown(this.key9, 250)) {
-            this.onSlotClick(8); // Slot 9 (índice 8)
+            this.selectSlot(8); // Slot 9 (índice 8)
         }
+
+        // Tecla F: usar el item del slot seleccionado (NO mezclar con E)
+        if (Phaser.Input.Keyboard.JustDown(this.keyF)) {
+            this.useSelectedItem();
+        }
+    }
+
+    /**
+     * Selecciona un slot sin consumir el item
+     * @param {number} slotIndex - Índice del slot a seleccionar (0-8)
+     */
+    selectSlot(slotIndex) {
+        this.selectedSlotIndex = slotIndex;
+    }
+
+    /**
+     * Usa el item del slot actualmente seleccionado.
+     * Solo se ejecuta si hay un item en el slot seleccionado.
+     */
+    useSelectedItem() {
+        if (this.selectedSlotIndex < 0) return;
+        if (!this.duck.consumables || this.selectedSlotIndex >= this.duck.consumables.length) {
+            return; // Slot vacío o fuera de rango
+        }
+
+        const item = this.duck.consumables[this.selectedSlotIndex];
+
+        // Ejecutar efecto específico según el tipo de item
+        if (item.type === 'mask') {
+            this.duck.activateInvisibility();
+            // Eliminar la máscara del slot tras el uso
+            this.duck.consumables.splice(this.selectedSlotIndex, 1);
+            // Actualizar la visualización
+            this.update();
+            return;
+        }
+
+        // Para el resto de tipos se reutiliza el flujo existente
+        this.onSlotClick(this.selectedSlotIndex);
     }
 
     /**

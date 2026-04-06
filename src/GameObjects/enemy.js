@@ -12,6 +12,8 @@ import Escoba from './Weapons/Melee/escoba.js';
 import DropWeapon from './Weapons/drops/dropWeapon.js';
 import DropFeather from './consumables/dropFeather.js';
 import DropBread from './consumables/dropBread.js';
+import DropMask from './consumables/dropMask.js';
+import DropTail from './consumables/dropTail.js';
 
 const StatusEnemy = {
     IDLE: 0,
@@ -57,6 +59,9 @@ export default class Enemy extends BaseCharacter {
 
         this.hasFeather = hasFeather;
 
+        // Tabla de loot de items de uso. Las subclases pueden sobreescribirla.
+        // Cada entrada: { id: string, probability: number }
+        this.lootTable = [];
 
         this.weaponMap = {
             arco: Arco,
@@ -430,6 +435,67 @@ export default class Enemy extends BaseCharacter {
         }
     }
 
+    /**
+     * Ejecuta el algoritmo de probabilidad acumulada sobre this.lootTable
+     * y spawnea el item de uso correspondiente si hay drop.
+     *
+     * Algoritmo:
+     *   1. Calcula totalProbability = suma de todas las probabilidades.
+     *   2. maxRange = Math.max(100, totalProbability).
+     *   3. random = entero entre 1 y maxRange (incluidos).
+     *   4. Si random >= totalProbability → no hay drop.
+     *   5. Si random < totalProbability → recorre el array acumulando:
+     *        cumulative += item.probability
+     *        if (random < cumulative) → spawn ese item
+     *
+     * El item aparece a distancia fija (USE_ITEM_DROP_DISTANCE) del enemigo
+     * en una dirección aleatoria.
+     */
+    dropUseItem() {
+        if (!this.lootTable || this.lootTable.length === 0) return;
+
+        // 3.1 Calcular probabilidad acumulada
+        const totalProbability = this.lootTable.reduce((sum, entry) => sum + entry.probability, 0);
+
+        // 3.2 Generar número aleatorio en rango [1, max(100, totalProbability)]
+        const maxRange = Math.max(100, totalProbability);
+        const random = Phaser.Math.Between(1, maxRange);
+
+        // ❗ REGLA CLAVE: si random >= totalProbability → no hay drop
+        if (random >= totalProbability) return;
+
+        // 3.3 Selección acumulativa del item
+        let cumulative = 0;
+        let selectedItem = null;
+
+        for (const entry of this.lootTable) {
+            cumulative += entry.probability;
+            // Comparación estricta: random < cumulative (NO <=)
+            if (random < cumulative) {
+                selectedItem = entry;
+                break;
+            }
+        }
+
+        if (!selectedItem) return;
+
+        // Distancia fija a la que aparece el item (no aleatoria)
+        const USE_ITEM_DROP_DISTANCE = 60;
+
+        // Dirección aleatoria
+        const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+        const spawnX = this.x + Math.cos(angle) * USE_ITEM_DROP_DISTANCE;
+        const spawnY = this.y + Math.sin(angle) * USE_ITEM_DROP_DISTANCE;
+
+        // Crear el drop correspondiente según el id del item
+        if (selectedItem.id === 'mask') {
+            new DropMask(this.scene, spawnX, spawnY);
+        } else if (selectedItem.id === 'tail') {
+            new DropTail(this.scene, spawnX, spawnY);
+        }
+        // Aquí se pueden añadir más casos para otros items de uso
+    }
+
     die() {
         if (this._state === StatusEnemy.DEAD) return; // evitar doble llamada
 
@@ -441,6 +507,7 @@ export default class Enemy extends BaseCharacter {
         this.dropWeapon();
         this.dropFeather();
         this.dropBread();
+        this.dropUseItem();
 
         // Cambiar sprite al de muerto si existe
         const dedTexture = this._textureKeyFor('ded');
