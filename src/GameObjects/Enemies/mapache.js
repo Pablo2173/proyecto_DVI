@@ -6,7 +6,11 @@ export default class Mapache extends Enemy {
     constructor(scene, name, x, y, texture, frame, weapon, movementType, visionRadius = 150, hp = 100, speed = 80, hasFeather) {
         super(scene, name, x, y, texture, frame, visionRadius, hp, speed, weapon, movementType, hasFeather);
         this.setScale(4);
-      
+
+        // El mapache tiene probabilidad de soltar una máscara al morir
+        this.lootTable = [
+            { id: 'mask', probability: 30 }
+        ];
 
         // guardamos las estadisticas originales para poder restaurarlas al resucitar
         this._resurrected = false;
@@ -61,7 +65,6 @@ export default class Mapache extends Enemy {
         } else {
             // Segunda muerte: drops completos y muerte real
             // Los drops estándar (weapon, feather, bread) los gestiona super.die()
-            this.dropMask();
             super.die();
         }
     }

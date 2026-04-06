@@ -36,6 +36,10 @@ export default class Zorro extends Enemy {
             this.setTexture(dedTexture);
         }
 
+        // El zorro tiene probabilidad de soltar una cola al morir
+        this.lootTable = [
+            { id: 'tail', probability: 25 }
+        ];
         this.body?.setVelocity(0, 0);
         this.body?.setEnable(false);
     }

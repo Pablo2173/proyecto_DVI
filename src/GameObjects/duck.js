@@ -53,6 +53,9 @@ export default class Duck extends BaseCharacter {
         // Inventario de consumibles
         this.consumables = [];
 
+        // Estado de invisibilidad por máscara (independiente del sistema de dash invisible)
+        this.isInvisible = false;
+
         // GESTIÓN PLUMAS / VIDA
         this.maxFeathers = 10;
         this.healthPerFeather = 50;
@@ -282,12 +285,43 @@ export default class Duck extends BaseCharacter {
     }
 
     isInvisibleState() {
-        return this.state === DUCK_STATE.INVISIBLE;
+        return this.state === DUCK_STATE.INVISIBLE || this.isInvisible === true;
     }
 
     canStartInvisible(time = this.scene?.time?.now ?? 0) {
         const invisibleActive = time < this.invisibleUntil;
         return !invisibleActive && this.state !== DUCK_STATE.INVISIBLE && time >= this.invisibleCooldownUntil;
+    }
+
+    // ─────────────────────────────────────────
+    //  INVISIBILIDAD POR MÁSCARA
+    // ─────────────────────────────────────────
+
+    /**
+     * Activa la invisibilidad temporal por consumo de máscara.
+     * Dura exactamente 3 segundos. No se puede stackear.
+     */
+    activateInvisibility() {
+        // No stackear invisibilidad si ya está activa
+        if (this.isInvisible) {
+            console.log('Invisibilidad ya activa, ignorando uso de máscara');
+            return;
+        }
+
+        console.log('Máscara usada: player invisible durante 3 segundos');
+
+        this.isInvisible = true;
+        this.setAlpha(this.invisibleAlpha);
+
+        // Usar temporizador de Phaser (NO setTimeout suelto)
+        this.scene.time.delayedCall(3000, () => {
+            this.isInvisible = false;
+            // Restaurar alpha solo si no hay otro estado de invisibilidad activo
+            if (this.state !== DUCK_STATE.INVISIBLE) {
+                this.setAlpha(1);
+            }
+            console.log('Efecto de máscara terminado: player visible de nuevo');
+        });
     }
 
     // ─────────────────────────────────────────

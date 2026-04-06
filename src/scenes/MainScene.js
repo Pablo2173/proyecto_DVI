@@ -25,7 +25,6 @@ import SpeedAttackPotion from '../GameObjects/consumables/SpeedAttackPotion.js';
 
 
 import DropBread from '../GameObjects/consumables/dropBread.js';
-import DropMask from '../GameObjects/consumables/dropMask.js';
 
 
 import Enemy from '../GameObjects/enemy.js';
@@ -108,7 +107,7 @@ import feather_icon from '../../assets/sprites/UI/pluma.png';
 import FeatherUI from '../GameObjects/featherUI.js';
 
 // Drops de enemigos
-import mask_icon from '../../assets/sprites/Weapons/ramita.png';
+import mask_icon from '../../assets/sprites/consumables/Mask.png';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -722,7 +721,6 @@ export default class MainScene extends Phaser.Scene {
 
         this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon);
 
-
         // ─────────────────────────────────────────
         // UI
         // ─────────────────────────────────────────
@@ -730,8 +728,7 @@ export default class MainScene extends Phaser.Scene {
         this.featherUI = new FeatherUI(this, this.duck);
         this.enemiesKilled = 0;
 
-        // Dar poción de velocidad al pato para depurar
-        this.duck.consumables.push({ type: 'speed_potion', value: 1 });
+        // La consumable bar empieza completamente vacía: no se añade ningún item por defecto
 
         const upBar = this.add.image(960, 0, 'up_bar');
         upBar.setOrigin(0.5, 0);
@@ -747,6 +744,15 @@ export default class MainScene extends Phaser.Scene {
         );
         this.controlsText.setScrollFactor(0);
         this.controlsText.setDepth(9001);
+
+        // ─────────────────────────────────────────
+        // SISTEMA MONETARIO DE PAN
+        // Contador global de panes recogidos (moneda del juego).
+        // El icono y texto se crean dentro del mismo contenedor HUD que las vidas,
+        // justo debajo del contador de plumas con un offset relativo a él.
+        // ─────────────────────────────────────────
+        this.breadCount = 0;
+        this._createBreadUI();
 
         // ─────────────────────────────────────────
         // OVERLAY DE MUERTE
@@ -1013,13 +1019,6 @@ export default class MainScene extends Phaser.Scene {
 
 
         // ─────────────────────────────────────────
-        // ACTUALIZAR BARRA DE CONSUMIBLES
-        // ─────────────────────────────────────────
-        if (this.consumableBar) {
-            this.consumableBar.update();
-        }
-
-        // ─────────────────────────────────────────
         // ESTADO SWIMMING SEGÚN CAPA ACUÁTICA
         // ─────────────────────────────────────────
         this._updateDuckSwimmingState();
@@ -1029,6 +1028,7 @@ export default class MainScene extends Phaser.Scene {
         // Usa isNear() (igual que el duck con las plumas) para detectar rango.
         // - pickupType 'auto'     → interact() se llama inmediatamente (DropBread)
         // - pickupType 'interact' → interact() solo se llama al pulsar E (DropMask)
+        // La recogida del mundo tiene prioridad sobre el consumo de inventario con E.
         // ─────────────────────────────────────────
         if (this.duck && this.duck.active) {
             const eJustDown = Phaser.Input.Keyboard.JustDown(this.keyE);
@@ -1045,6 +1045,15 @@ export default class MainScene extends Phaser.Scene {
                     item.interact(this.duck);
                 }
             });
+        }
+
+        // ─────────────────────────────────────────
+        // ACTUALIZAR BARRA DE CONSUMIBLES
+        // Se actualiza después de la recogida del mundo para que la tecla E
+        // dé prioridad a recoger DropMask del suelo antes de consumir del inventario.
+        // ─────────────────────────────────────────
+        if (this.consumableBar) {
+            this.consumableBar.update();
         }
 
         // ─────────────────────────────────────────
@@ -1184,6 +1193,20 @@ export default class MainScene extends Phaser.Scene {
         if (this.controlsText) {
             this.controlsText.destroy();
             this.controlsText = null;
+        }
+
+        // Limpiar UI del pan al destruir/reiniciar la escena
+        if (this.breadHudBg) {
+            this.breadHudBg.destroy();
+            this.breadHudBg = null;
+        }
+        if (this.breadIcon) {
+            this.breadIcon.destroy();
+            this.breadIcon = null;
+        }
+        if (this.breadText) {
+            this.breadText.destroy();
+            this.breadText = null;
         }
     }
 
@@ -1388,6 +1411,95 @@ export default class MainScene extends Phaser.Scene {
                 break;    
             default:
                 console.warn(`Tipo de consumible desconocido: ${type}`);
+        }
+    }
+
+    // ─────────────────────────────────────────
+    // SISTEMA MONETARIO DE PAN
+    // ─────────────────────────────────────────
+
+    /**
+     * Crea los elementos de UI del contador de pan dentro del mismo rectángulo HUD
+     * que las vidas (featherUI). El icono y el texto se posicionan justo debajo
+     * del contador de plumas usando offsets relativos al contenedor de vidas.
+     *
+     * Referencia de alineación:
+     *   - featherUI ocupa la esquina superior derecha del HUD.
+     *   - El pan se coloca con el mismo margen derecho y un offset vertical
+     *     que lo sitúa inmediatamente debajo de las plumas.
+     * @private
+     */
+    _createBreadUI() {
+        // ── Referencia al contenedor de vidas (featherUI) ──
+        // featherUI dibuja su fondo en la esquina superior derecha.
+        // Tomamos su posición X de anclaje y añadimos el margen vertical
+        // suficiente para quedar debajo de las plumas sin solaparse.
+
+        // Ancho del panel de vidas tal como lo define featherUI (ajustar si cambia)
+        const hudPanelWidth  = 160;  // ancho aproximado del panel de vidas
+        const hudPanelRight  = this.scale.width - 10; // margen derecho del panel
+        const hudPanelLeft   = hudPanelRight - hudPanelWidth;
+
+        // Offset vertical relativo: altura del área de vidas + pequeño margen
+        const livesAreaHeight = 40;  // altura aproximada que ocupa el icono de plumas
+        const verticalMargin  = 6;   // separación entre vidas y pan
+        const hudTop          = 10;  // margen superior del panel (mismo que featherUI)
+        const breadRowY       = hudTop + livesAreaHeight + verticalMargin;
+
+        // Altura total que ocupa la fila del pan (icono + margen inferior)
+        const breadRowHeight  = 28;
+
+        // ── Extensión del HUD: fondo extra que amplía el rectángulo de vidas hacia abajo ──
+        // Se usa el mismo color de fondo negro semitransparente que featherUI.
+        // ❗ NO se crea un rectángulo nuevo: este rectángulo extiende visualmente el mismo HUD.
+        this.breadHudBg = this.add.rectangle(
+            hudPanelLeft,
+            breadRowY - 4,
+            hudPanelWidth,
+            breadRowHeight + 8,
+            0x000000,
+            0.55
+        );
+        this.breadHudBg.setOrigin(0, 0);
+        this.breadHudBg.setScrollFactor(0);
+        this.breadHudBg.setDepth(9099); // justo debajo del icono y texto
+
+        // ── Icono de pan ──
+        // Alineado al mismo borde izquierdo que el icono de plumas dentro del panel
+        this.breadIcon = this.add.image(hudPanelLeft + 16, breadRowY + breadRowHeight / 2, 'bread_item');
+        this.breadIcon.setScale(2);
+        this.breadIcon.setScrollFactor(0);
+        this.breadIcon.setDepth(9100);
+
+        // ── Texto del contador ──
+        // Mismo offset horizontal que el texto de plumas respecto a su icono
+        this.breadText = this.add.text(hudPanelLeft + 32, breadRowY + 4, 'x 0', {
+            fontSize: '18px',
+            fill: '#FFD700',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
+        });
+        this.breadText.setScrollFactor(0);
+        this.breadText.setDepth(9101);
+    }
+
+    /**
+     * Incrementa el contador de pan (moneda del juego) y actualiza la UI.
+     * Llamado por Bread.interact() y DropBread.interact() al recoger un pan.
+     * @param {number} amount - Cantidad de panes a añadir
+     */
+    addBread(amount) {
+        this.breadCount += amount;
+        this.updateBreadUI();
+    }
+
+    /**
+     * Actualiza el texto del contador de pan en el HUD.
+     */
+    updateBreadUI() {
+        if (this.breadText) {
+            this.breadText.setText(`x ${this.breadCount}`);
         }
     }
 
