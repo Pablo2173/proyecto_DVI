@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
 // Importar consumibles directamente
-import Bread from './bread.js';
 import AttackPotion from './attackPotion.js';
-import SpeedPotion from './speedPotion.js';
+import SpeedPotion from './SpeedPotion.js';
 
 export default class ConsumableBar {
 
@@ -109,6 +108,7 @@ export default class ConsumableBar {
         });
 
         // Llenar los slots con los consumibles actuales
+        // El pan (bread) ya NO aparece como consumible en la barra: es moneda
         this.duck.consumables.forEach((consumable, index) => {
             if (index < this.slots.length) {
                 const slot = this.slots[index];
@@ -173,7 +173,7 @@ export default class ConsumableBar {
      */
     getSpriteKey(type) {
         const spriteMap = {
-            'bread': 'bread_item',
+            // 'bread' eliminado: el pan es moneda, no un consumible equipable
 
             'attack_potion': 'attack_potion',
             'speed_potion': 'speed_potion',
@@ -224,9 +224,6 @@ export default class ConsumableBar {
      */
     executeUseEffect(type, duck) {
         switch (type) {
-            case 'bread':
-                this.useBreadEffect(duck);
-                break;
             case 'attack_potion':
                 this.useAttackPotionEffect(duck);
                 break;
@@ -257,7 +254,7 @@ export default class ConsumableBar {
         const y = duck.y + Math.sin(angle) * distance;
 
         // Crear nuevo pan directamente
-        new Bread(duck.scene, x, y);
+        // Nota: useBreadEffect ya no se invoca desde executeUseEffect (bread es moneda)
     }
 
     /**

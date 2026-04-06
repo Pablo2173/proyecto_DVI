@@ -423,9 +423,11 @@ export default class Enemy extends BaseCharacter {
     }
 
     dropBread() {
-        const { dx, dy } = this._randomDropOffset();
-        new DropBread(this.scene, this.x + dx, this.y + dy);
-
+        // Cada enemigo suelta exactamente 3 panes al morir
+        for (let i = 0; i < 3; i++) {
+            const { dx, dy } = this._randomDropOffset();
+            new DropBread(this.scene, this.x + dx, this.y + dy);
+        }
     }
 
     die() {
@@ -541,13 +543,6 @@ export default class Enemy extends BaseCharacter {
             }
         }
     }
-
-
-
-
-
-
-
 
 
     /**

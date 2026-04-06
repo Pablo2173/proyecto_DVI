@@ -13,7 +13,7 @@ export default class DropBread extends DropItem {
         // auto pickup: se recoge al hacer pasar por encima
         this.pickupType = 'auto';
 
-        // añadir al grupo de consumibles
+        // añadir al grupo de consumibles para que el sistema de pickup del update() lo detecte
         if (scene.consumableItems) {
             scene.consumableItems.add(this);
         }
@@ -23,20 +23,11 @@ export default class DropBread extends DropItem {
     }
 
     interact(player) {
-        // inicializar inventario si no existe
-        if (!player.consumables) {
-            player.consumables = [];
+        // El pan es moneda: se incrementa el contador global y se destruye
+        // NO se añade a la ConsumableBar ni al inventario de consumibles
+        if (player.scene && typeof player.scene.addBread === 'function') {
+            player.scene.addBread(1);
         }
-
-        // no recoger si el inventario está lleno
-        if (player.consumables.length >= 9) {
-            console.log('Inventario de consumibles lleno (máx 9)');
-            return;
-        }
-
-        // añadir pan al inventario
-        player.consumables.push({ type: 'bread', value: 1 });
-        console.log(`Pan recogido. Items en inventario: ${player.consumables.length}/9`);
 
         this.destroy();
     }
