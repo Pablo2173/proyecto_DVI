@@ -161,7 +161,7 @@ export default class MenuScene extends Phaser.Scene {
     // Botones (4)
     const items = [
       { label: "JUGAR", fn: () => this.startGameTransition() },
-      { label: "CONFIGURACIÓN", fn: () => console.log("CONFIG") },
+      { label: "CONFIGURACIÓN", fn: () => this.scene.start("SettingsScene") },
       { label: "CRÉDITOS", fn: () => console.log("CREDITOS") },
       { label: "SALIR", fn: () => console.log("SALIR") },
     ];
