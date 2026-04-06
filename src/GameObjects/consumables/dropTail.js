@@ -2,8 +2,9 @@ import DropItem from '../dropItem.js';
 
 export default class DropTail extends DropItem {
     constructor(scene, x, y) {
-        super(scene, x, y, 'tail_icon');
-        this.setScale(3);
+        super(scene, x, y, 'fox_tail');
+        // Mismo scale que DropMask para consistencia visual
+        this.setScale(0.1);
 
         // interact pickup: se recoge con la tecla E
         this.pickupType = 'interact';
@@ -25,7 +26,7 @@ export default class DropTail extends DropItem {
             return;
         }
 
-        player.consumables.push({ type: 'tail', value: 1 });
+        player.consumables.push({ type: 'fox_tail', value: 1 });
         console.log(`Cola recogida. Items en inventario: ${player.consumables.length}/9`);
 
         this.destroy();

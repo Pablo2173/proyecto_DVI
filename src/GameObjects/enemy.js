@@ -63,6 +63,10 @@ export default class Enemy extends BaseCharacter {
         // Cada entrada: { id: string, probability: number }
         this.lootTable = [];
 
+        // Item especial que suelta este enemigo al morir.
+        // Las subclases deben asignar el id correspondiente (ej. 'mask', 'tail').
+        this.specialDrop = null;
+
         this.weaponMap = {
             arco: Arco,
             mcuaktro: Mcuaktro,
@@ -436,6 +440,29 @@ export default class Enemy extends BaseCharacter {
     }
 
     /**
+     * Suelta el item especial de este enemigo según this.specialDrop.
+     * Añadir soporte para un nuevo drop especial es trivial:
+     * basta con añadir un nuevo case aquí y asignar this.specialDrop en la subclase.
+     */
+    dropSpecialItem() {
+        if (!this.specialDrop) return;
+
+        const { dx, dy } = this._randomDropOffset();
+        const spawnX = this.x + dx;
+        const spawnY = this.y + dy;
+
+        switch (this.specialDrop) {
+            case 'mask':
+                new DropMask(this.scene, spawnX, spawnY);
+                break;
+            case 'tail':
+                new DropTail(this.scene, spawnX, spawnY);
+                break;
+            // Añadir nuevos drops especiales aquí en el futuro
+        }
+    }
+
+    /**
      * Ejecuta el algoritmo de probabilidad acumulada sobre this.lootTable
      * y spawnea el item de uso correspondiente si hay drop.
      *
@@ -507,7 +534,7 @@ export default class Enemy extends BaseCharacter {
         this.dropWeapon();
         this.dropFeather();
         this.dropBread();
-        this.dropUseItem();
+        this.dropSpecialItem(); // sistema unificado: suelta el item especial del enemigo
 
         // Cambiar sprite al de muerto si existe
         const dedTexture = this._textureKeyFor('ded');
