@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 // Importar consumibles directamente
 import AttackPotion from './attackPotion.js';
-import SpeedPotion from './speedPotion.js';
+import SpeedPotion from './SpeedPotion.js';
 
 export default class ConsumableBar {
 
