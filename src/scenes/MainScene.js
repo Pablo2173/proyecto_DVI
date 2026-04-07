@@ -35,15 +35,15 @@ import duck_swimming_sprite from '../../assets/sprites/duck/swimming_duck.png';
 import enemy_sprite from '../../assets/sprites/player.png';
 
 // Sprites de enemigos específicos
-import zorro_idle from '../../assets/Sprites/Zorro/zorro_idle.png';
-import zorro_run from '../../assets/Sprites/Zorro/zorro_run.png';
-import zorro_hit from '../../assets/Sprites/Zorro/zorro_hit.png';
-import zorro_ded from '../../assets/Sprites/Zorro/zorro_ded.png';
+import zorro_idle from '../../assets/sprites/Zorro/zorro_idle.png';
+import zorro_run from '../../assets/sprites/Zorro/zorro_run.png';
+import zorro_hit from '../../assets/sprites/Zorro/zorro_hit.png';
+import zorro_ded from '../../assets/sprites/Zorro/zorro_ded.png';
 
-import mapache_idle from '../../assets/Sprites/Mapache/mapache_idle.png';
-import mapache_run from '../../assets/Sprites/Mapache/mapache_run.png';
-import mapache_hit from '../../assets/Sprites/Mapache/mapache_hit.png';
-import mapache_ded from '../../assets/Sprites/Mapache/mapache_ded.png';
+import mapache_idle from '../../assets/sprites/Mapache/mapache_idle.png';
+import mapache_run from '../../assets/sprites/Mapache/mapache_run.png';
+import mapache_hit from '../../assets/sprites/Mapache/mapache_hit.png';
+import mapache_ded from '../../assets/sprites/Mapache/mapache_ded.png';
 
 //Sounds
 import cuackSound from '../../assets/sounds/cuack.mp3';
