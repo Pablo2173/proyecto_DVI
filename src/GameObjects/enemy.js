@@ -12,14 +12,13 @@ import Escoba from './Weapons/Melee/escoba.js';
 import DropWeapon from './Consumables/Drops/dropWeapon.js';
 import DropFeather from './Consumables/Drops/dropFeather.js';
 import DropBread from './Consumables/Drops/dropBread.js';
-import DropMask from './Consumables/Drops/dropMask.js';
-import DropTail from './Consumables/Drops/dropTail.js';
 
 const StatusEnemy = {
     IDLE: 0,
     ALERTED: 1,
-    DEAD: 2,
-    STUNNED: 3
+    SEARCH: 2,
+    DEAD: 3,
+    STUNNED: 4
 };
 
 export default class Enemy extends BaseCharacter {
@@ -33,14 +32,14 @@ export default class Enemy extends BaseCharacter {
                 this.body.setCollideWorldBounds(true);
                 this.body.setAllowGravity(false); // Sin gravedad porque estamos haciendo un top-down
                 this.body.setImmovable(false); // Basicamente lo pongo a false para que le puedan empujar
-                this.body.setSize(16, 16); //falta poner el tamanyo del sprite, este es provisional
-                this.body.setOffset(8, 8);
+                this.body.setSize(20, 30);
+                this.body.setOffset(4, 4);
             }
         }
 
         this._nombre = name;
         this._hp = hp;
-        this._visionRadius = visionRadius;
+        this._visionRadius = visionRadius * 5;
         this._facingAngle = Math.PI; //Lo he puesto en Math.PI para que empiece mirando para la izquierda
         this._visionAngle = Math.PI / 2; //Esto es un cuarto de circulo para el cono de vision
         this._speed = speed;
@@ -59,13 +58,6 @@ export default class Enemy extends BaseCharacter {
 
         this.hasFeather = hasFeather;
 
-        // Tabla de loot de items de uso. Las subclases pueden sobreescribirla.
-        // Cada entrada: { id: string, probability: number }
-        this.lootTable = [];
-
-        // Item especial que suelta este enemigo al morir.
-        // Las subclases deben asignar el id correspondiente (ej. 'mask', 'tail').
-        this.specialDrop = null;
 
         this.weaponMap = {
             arco: Arco,
@@ -84,6 +76,12 @@ export default class Enemy extends BaseCharacter {
         // Delay antes de atacar cuando está en rango
         this._inRangeStartTime = 0;    // Cuándo el jugador entró en rango por primera vez
         this._attackDelay = 800;       // 1 segundo en ms antes de poder atacar
+
+        // Búsqueda tras perder al jugador: 2 vueltas rápidas y volver a patrulla si no lo re-detecta.
+        this._searchStartTime = 0;
+        this._searchDuration = 1000;
+        this._searchTurns = 2;
+        this._searchStartFacingAngle = this._facingAngle;
 
 
         // equipar arma si fue pasada
@@ -251,23 +249,57 @@ export default class Enemy extends BaseCharacter {
      */
     detectAndAlert(player, time = this.scene?.time?.now ?? 0) {
         if (!player) return false;
-        if (typeof player.isInvisibleState === 'function' && player.isInvisibleState()) {
-            this.resetAlertState();
-            return false;
-        }
 
         const seen = this.canSee(player);
         if (this._state === StatusEnemy.DEAD) return false;
-        if (seen && this._state !== StatusEnemy.ALERTED) {
-            this._state = StatusEnemy.ALERTED;
-            this._visionAlertFlashUntil = time + 500;
+
+        if (seen) {
+            if (this._state !== StatusEnemy.ALERTED) {
+                this._state = StatusEnemy.ALERTED;
+                this._visionAlertFlashUntil = time + 500;
+            }
             return true;
         }
+
+        if (this._state === StatusEnemy.ALERTED) {
+            this._startSearch(time);
+            return false;
+        }
+
+        if (this._state === StatusEnemy.SEARCH && this._searchStartTime > 0) {
+            if (time >= this._searchStartTime + this._searchDuration) {
+                this._state = StatusEnemy.IDLE;
+                this._inRangeStartTime = 0;
+            }
+            return false;
+        }
+
         return false;
+    }
+
+    _startSearch(time = this.scene?.time?.now ?? 0) {
+        this._state = StatusEnemy.SEARCH;
+        this._searchStartTime = time;
+        this._searchStartFacingAngle = this._facingAngle;
+        this._inRangeStartTime = 0;
+        this.stop();
+    }
+
+    _updateSearchFacing(time = this.scene?.time?.now ?? 0) {
+        if (this._state !== StatusEnemy.SEARCH) return;
+        if (this._searchDuration <= 0) return;
+
+        const elapsed = Math.max(0, time - this._searchStartTime);
+        const progress = Phaser.Math.Clamp(elapsed / this._searchDuration, 0, 1);
+        const sweepAngle = (Math.PI * 2) * this._searchTurns * progress;
+        this._facingAngle = this._searchStartFacingAngle + sweepAngle;
     }
 
     updateAwareness(player, time = this.scene?.time?.now ?? 0) {
         this.detectAndAlert(player, time);
+        if (this._state === StatusEnemy.SEARCH) {
+            this._updateSearchFacing(time);
+        }
         this._updateVisionAlertFlash(time);
         this.drawVision({ color: 0xff0000, fillAlpha: 0.08 });
     }
@@ -300,7 +332,9 @@ export default class Enemy extends BaseCharacter {
     onAudioEvent(audioEvent) {
         if (!audioEvent || typeof audioEvent.time !== 'number') return;
         if (typeof this.scene?.duck?.isInvisibleState === 'function' && this.scene.duck.isInvisibleState()) {
-            this.resetAlertState();
+            if (this._state === StatusEnemy.ALERTED) {
+                this._startSearch(audioEvent.time);
+            }
             return;
         }
 
@@ -324,6 +358,7 @@ export default class Enemy extends BaseCharacter {
         // Si está dentro del radio del sonido, se alerta
         if (distance <= soundRadius && this._state !== StatusEnemy.ALERTED) {
             this._state = StatusEnemy.ALERTED;
+            this._visionAlertFlashUntil = audioEvent.time + 500;
         }
     }
 
@@ -350,11 +385,12 @@ export default class Enemy extends BaseCharacter {
     }
 
     resetAlertState() {
-        if (this._state !== StatusEnemy.ALERTED) return;
+        if (this._state !== StatusEnemy.ALERTED && this._state !== StatusEnemy.SEARCH) return;
 
         this._state = StatusEnemy.IDLE;
         this._visionAlertFlashUntil = 0;
         this._inRangeStartTime = 0;
+        this._searchStartTime = 0;
         this.stop();
 
         if (this.tintTopLeft !== 0xFF0000) {
@@ -432,95 +468,9 @@ export default class Enemy extends BaseCharacter {
     }
 
     dropBread() {
-        // Cada enemigo suelta exactamente 3 panes al morir
-        for (let i = 0; i < 3; i++) {
-            const { dx, dy } = this._randomDropOffset();
-            new DropBread(this.scene, this.x + dx, this.y + dy);
-        }
-    }
-
-    /**
-     * Suelta el item especial de este enemigo según this.specialDrop.
-     * Añadir soporte para un nuevo drop especial es trivial:
-     * basta con añadir un nuevo case aquí y asignar this.specialDrop en la subclase.
-     */
-    dropSpecialItem() {
-        if (!this.specialDrop) return;
-
         const { dx, dy } = this._randomDropOffset();
-        const spawnX = this.x + dx;
-        const spawnY = this.y + dy;
+        new DropBread(this.scene, this.x + dx, this.y + dy);
 
-        switch (this.specialDrop) {
-            case 'mask':
-                new DropMask(this.scene, spawnX, spawnY);
-                break;
-            case 'tail':
-                new DropTail(this.scene, spawnX, spawnY);
-                break;
-            // Añadir nuevos drops especiales aquí en el futuro
-        }
-    }
-
-    /**
-     * Ejecuta el algoritmo de probabilidad acumulada sobre this.lootTable
-     * y spawnea el item de uso correspondiente si hay drop.
-     *
-     * Algoritmo:
-     *   1. Calcula totalProbability = suma de todas las probabilidades.
-     *   2. maxRange = Math.max(100, totalProbability).
-     *   3. random = entero entre 1 y maxRange (incluidos).
-     *   4. Si random >= totalProbability → no hay drop.
-     *   5. Si random < totalProbability → recorre el array acumulando:
-     *        cumulative += item.probability
-     *        if (random < cumulative) → spawn ese item
-     *
-     * El item aparece a distancia fija (USE_ITEM_DROP_DISTANCE) del enemigo
-     * en una dirección aleatoria.
-     */
-    dropUseItem() {
-        if (!this.lootTable || this.lootTable.length === 0) return;
-
-        // 3.1 Calcular probabilidad acumulada
-        const totalProbability = this.lootTable.reduce((sum, entry) => sum + entry.probability, 0);
-
-        // 3.2 Generar número aleatorio en rango [1, max(100, totalProbability)]
-        const maxRange = Math.max(100, totalProbability);
-        const random = Phaser.Math.Between(1, maxRange);
-
-        // ❗ REGLA CLAVE: si random >= totalProbability → no hay drop
-        if (random >= totalProbability) return;
-
-        // 3.3 Selección acumulativa del item
-        let cumulative = 0;
-        let selectedItem = null;
-
-        for (const entry of this.lootTable) {
-            cumulative += entry.probability;
-            // Comparación estricta: random < cumulative (NO <=)
-            if (random < cumulative) {
-                selectedItem = entry;
-                break;
-            }
-        }
-
-        if (!selectedItem) return;
-
-        // Distancia fija a la que aparece el item (no aleatoria)
-        const USE_ITEM_DROP_DISTANCE = 60;
-
-        // Dirección aleatoria
-        const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-        const spawnX = this.x + Math.cos(angle) * USE_ITEM_DROP_DISTANCE;
-        const spawnY = this.y + Math.sin(angle) * USE_ITEM_DROP_DISTANCE;
-
-        // Crear el drop correspondiente según el id del item
-        if (selectedItem.id === 'mask') {
-            new DropMask(this.scene, spawnX, spawnY);
-        } else if (selectedItem.id === 'tail') {
-            new DropTail(this.scene, spawnX, spawnY);
-        }
-        // Aquí se pueden añadir más casos para otros items de uso
     }
 
     die() {
@@ -534,7 +484,6 @@ export default class Enemy extends BaseCharacter {
         this.dropWeapon();
         this.dropFeather();
         this.dropBread();
-        this.dropSpecialItem(); // sistema unificado: suelta el item especial del enemigo
 
         // Cambiar sprite al de muerto si existe
         const dedTexture = this._textureKeyFor('ded');
@@ -639,6 +588,13 @@ export default class Enemy extends BaseCharacter {
     }
 
 
+
+
+
+
+
+
+
     /**
      * Sigue una ruta poligonal establecida
      * El polígono es un array de puntos [{x, y}, {x, y}, ...]
@@ -692,6 +648,9 @@ export default class Enemy extends BaseCharacter {
             if (this._movementType === 'followRoute') {
                 this.movementFollowRoute();
             }
+        } else if (!isUnderKnockback && this._state === StatusEnemy.SEARCH) {
+            this.stop();
+            this._updateSearchFacing(time);
         } else if (!isUnderKnockback && this.isAlerted()) {
             if (this.scene.duck) this.movementAlerted(this.scene.duck);
         }

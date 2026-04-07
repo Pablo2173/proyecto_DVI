@@ -34,10 +34,15 @@ export default class Duck extends BaseCharacter {
         };
 
         this._speed = 320;
-        this._maxSpeed = 360;
-        this.dashSpeed = 1800;
+        this._maxSpeed = 600;
+        this._acceleration = 5;
+        this._currentSpeed = this._speed;
+        this.dashSpeed = 3600;
         this.dashDuration = 200;
+        this.dashCooldown = 1600;
         this.lastDashTime = 0;
+        this.dashReadyFlashPlayed = true;
+        this.isDashInvisible = false;
         this.state = DUCK_STATE.IDLE;
         this.invisibleUntil = 0;
         this.invisibleCooldownUntil = 0;
@@ -106,6 +111,65 @@ export default class Duck extends BaseCharacter {
 
         // ── Equipar arma inicial ──
         this.equipWeapon(weaponKey);
+
+        this._createDashCooldownUI();
+    }
+
+    _createDashCooldownUI() {
+        if (!this.scene?.add || !this.weaponBar?.border) return;
+
+        this.dashChargeRing = this.scene.add.graphics().setDepth(21);
+        this.dashRingRadius = 9;
+        this.dashRingThickness = 4;
+        this.dashRingGap = 8;
+    }
+
+    _updateDashCooldownUI() {
+        if (!this.dashChargeRing || !this.weaponBar?.border) return;
+
+        const border = this.weaponBar.border;
+        const iconX = border.x - (border.displayWidth / 2) - this.dashRingRadius - this.dashRingGap;
+        const iconY = border.y;
+
+        this.dashChargeRing.clear();
+
+        const now = this.scene?.time?.now ?? 0;
+        const progress = Phaser.Math.Clamp((now - this.lastDashTime) / this.dashCooldown, 0, 1);
+        const startAngle = -Math.PI / 2;
+        const endAngle = startAngle + (Math.PI * 2 * progress);
+
+        this.dashChargeRing.lineStyle(this.dashRingThickness, 0x6ce6ff, 1);
+        if (progress > 0) {
+            this.dashChargeRing.beginPath();
+            this.dashChargeRing.arc(iconX, iconY, this.dashRingRadius, startAngle, endAngle, false);
+            this.dashChargeRing.strokePath();
+        }
+
+        if (progress >= 1 && !this.dashReadyFlashPlayed) {
+            this.dashReadyFlashPlayed = true;
+            this._flashDashReady();
+        }
+    }
+
+    _flashDashReady() {
+        if (!this.scene?.time || !this.active) return;
+
+        this.setTint(0x4da6ff);
+        this.scene.time.delayedCall(120, () => {
+            if (!this.active) return;
+            this.clearTint();
+        });
+    }
+
+    _aimDashToDirection(dirX, dirY) {
+        if (!Number.isFinite(dirX) || !Number.isFinite(dirY)) return;
+        if (Math.abs(dirX) < 0.001 && Math.abs(dirY) < 0.001) return;
+
+        const angle = Phaser.Math.Angle.Between(0, 0, dirX, dirY);
+
+        // El spritesheet de dash tiene orientación base hacia la izquierda.
+        this.setFlipX(false);
+        this.setRotation(angle + Math.PI);
     }
     // ─────────────────────────────────────────
     //  GESTIÓN DE PlUMAS
@@ -237,20 +301,25 @@ export default class Duck extends BaseCharacter {
     startDash() {
         if (this.state == DUCK_STATE.SWIMMING) return; // No se puede dashar nadando 
         const now = this.scene.time.now;
-        if (now < this.lastDashTime + 800) return;
+        if (now < this.lastDashTime + this.dashCooldown) return;
         this.lastDashTime = now;
+        this.dashReadyFlashPlayed = false;
+        this.isDashInvisible = true;
+        this.setAlpha(this.invisibleAlpha);
         this.setState(DUCK_STATE.DASHING);
 
         this.scene.time.delayedCall(this.dashDuration, () => {
             if (this.state === DUCK_STATE.DASHING) {
                 this.weapon?.onDash?.();
                 if (this.state === DUCK_STATE.DASHING) {
-                    if (this.invisibleUntil > this.scene.time.now) {
-                        this.setState(DUCK_STATE.INVISIBLE);
-                        this.setAlpha(this.invisibleAlpha);
-                    } else {
-                        this.setState(DUCK_STATE.IDLE);
+                    this.isDashInvisible = false;
+
+                    // Restaurar alpha solo si no hay otra fuente de invisibilidad activa.
+                    if (!this.isInvisible && this.state !== DUCK_STATE.INVISIBLE && this.invisibleUntil <= this.scene.time.now) {
+                        this.setAlpha(1);
                     }
+
+                    this.setState(DUCK_STATE.IDLE);
                 }
             }
         });
@@ -285,7 +354,7 @@ export default class Duck extends BaseCharacter {
     }
 
     isInvisibleState() {
-        return this.state === DUCK_STATE.INVISIBLE || this.isInvisible === true;
+        return this.state === DUCK_STATE.INVISIBLE || this.isInvisible === true || this.isDashInvisible === true;
     }
 
     canStartInvisible(time = this.scene?.time?.now ?? 0) {
@@ -351,7 +420,7 @@ export default class Duck extends BaseCharacter {
         }
 
         const isDashing = this.state === DUCK_STATE.DASHING;
-        const speed = (isDashing ? this.dashSpeed : this._speed) * this.speedMultiplier;
+        let speed = (isDashing ? this.dashSpeed : this._currentSpeed) * this.speedMultiplier;
 
         let moveDirX = vx;
         let moveDirY = vy;
@@ -364,6 +433,11 @@ export default class Duck extends BaseCharacter {
         const isMoving = moveDirX !== 0 || moveDirY !== 0;
 
         if (isMoving) {
+            if (!isDashing) {
+                this._currentSpeed = Math.min(this._maxSpeed, this._currentSpeed + this._acceleration);
+                speed = this._currentSpeed * this.speedMultiplier;
+            }
+
             const len = Math.hypot(moveDirX, moveDirY) || 1;
             const velX = (moveDirX / len) * speed;
             const velY = (moveDirY / len) * speed;
@@ -383,6 +457,10 @@ export default class Duck extends BaseCharacter {
                 }
             }
         } else {
+            if (!isDashing) {
+                this._currentSpeed = this._speed;
+            }
+
             if (this.body) {
                 this.body.setVelocity(0, 0);
             }
@@ -399,9 +477,14 @@ export default class Duck extends BaseCharacter {
             }
         }
 
-        // Flip del sprite del pato
-        if (vx > 0) this.setFlipX(true);
-        if (vx < 0) this.setFlipX(false);
+        // Orientación del pato
+        if (isDashing) {
+            this._aimDashToDirection(moveDirX, moveDirY);
+        } else {
+            this.setRotation(0);
+            if (vx > 0) this.setFlipX(true);
+            if (vx < 0) this.setFlipX(false);
+        }
 
         // ── Actualizar arma (posición + rotación + debug) ──
         if (this.weapon) {
@@ -410,11 +493,21 @@ export default class Duck extends BaseCharacter {
 
         this.updateInvisibleState(time);
         this.weaponBar?.update();
+        this._updateDashCooldownUI();
 
         // ── Detección de drops cercanos (tecla E) ──
         this._checkDropPickup();
 
         this.weaponBar.updatePosition()
+    }
+
+    destroy(fromScene) {
+        if (this.dashChargeRing) {
+            this.dashChargeRing.destroy();
+            this.dashChargeRing = null;
+        }
+
+        super.destroy(fromScene);
     }
 
     /**

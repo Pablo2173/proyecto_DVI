@@ -30,6 +30,7 @@ import Enemy from '../GameObjects/enemy.js';
 import { DUCK_STATE } from '../GameObjects/duck.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
 import sprint_sprite from '../../assets/sprites/duck/sprint_duck.png';
+import dash_duck_sprite from '../../assets/Sprites/duck/dash_duck.png';
 import cuack_sprite from '../../assets/sprites/duck/Cuack_duck.png';
 import duck_swimming_sprite from '../../assets/sprites/duck/swimming_duck.png';
 import enemy_sprite from '../../assets/sprites/player.png';
@@ -52,6 +53,7 @@ import deathSound from '../../assets/sounds/YouDied.mp3';
 import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
 import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
 import up_bar from '../../assets/sprites/UI/up_bar.png';
+import dash_charge_sprite from '../../assets/Sprites/UI/dash_charge.png';
 import Puddle from '../GameObjects/puddle.js';
 import ConsumableBar from '../GameObjects/Consumables/ConsumableBar.js';
 
@@ -182,7 +184,7 @@ export default class MainScene extends Phaser.Scene {
             frameHeight: 32
         });
 
-        this.load.spritesheet('duck-dash', sprint_sprite, { // Cambiar a sprite de bolita
+        this.load.spritesheet('duck-dash', dash_duck_sprite, {
             frameWidth: 32,
             frameHeight: 32
         });
@@ -246,6 +248,7 @@ export default class MainScene extends Phaser.Scene {
 
         // Preload de UI
         this.load.image('up_bar', up_bar);
+        this.load.image('dash_charge', dash_charge_sprite);
         this.load.image('feather_icon', feather_icon);
 
         // Preload de drops de enemigos
@@ -1295,10 +1298,7 @@ export default class MainScene extends Phaser.Scene {
         if (duck.state === DUCK_STATE.DASHING) return;
         if (duck.isInvulnerable) return;
 
-        const contactDamage = enemy.contactDamage ?? 10;
-        duck.takeDamage(contactDamage);
-
-        console.log(`¡El pato recibió daño cuerpo a cuerpo! Daño: ${contactDamage}, Vida restante: ${duck.health}, Plumas restantes: ${duck.feathers}`);
+        return;
     }
 
     _onProjectileHitDuck(projectile, duck) {
