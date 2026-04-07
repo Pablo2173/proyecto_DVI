@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import BaseCharacter from './baseCharacter.js';
+import BaseCharacter from './BaseCharacter.js';
 import { TEAM } from './team.js';
 
 import Arco from './Weapons/Distance/arco.js';
