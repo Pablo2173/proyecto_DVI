@@ -14,6 +14,9 @@ import configBackfieldUrl from "../../assets/config/3_rocksandbush.png?url";
 import configGroundUrl from "../../assets/config/4_path.png?url";
 import configTreesUrl from "../../assets/config/5_trees.png?url";
 
+// ───────── AUDIO ─────────
+import menuMusicUrl from "../../assets/sounds/musica_menu.mp3?url";
+
 export default class Boot extends Phaser.Scene {
   constructor() {
     super("Boot");
@@ -39,14 +42,14 @@ export default class Boot extends Phaser.Scene {
       bar.destroy();
     });
 
-    // ───────── MENU ASSETS ─────────
+    this.load.audio("menu_music", menuMusicUrl);
+
     this.load.image("sky", skyUrl);
     this.load.image("clouds", cloudsUrl);
     this.load.image("backfield", backfieldUrl);
     this.load.image("trees", treesUrl);
     this.load.image("ground", groundUrl);
 
-    // ───────── CONFIG ASSETS ─────────
     this.load.image("config_sky", configSkyUrl);
     this.load.image("config_clouds", configCloudsUrl);
     this.load.image("config_backfield", configBackfieldUrl);
@@ -55,10 +58,7 @@ export default class Boot extends Phaser.Scene {
   }
 
   create() {
-    // Debug
-    console.log("sky exists?", this.textures.exists("sky"));
-    console.log("config_sky exists?", this.textures.exists("config_sky"));
-
+    console.log("menu_music exists?", this.cache.audio.exists("menu_music"));
     this.scene.start("MenuScene");
   }
 }

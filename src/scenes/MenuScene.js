@@ -28,6 +28,27 @@ export default class MenuScene extends Phaser.Scene {
       this.layoutUI();
     });
 
+    const settings = JSON.parse(localStorage.getItem("settings")) ?? {};
+
+    this.sound.mute = settings.mute ?? false;
+
+    let music = this.sound.get("menu_music");
+
+    if (!music && (settings.menuMusicEnabled ?? true)) {
+      music = this.sound.add("menu_music", {
+        loop: true,
+        volume: settings.menuVolume ?? 1
+      });
+      music.play();
+    } else if (music) {
+      // actualiza volumen si ya existe
+      music.setVolume(settings.menuVolume ?? 1);
+
+      if (!(settings.menuMusicEnabled ?? true)) {
+        music.setVolume(0);
+      }
+    }
+
     this.setupKeyboard();
   }
 
@@ -318,7 +339,7 @@ export default class MenuScene extends Phaser.Scene {
       }
     });
   }
-
+  
   // EMPIEZA EL JUEGO//
   startGameTransition() {
     // evita dobles clicks

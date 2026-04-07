@@ -10,28 +10,38 @@ export default class SettingsScene extends Phaser.Scene {
 
     if (saved) {
       const s = JSON.parse(saved);
+
       this.mute = s.mute ?? false;
-      this.volume = s.volume ?? 1;
+
+      this.menuMusicEnabled = s.menuMusicEnabled ?? true;
+      this.menuVolume = s.menuVolume ?? 1;
+
+      this.gameMusicEnabled = s.gameMusicEnabled ?? true;
+      this.gameVolume = s.gameVolume ?? 1;
+
       this.fontSize = s.fontSize ?? 28;
     } else {
       this.mute = false;
-      this.volume = 1;
+
+      this.menuMusicEnabled = true;
+      this.menuVolume = 1;
+
+      this.gameMusicEnabled = true;
+      this.gameVolume = 1;
+
       this.fontSize = 28;
     }
 
     this.sound.mute = this.mute;
-    this.sound.volume = this.volume;
 
     const W = this.scale.width;
     const H = this.scale.height;
 
     this.buildBackground();
 
-    // oscurecer un poco para leer mejor
     this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.35).setDepth(5);
 
-    // título
-    this.add.text(W / 2, 90, "CONFIGURACIÓN", {
+    this.add.text(W / 2, 70, "CONFIGURACIÓN", {
       fontFamily: "ReturnOfTheBoss",
       fontSize: "54px",
       color: "#ffffff",
@@ -41,59 +51,93 @@ export default class SettingsScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(10);
 
-    // layout centrado
-    const labelX = W / 2 - 230;
-    const controlX = W / 2 + 120;
+    const labelX = W / 2 - 250;
+    const toggleX = W / 2 + 40;
+    const volumeStartX = W / 2 + 110;
 
-    const row1Y = 190;
-    const row2Y = 295;
-    const row3Y = 400;
-    const row4Y = 505;
+    const row1Y = 155;
+    const row2Y = 235;
+    const row3Y = 315;
+    const row4Y = 415;
+    const row5Y = 515;
 
     const labelStyle = {
       fontFamily: "ReturnOfTheBoss",
-      fontSize: "30px",
+      fontSize: "28px",
       color: "#ffffff",
       stroke: "#000000",
       strokeThickness: 5
     };
 
-    // SONIDO
-    this.add.text(labelX, row1Y, "SONIDO", labelStyle)
+    const volumeLevels = [0, 0.25, 0.5, 0.75, 1];
+
+    // Música ya existente de menú/config
+    this.menuMusic = this.sound.get("menu_music") ?? null;
+
+    // Si no existe pero debería sonar, la creamos
+    if (!this.menuMusic && this.cache.audio.exists("menu_music") && this.menuMusicEnabled) {
+      this.menuMusic = this.sound.add("menu_music", {
+        loop: true,
+        volume: this.menuVolume
+      });
+      this.menuMusic.play();
+    }
+
+    this.applyAudioSettings();
+
+    // SONIDO GENERAL
+    this.add.text(labelX, row1Y, "SONIDO GENERAL", labelStyle)
       .setOrigin(0, 0.5)
       .setDepth(10);
 
-    this.soundBox = this.createCheckbox(controlX, row1Y, !this.mute, (checked) => {
+    this.soundBox = this.createCheckbox(toggleX + 65, row1Y, !this.mute, (checked) => {
       this.mute = !checked;
-      this.sound.mute = this.mute;
+      this.applyAudioSettings();
       this.saveSettings();
     });
 
-    // VOLUMEN
-    this.add.text(labelX, row2Y, "VOLUMEN", labelStyle)
+    // MÚSICA MENÚ
+    this.add.text(labelX, row2Y, "MÚSICA MENÚ", labelStyle)
       .setOrigin(0, 0.5)
       .setDepth(10);
 
-    this.volumeBoxes = [];
-    const volumeLevels = [0, 0.25, 0.5, 0.75, 1];
-    const volumeStartX = controlX - 120;
-
+    
+    this.menuVolumeBoxes = [];
     volumeLevels.forEach((level, i) => {
-      const x = volumeStartX + i * 65;
-      const selected = Math.abs(this.volume - level) < 0.01;
+      const x = volumeStartX + i * 58;
+      const selected = Math.abs(this.menuVolume - level) < 0.01;
 
       const box = this.createSelectBox(x, row2Y, selected, `${i}`, () => {
-        this.volume = level;
-        this.sound.volume = this.volume;
-        this.updateVolumeBoxes();
+        this.menuVolume = level;
+        this.updateMenuVolumeBoxes();
+        this.applyAudioSettings();
         this.saveSettings();
       });
 
-      this.volumeBoxes.push({ box, level });
+      this.menuVolumeBoxes.push({ box, level });
+    });
+
+    // MÚSICA JUEGO
+    this.add.text(labelX, row3Y, "MÚSICA JUEGO", labelStyle)
+      .setOrigin(0, 0.5)
+      .setDepth(10);
+
+    this.gameVolumeBoxes = [];
+    volumeLevels.forEach((level, i) => {
+      const x = volumeStartX + i * 58;
+      const selected = Math.abs(this.gameVolume - level) < 0.01;
+
+      const box = this.createSelectBox(x, row3Y, selected, `${i}`, () => {
+        this.gameVolume = level;
+        this.updateGameVolumeBoxes();
+        this.saveSettings();
+      });
+
+      this.gameVolumeBoxes.push({ box, level });
     });
 
     // TAMAÑO LETRA
-    this.add.text(labelX, row3Y, "TAMAÑO LETRA", labelStyle)
+    this.add.text(labelX, row4Y, "TAMAÑO LETRA", labelStyle)
       .setOrigin(0, 0.5)
       .setDepth(10);
 
@@ -105,13 +149,13 @@ export default class SettingsScene extends Phaser.Scene {
       { label: "L", value: 36 }
     ];
 
-    const fontStartX = controlX - 40;
+    const fontStartX = W / 2 + 110;
 
     fontOptions.forEach((opt, i) => {
       const x = fontStartX + i * 78;
       const selected = this.fontSize === opt.value;
 
-      const box = this.createSelectBox(x, row3Y, selected, opt.label, () => {
+      const box = this.createSelectBox(x, row4Y, selected, opt.label, () => {
         this.fontSize = opt.value;
         this.updateFontBoxes();
         this.saveSettings();
@@ -121,13 +165,13 @@ export default class SettingsScene extends Phaser.Scene {
     });
 
     // PANTALLA COMPLETA
-    this.add.text(labelX, row4Y, "PANTALLA COMPLETA", labelStyle)
+    this.add.text(labelX, row5Y, "PANTALLA COMPLETA", labelStyle)
       .setOrigin(0, 0.5)
       .setDepth(10);
 
     this.fullscreenBox = this.createCheckbox(
-      controlX + 40,
-      row4Y,
+      toggleX + 100,
+      row5Y,
       this.scale.isFullscreen,
       (checked) => {
         if (checked && !this.scale.isFullscreen) {
@@ -139,12 +183,12 @@ export default class SettingsScene extends Phaser.Scene {
     );
 
     // VOLVER
-    this.backButton = this.add.rectangle(W / 2, 585, 340, 72, 0x000000, 0.5)
+    this.backButton = this.add.rectangle(W / 2, 610, 340, 72, 0x000000, 0.5)
       .setStrokeStyle(4, 0xffffff, 0.8)
       .setDepth(10)
       .setInteractive({ useHandCursor: true });
 
-    this.backLabel = this.add.text(W / 2, 585, "VOLVER", {
+    this.backLabel = this.add.text(W / 2, 610, "VOLVER", {
       fontFamily: "ReturnOfTheBoss",
       fontSize: "36px",
       color: "#ff6666",
@@ -155,17 +199,45 @@ export default class SettingsScene extends Phaser.Scene {
       .setDepth(11)
       .setInteractive({ useHandCursor: true });
 
-    const goBack = () => this.scene.start("MenuScene");
+    const goBack = () => {
+      this.scene.start("MenuScene");
+    };
 
-    this.backButton.on("pointerdown", goBack);
-    this.backLabel.on("pointerdown", goBack);
+    this.backButton.on("pointerup", goBack);
+    this.backLabel.on("pointerup", goBack);
 
-    this.updateVolumeBoxes();
+    this.updateMenuVolumeBoxes();
+    this.updateGameVolumeBoxes();
     this.updateFontBoxes();
 
     this.scale.on("resize", () => {
       this.layoutBackground();
     });
+  }
+
+  applyAudioSettings() {
+    this.sound.mute = this.mute;
+
+    // si volumen 0 → no hay música
+    if (this.menuVolume <= 0) {
+      if (this.menuMusic) {
+        this.menuMusic.stop();
+        this.menuMusic = null;
+      }
+      return;
+    }
+
+    if (!this.menuMusic && this.cache.audio.exists("menu_music")) {
+      this.menuMusic = this.sound.add("menu_music", {
+        loop: true,
+        volume: this.menuVolume
+      });
+      this.menuMusic.play();
+    }
+
+    if (this.menuMusic) {
+      this.menuMusic.setVolume(this.menuVolume);
+    }
   }
 
   createCheckbox(x, y, checked, onToggle) {
@@ -195,8 +267,8 @@ export default class SettingsScene extends Phaser.Scene {
       onToggle?.(newValue);
     };
 
-    box.on("pointerdown", toggle);
-    mark.on("pointerdown", toggle);
+    box.on("pointerup", toggle);
+    mark.on("pointerup", toggle);
 
     return {
       box,
@@ -227,8 +299,8 @@ export default class SettingsScene extends Phaser.Scene {
       bg.setFillStyle(0x000000, value ? 0.9 : 0.7);
     };
 
-    bg.on("pointerdown", onSelect);
-    text.on("pointerdown", onSelect);
+    bg.on("pointerup", onSelect);
+    text.on("pointerup", onSelect);
 
     setSelected(selected);
 
@@ -239,9 +311,16 @@ export default class SettingsScene extends Phaser.Scene {
     };
   }
 
-  updateVolumeBoxes() {
-    this.volumeBoxes.forEach(({ box, level }) => {
-      const selected = Math.abs(this.volume - level) < 0.01;
+  updateMenuVolumeBoxes() {
+    this.menuVolumeBoxes.forEach(({ box, level }) => {
+      const selected = Math.abs(this.menuVolume - level) < 0.01;
+      box.setSelected(selected);
+    });
+  }
+
+  updateGameVolumeBoxes() {
+    this.gameVolumeBoxes.forEach(({ box, level }) => {
+      const selected = Math.abs(this.gameVolume - level) < 0.01;
       box.setSelected(selected);
     });
   }
@@ -255,7 +334,10 @@ export default class SettingsScene extends Phaser.Scene {
   saveSettings() {
     localStorage.setItem("settings", JSON.stringify({
       mute: this.mute,
-      volume: this.volume,
+      menuMusicEnabled: this.menuMusicEnabled,
+      menuVolume: this.menuVolume,
+      gameMusicEnabled: this.gameMusicEnabled,
+      gameVolume: this.gameVolume,
       fontSize: this.fontSize
     }));
   }

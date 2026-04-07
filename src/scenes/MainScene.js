@@ -504,7 +504,12 @@ export default class MainScene extends Phaser.Scene {
 
     create() {
         const SCALE = 4;
+        //PARAR música del menú
+        const menuMusic = this.sound.get("menu_music");
 
+        if (menuMusic) {
+            menuMusic.stop();
+        }
         // ─────────────────────────────────────────
         // CONFIG GENERAL DE LA ESCENA
         // ─────────────────────────────────────────
