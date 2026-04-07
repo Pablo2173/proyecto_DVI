@@ -19,8 +19,8 @@ import Bread from '../GameObjects/Consumables/bread.js';
 
 import AttackPotion from '../GameObjects/Consumables/attackPotion.js';
 
-import SpeedPotion from '../GameObjects/Consumables/speedPotion.js';
-import SpeedAttackPotion from '../GameObjects/Consumables/speedAttackPotion.js';
+import SpeedPotion from '../GameObjects/Consumables/SpeedPotion.js';
+import SpeedAttackPotion from '../GameObjects/Consumables/SpeedAttackPotion.js';
 
 
 import DropBread from '../GameObjects/Consumables/Drops/dropBread.js';
@@ -53,7 +53,7 @@ import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
 import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
 import up_bar from '../../assets/sprites/UI/up_bar.png';
 import Puddle from '../GameObjects/puddle.js';
-import ConsumableBar from '../GameObjects/consumables/consumableBar.js';
+import ConsumableBar from '../GameObjects/Consumables/ConsumableBar.js';
 
 // Enemigos
 import Zorro from '../GameObjects/Enemies/zorro.js';
