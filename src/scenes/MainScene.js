@@ -14,16 +14,16 @@ import Flecha from '../GameObjects/Projectiles/flecha.js';
 import Bala from '../GameObjects/Projectiles/bala.js';
 
 // Drops
-import DropWeapon from '../GameObjects/Consumables/Drops/dropWeapon.js';
-import Bread from '../GameObjects/Consumables/bread.js';
+import DropWeapon from '../GameObjects/consumables/Drops/dropWeapon.js';
+import Bread from '../GameObjects/consumables/bread.js';
 
-import AttackPotion from '../GameObjects/Consumables/attackPotion.js';
+import AttackPotion from '../GameObjects/consumables/attackPotion.js';
 
-import SpeedPotion from '../GameObjects/Consumables/speedPotion.js';
-import SpeedAttackPotion from '../GameObjects/Consumables/speedAttackPotion.js';
+import SpeedPotion from '../GameObjects/consumables/speedPotion.js';
+import SpeedAttackPotion from '../GameObjects/consumables/speedAttackPotion.js';
 
 
-import DropBread from '../GameObjects/Consumables/Drops/dropBread.js';
+import DropBread from '../GameObjects/consumables/Drops/dropBread.js';
 
 
 import Enemy from '../GameObjects/enemy.js';
@@ -53,7 +53,7 @@ import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
 import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
 import up_bar from '../../assets/sprites/UI/up_bar.png';
 import Puddle from '../GameObjects/puddle.js';
-import ConsumableBar from '../GameObjects/Consumables/consumableBar.js';
+import ConsumableBar from '../GameObjects/consumables/consumableBar.js';
 
 // Enemigos
 import Zorro from '../GameObjects/Enemies/zorro.js';
