@@ -9,11 +9,11 @@ import Mazo from './Weapons/Melee/mazo.js';
 import Ramita from './Weapons/Melee/ramita.js';
 import Escoba from './Weapons/Melee/escoba.js';
 
-import DropWeapon from './consumables/drops/dropWeapon.js';
-import DropFeather from './consumables/drops/dropFeather.js';
-import DropBread from './consumables/drops/dropBread.js';
-import DropMask from './consumables/drops/dropMask.js';
-import DropTail from './consumables/drops/dropTail.js';
+import DropWeapon from './Consumables/Drops/dropWeapon.js';
+import DropFeather from './Consumables/Drops/dropFeather.js';
+import DropBread from './Consumables/Drops/dropBread.js';
+import DropMask from './Consumables/Drops/dropMask.js';
+import DropTail from './Consumables/Drops/dropTail.js';
 
 const StatusEnemy = {
     IDLE: 0,
