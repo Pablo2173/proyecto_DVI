@@ -26,8 +26,6 @@ import SpeedAttackPotion from '../GameObjects/Consumables/SpeedAttackPotion.js';
 import DropBread from '../GameObjects/Consumables/Drops/dropBread.js';
 import DropFeather from '../GameObjects/Consumables/Drops/dropFeather.js';
 
-// Tienda
-import Store from '../GameObjects/store.js';
 
 import Enemy from '../GameObjects/enemy.js';
 import { DUCK_STATE } from '../GameObjects/duck.js';
@@ -53,8 +51,6 @@ import cuervo_idle from '../../assets/Sprites/Cuervo/cuervo_idle.png';
 import cuervo_run from '../../assets/Sprites/Cuervo/cuervo_run.png';
 import cuervo_hit from '../../assets/Sprites/Cuervo/cuervo_hit.png';
 import cuervo_ded from '../../assets/Sprites/Cuervo/cuervo_ded.png';
-// Sprites de la Rana Comerciante
-import rana_idle from '../../assets/sprites/Rana/rana_idle.png';
 
 //Sounds
 import cuackSound from '../../assets/sounds/cuack.mp3';
@@ -71,7 +67,6 @@ import ConsumableBar from '../GameObjects/Consumables/ConsumableBar.js';
 import Zorro from '../GameObjects/Enemies/zorro.js';
 import Mapache from '../GameObjects/Enemies/mapache.js';
 import Cuervo from '../GameObjects/Enemies/cuervo.js';
-import Frog from '../GameObjects/Enemies/frog.js';
 
 // Drops de enemigos
 import mask_icon from '../../assets/sprites/consumables/Mask.png';
@@ -511,14 +506,6 @@ export default class MainScene extends Phaser.Scene {
             this.anims.create({
                 key: 'cuervo-idle',
                 frames: this.anims.generateFrameNumbers('cuervo_idle', { start: 0, end: 3 }),
-        // Animaciones de Rana
-            });
-        }
-
-        if (!this.anims.exists('rana-idle') && this.textures.exists('rana_idle')) {
-            this.anims.create({
-                key: 'rana-idle',
-                frames: this.anims.generateFrameNumbers('rana_idle', { start: 0, end: 3 }),
                 frameRate: 8,
                 repeat: -1
             });
@@ -624,13 +611,15 @@ export default class MainScene extends Phaser.Scene {
         this.input.on('pointerdown', (pointer) => {
             if (this.isPlayerDead) return;
             if (pointer?.button !== 0) return;
-            if (this.duck && this.duck.weapon) {
+            console.log('[INPUT] pointerdown — weapon:', this.duck?.weapon?.constructor?.name, '| active:', this.duck?.weapon?.active);
+            if (this.duck && this.duck.weapon && this.duck.weapon.attack) {
                 this.duck.weapon.attack();
             }
         });
 
         this.input.on('pointerup', (pointer) => {
             if (pointer?.button !== 0) return;
+            console.log('[INPUT] pointerup — arma actual:', this.duck?.weapon?.constructor?.name);
             if (this.duck && this.duck.weapon && this.duck.weapon.releaseAttack) {
                 this.duck.weapon.releaseAttack();
             }
@@ -638,47 +627,13 @@ export default class MainScene extends Phaser.Scene {
 
         // Tecla E: usada exclusivamente para recoger items de tipo 'interact' (DropMask)
         this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-
+        
         // ─────────────────────────────────────────
         // ENEMIGOS DESDE RUTAS
         // ─────────────────────────────────────────
         this.enemies = this.physics.add.group();
         this.setupEnemiesFromRoutes(SCALE);
 
-
-        // Rana pasiva: aparece 30 píxeles a la derecha del mapache
-        // No actúa como enemigo hasta recibir daño
-        const spawnFrog = new Frog(
-            this,
-            'Rana_spawn',
-            spawnMapache.x + 120,
-            spawnMapache.y,
-            'rana_idle',
-            null,
-            Mcuaktro,
-            null
-        );
-        this.enemies.add(spawnFrog);
-
-        // Registrar colisiones de la rana igual que los demás enemigos
-        this.physics.add.collider(
-            this.duck,
-            spawnFrog,
-            null,
-            (duck) => duck?.state !== DUCK_STATE.DASHING,
-            this
-        );
-        this.physics.add.collider(spawnFrog, this.colisionLayer);
-        this.physics.add.collider(spawnFrog, this.vallaLayer);
-        this.physics.add.overlap(this.projectiles, spawnFrog, (projectile, en) => {
-            if (this.isPlayerDead) return;
-            this._onProjectileHitEnemy(projectile, en);
-        });
-        this.physics.add.overlap(this.duck, spawnFrog, (duck, en) => {
-            if (this.isPlayerDead) return;
-            this._onEnemyHitDuck(duck, en);
-        });
-        this.physics.add.collider(spawnFrog, this.zonasAcuaticasLayer);
 
         // ─────────────────────────────────────────
         // CONSUMIBLES DESDE TILED
@@ -823,12 +778,9 @@ export default class MainScene extends Phaser.Scene {
         // - pickupType 'auto'     → interact() se llama inmediatamente (DropBread)
         // - pickupType 'interact' → interact() solo se llama al pulsar E (DropMask)
         // La recogida del mundo tiene prioridad sobre el consumo de inventario con E.
-        // FIX: eJustDown se calcula UNA sola vez aquí y se pasa a store.update()
-        // para que Store no pierda la pulsación por haber consumido JustDown antes.
         // ─────────────────────────────────────────
-        const eJustDown = Phaser.Input.Keyboard.JustDown(this.keyE);
-
         if (this.duck && this.duck.active) {
+            const eJustDown = Phaser.Input.Keyboard.JustDown(this.keyE);
 
             this.consumableItems.getChildren().forEach(item => {
                 if (!item || !item.active) return;
@@ -851,16 +803,6 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         if (this.consumableBar) {
             this.consumableBar.update();
-        }
-
-        // ─────────────────────────────────────────
-        // ACTUALIZAR TIENDA
-        // Se actualiza después de consumableBar para respetar la prioridad de E.
-        // ❗ NO meter lógica de tienda directamente aquí — ver Store.js
-        // FIX: se pasa eJustDown para que Store no recalcule JustDown (ya sería false)
-        // ─────────────────────────────────────────
-        if (this.store) {
-            this.store.update(eJustDown);
         }
 
         // ─────────────────────────────────────────
@@ -1127,10 +1069,6 @@ export default class MainScene extends Phaser.Scene {
         if (this.consumableBar) {
             this.consumableBar.destroy();
             this.consumableBar = null;
-        }
-        if (this.store) {
-            this.store.destroy();
-            this.store = null;
         }
     }
 
@@ -1497,4 +1435,5 @@ export default class MainScene extends Phaser.Scene {
             this.consumableBar.update();
         }
     }
+
 }
