@@ -28,6 +28,8 @@ import DropFeather from '../GameObjects/Consumables/Drops/dropFeather.js';
 
 
 import Enemy from '../GameObjects/enemy.js';
+import Store from '../GameObjects/store.js';
+import Frog from '../GameObjects/Enemies/frog.js';
 import { DUCK_STATE } from '../GameObjects/duck.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
 import sprint_sprite from '../../assets/sprites/duck/sprint_duck.png';
@@ -51,6 +53,8 @@ import cuervo_idle from '../../assets/Sprites/Cuervo/cuervo_idle.png';
 import cuervo_run from '../../assets/Sprites/Cuervo/cuervo_run.png';
 import cuervo_hit from '../../assets/Sprites/Cuervo/cuervo_hit.png';
 import cuervo_ded from '../../assets/Sprites/Cuervo/cuervo_ded.png';
+
+import rana_idle from '../../assets/sprites/Rana/rana_idle.png';
 
 //Sounds
 import cuackSound from '../../assets/sounds/cuack.mp3';
@@ -236,6 +240,11 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('cuervo_hit', cuervo_hit);
         this.load.image('cuervo_ded', cuervo_ded);
         this.load.image('cuervo_idle_corpse', cuervo_ded);
+        
+        this.load.spritesheet('rana_idle', rana_idle, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
 
         this.load.audio('cuack', cuackSound);
         this.load.audio('death_sound', deathSound);
@@ -520,6 +529,16 @@ export default class MainScene extends Phaser.Scene {
             });
         }
 
+        if (!this.anims.exists('rana-idle') && this.textures.exists('rana_idle')) {
+            this.anims.create({
+                key: 'rana-idle',
+                frames: this.anims.generateFrameNumbers('rana_idle', { start: 0, end: 3 }),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
+
+
         /* if (!this.anims.exists('duck-swimming') && this.textures.exists('duck-swimming')) {
              this.anims.create({
                  key: 'duck-swimming',
@@ -640,6 +659,18 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         this.setupConsumablesFromLayer(SCALE);
 
+        // ─────────────────────────────────────────
+        // TIENDA DESDE TILED
+        // Las posiciones de los 5 slots provienen de la capa 'Store' del mapa.
+        // ─────────────────────────────────────────
+        this.setupStoreFromLayer(SCALE);
+
+        // ─────────────────────────────────────────
+        // RANA DESDE TILED
+        // La posición de la rana proviene de la capa 'Rana' del mapa.
+        // ─────────────────────────────────────────
+        this.setupFrogFromLayer(SCALE);
+
 
         // Eventos de audio para todos los enemigos
         this.events.on('audio:event', (audioEvent) => {
@@ -692,12 +723,6 @@ export default class MainScene extends Phaser.Scene {
             if (!projectile || !projectile.active) return;
             projectile.destroy();
         });
-
-        // Consumibles y drops
-        new Bread(this, 500, 9400);
-        new Bread(this, 1800, 9200);
-        new DropWeapon(this, 1500, 9600, Mazo, 'mazo');
-        new DropWeapon(this, this.playerSpawn.x + 120, this.playerSpawn.y + 40, Arco, 'arco');
 
         //inicialización de la cámara centrada en el jugador antes del update
         //como el movimiento depende del ratón inicializaremos el puntero en la posición del jugador
@@ -794,6 +819,11 @@ export default class MainScene extends Phaser.Scene {
                     item.interact(this.duck);
                 }
             });
+
+            // Pasar eJustDown a la tienda para que gestione la compra con E
+            if (this.store) {
+                this.store.update(eJustDown);
+            }
         }
 
         // ─────────────────────────────────────────
@@ -1434,6 +1464,80 @@ export default class MainScene extends Phaser.Scene {
         if (this.consumableBar) {
             this.consumableBar.update();
         }
+    }
+
+    // ─────────────────────────────────────────
+    // TIENDA DESDE TILED
+    // ─────────────────────────────────────────
+
+    /**
+     * Lee la capa 'Store' del mapa, extrae las posiciones de sus objetos
+     * y los pasa a la clase Store para que genere una poción aleatoria en cada uno.
+     *
+     * Cada objeto de la capa representa un slot de tienda independiente.
+     * Las posiciones se escalan igual que el resto del mapa (× SCALE).
+     *
+     * @param {number} scale - Escala del mapa
+     */
+    setupStoreFromLayer(scale) {
+        const storeLayer = this.map.getObjectLayer('store');
+
+        if (!storeLayer || !Array.isArray(storeLayer.objects) || storeLayer.objects.length === 0) {
+            console.warn('[MainScene] No se encontró la capa "Store" en el mapa o está vacía.');
+            return;
+        }
+
+        console.log(`[MainScene] Capa Store encontrada con ${storeLayer.objects.length} objeto(s).`);
+
+        // Extraer posiciones escaladas directamente de los objetos del mapa
+        const positions = storeLayer.objects.map(obj => ({
+            x: obj.x * scale,
+            y: obj.y * scale,
+        }));
+
+        // Instanciar la tienda sin posición central fija; los slots vienen del mapa
+        this.store = new Store(this, 0, 0, this.duck, this.consumableBar);
+
+        // Generar una poción aleatoria en cada posición del mapa
+        this.store.spawnAtPositions(positions);
+    }
+
+    // ─────────────────────────────────────────
+    // RANA DESDE TILED
+    // ─────────────────────────────────────────
+
+    /**
+     * Lee la capa 'Rana' del mapa, localiza el objeto llamado 'Rana'
+     * y spawnea la clase Frog en esa posición exacta.
+     *
+     * La posición se escala igual que el resto del mapa (× SCALE).
+     *
+     * @param {number} scale - Escala del mapa
+     */
+    setupFrogFromLayer(scale) {
+        const frogLayer = this.map.getObjectLayer('rana');
+
+        if (!frogLayer || !Array.isArray(frogLayer.objects)) {
+            console.warn('[MainScene] No se encontró la capa "Rana" en el mapa.');
+            return;
+        }
+
+        const frogObject = frogLayer.objects.find(
+            obj => (obj.name || '').trim().toLowerCase() === 'rana'
+        );
+
+        if (!frogObject) {
+            console.warn('[MainScene] No se encontró un objeto llamado "Rana" dentro de la capa "Rana".');
+            return;
+        }
+
+        const frogX = frogObject.x * scale;
+        const frogY = frogObject.y * scale;
+
+        // Spawnear la rana en la posición exacta del mapa
+        this.frog = new Frog(this, 'rana', frogX, frogY, 'rana_idle', null);
+
+        console.log(`[MainScene] Frog spawneada en (${frogX}, ${frogY}) desde la capa "Rana".`);
     }
 
 }

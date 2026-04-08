@@ -62,7 +62,7 @@ export default class Duck extends BaseCharacter {
         this.isInvisible = false;
 
         // GESTIÓN PLUMAS / VIDA
-        this.maxFeathers = 10;
+        this.maxFeathers = 5; // Máximo de plumas visibles en pantalla
         this.healthPerFeather = 50;
 
         this.maxHealth = this.maxFeathers * this.healthPerFeather;
@@ -175,6 +175,10 @@ export default class Duck extends BaseCharacter {
     //  GESTIÓN DE PlUMAS
     // ─────────────────────────────────────────
     addFeather(amount = 1) {
+        // Si ya tiene el máximo de plumas, no suma más
+        if (this.feathers >= this.maxFeathers) {
+            return;
+        }
         const heal = amount * this.healthPerFeather;
         this.health = Phaser.Math.Clamp(this.health + heal, 0, this.maxHealth);
         this.updateFeathersFromHealth();
