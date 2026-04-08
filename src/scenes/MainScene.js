@@ -25,6 +25,8 @@ import SpeedAttackPotion from '../GameObjects/Consumables/SpeedAttackPotion.js';
 
 import DropBread from '../GameObjects/Consumables/Drops/dropBread.js';
 
+// Tienda
+import Store from '../GameObjects/store.js';
 
 import Enemy from '../GameObjects/enemy.js';
 import { DUCK_STATE } from '../GameObjects/duck.js';
@@ -50,6 +52,8 @@ import cuervo_idle from '../../assets/Sprites/Cuervo/cuervo_idle.png';
 import cuervo_run from '../../assets/Sprites/Cuervo/cuervo_run.png';
 import cuervo_hit from '../../assets/Sprites/Cuervo/cuervo_hit.png';
 import cuervo_ded from '../../assets/Sprites/Cuervo/cuervo_ded.png';
+// Sprites de la Rana Comerciante
+import rana_idle from '../../assets/sprites/Rana/rana_idle.png';
 
 //Sounds
 import cuackSound from '../../assets/sounds/cuack.mp3';
@@ -66,6 +70,7 @@ import ConsumableBar from '../GameObjects/Consumables/ConsumableBar.js';
 import Zorro from '../GameObjects/Enemies/zorro.js';
 import Mapache from '../GameObjects/Enemies/mapache.js';
 import Cuervo from '../GameObjects/Enemies/cuervo.js';
+import Frog from '../GameObjects/Enemies/frog.js';
 
 // Drops de enemigos
 import mask_icon from '../../assets/sprites/consumables/Mask.png';
@@ -236,6 +241,11 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('cuervo_hit', cuervo_hit);
         this.load.image('cuervo_ded', cuervo_ded);
         this.load.image('cuervo_idle_corpse', cuervo_ded);
+        // Sprites de la Rana Comerciante
+        this.load.spritesheet('rana_idle', rana_idle, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
         
         this.load.audio('cuack', cuackSound);
         this.load.audio('death_sound', deathSound);
@@ -747,6 +757,11 @@ export default class MainScene extends Phaser.Scene {
             this.anims.create({
                 key: 'cuervo-idle',
                 frames: this.anims.generateFrameNumbers('cuervo_idle', { start: 0, end: 3 }),
+        // Animaciones de Rana
+        if (!this.anims.exists('rana-idle') && this.textures.exists('rana_idle')) {
+            this.anims.create({
+                key: 'rana-idle',
+                frames: this.anims.generateFrameNumbers('rana_idle', { start: 0, end: 3 }),
                 frameRate: 8,
                 repeat: -1
             });
@@ -912,6 +927,40 @@ export default class MainScene extends Phaser.Scene {
         );
         this.enemies.add(spawnMapache);
 
+        // Rana pasiva: aparece 30 píxeles a la derecha del mapache
+        // No actúa como enemigo hasta recibir daño
+        const spawnFrog = new Frog(
+            this,
+            'Rana_spawn',
+            spawnMapache.x + 30,
+            spawnMapache.y,
+            'rana_idle',
+            null,
+            Mcuaktro,
+            null
+        );
+        this.enemies.add(spawnFrog);
+
+        // Registrar colisiones de la rana igual que los demás enemigos
+        this.physics.add.collider(
+            this.duck,
+            spawnFrog,
+            null,
+            (duck) => duck?.state !== DUCK_STATE.DASHING,
+            this
+        );
+        this.physics.add.collider(spawnFrog, this.colisionLayer);
+        this.physics.add.collider(spawnFrog, this.vallaLayer);
+        this.physics.add.overlap(this.projectiles, spawnFrog, (projectile, en) => {
+            if (this.isPlayerDead) return;
+            this._onProjectileHitEnemy(projectile, en);
+        });
+        this.physics.add.overlap(this.duck, spawnFrog, (duck, en) => {
+            if (this.isPlayerDead) return;
+            this._onEnemyHitDuck(duck, en);
+        });
+        this.physics.add.collider(spawnFrog, this.zonasAcuaticasLayer);
+
         // ─────────────────────────────────────────
         // CONSUMIBLES DESDE TILED
         // ─────────────────────────────────────────
@@ -1024,6 +1073,15 @@ export default class MainScene extends Phaser.Scene {
         new DropWeapon(this, 1500, 9600, Mazo, 'mazo');
         new DropWeapon(this, this.playerSpawn.x + 120, this.playerSpawn.y + 40, Arco, 'arco');
 
+        // Tienda
+        this.store = new Store(
+            this,
+            this.playerSpawn.x - 60,   // ligeramente a la izquierda del duck
+            this.playerSpawn.y + 100,  // debajo del duck
+            this.duck,
+            this.consumableBar
+        );
+
         //inicialización de la cámara centrada en el jugador antes del update
         //como el movimiento depende del ratón inicializaremos el puntero en la posición del jugador
         this.cameras.main.centerOn(this.playerSpawn.x, this.playerSpawn.y);
@@ -1103,9 +1161,12 @@ export default class MainScene extends Phaser.Scene {
         // - pickupType 'auto'     → interact() se llama inmediatamente (DropBread)
         // - pickupType 'interact' → interact() solo se llama al pulsar E (DropMask)
         // La recogida del mundo tiene prioridad sobre el consumo de inventario con E.
+        // FIX: eJustDown se calcula UNA sola vez aquí y se pasa a store.update()
+        // para que Store no pierda la pulsación por haber consumido JustDown antes.
         // ─────────────────────────────────────────
+        const eJustDown = Phaser.Input.Keyboard.JustDown(this.keyE);
+
         if (this.duck && this.duck.active) {
-            const eJustDown = Phaser.Input.Keyboard.JustDown(this.keyE);
 
             this.consumableItems.getChildren().forEach(item => {
                 if (!item || !item.active) return;
@@ -1128,6 +1189,16 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         if (this.consumableBar) {
             this.consumableBar.update();
+        }
+
+        // ─────────────────────────────────────────
+        // ACTUALIZAR TIENDA
+        // Se actualiza después de consumableBar para respetar la prioridad de E.
+        // ❗ NO meter lógica de tienda directamente aquí — ver Store.js
+        // FIX: se pasa eJustDown para que Store no recalcule JustDown (ya sería false)
+        // ─────────────────────────────────────────
+        if (this.store) {
+            this.store.update(eJustDown);
         }
 
         // ─────────────────────────────────────────
@@ -1403,6 +1474,10 @@ export default class MainScene extends Phaser.Scene {
             this.breadText.destroy();
             this.breadText = null;
         }
+        if (this.store) {
+            this.store.destroy();
+            this.store = null;
+        }
     }
 
     /**
@@ -1640,7 +1715,6 @@ export default class MainScene extends Phaser.Scene {
 
         // ── Extensión del HUD: fondo extra que amplía el rectángulo de vidas hacia abajo ──
         // Se usa el mismo color de fondo negro semitransparente que featherUI.
-        // ❗ NO se crea un rectángulo nuevo: este rectángulo extiende visualmente el mismo HUD.
         this.breadHudBg = this.add.rectangle(
             hudPanelLeft,
             breadRowY - 4,

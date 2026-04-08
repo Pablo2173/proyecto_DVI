@@ -1,39 +1,44 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <link rel="shortcut icon" href="assets/sprites/player.png" type="image/png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="./css/game.css" />
-  <title>¡Juego con Phaser!</title>
+  <head>
+    <meta charset="UTF-8" />
+    <link
+      rel="shortcut icon"
+      href="assets/sprites/pato_con_rama.png"
+      type="image/png"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="./css/game.css" />
+    <title>The Duckler</title>
 
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      width: 100%;
-      height: 100%;
-      background: #000;
-    }
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        background: #000;
+      }
 
-    #juego {
-      width: 100vw;
-      height: 100vh;
-    }
+      #juego {
+        width: 100vw;
+        height: 100vh;
+      }
 
-    canvas {
-      display: block;
-    }
-  </style>
-</head>
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
 
-<body>
-  <!-- 1) Primero el contenedor -->
-  <div id="juego"></div>
+  <body>
+    <!-- 1) Primero el contenedor -->
+    <div id="juego"></div>
 
-  <!-- 2) Luego el script -->
-  <!-- IMPORTANTE: ajusta la ruta si tu game.js NO está en ./src -->
-  <script type="module" src="./src/game.js"></script>
-</body>
+    <!-- 2) Luego el script -->
+    <!-- IMPORTANTE: ajusta la ruta si tu game.js NO está en ./src -->
+    <script type="module" src="./src/game.js"></script>
+  </body>
 </html>
