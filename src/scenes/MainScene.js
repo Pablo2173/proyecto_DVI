@@ -1576,7 +1576,6 @@ export default class MainScene extends Phaser.Scene {
 
         // ── Extensión del HUD: fondo extra que amplía el rectángulo de vidas hacia abajo ──
         // Se usa el mismo color de fondo negro semitransparente que featherUI.
-        // ❗ NO se crea un rectángulo nuevo: este rectángulo extiende visualmente el mismo HUD.
         this.breadHudBg = this.add.rectangle(
             hudPanelLeft,
             breadRowY - 4,

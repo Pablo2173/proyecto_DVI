@@ -71,12 +71,12 @@ export default class Store {
     // ─────────────────────────────────────────
 
     /**
-     * Genera 3 pociones aleatorias del catálogo y las posiciona en el suelo.
+     * Genera 5 pociones aleatorias del catálogo y las posiciona en el suelo.
      * Cada poción tiene un sprite estático (NO usa DropItem).
      * @private
      */
     _spawnPotions() {
-        // Definir 3 slots con posición horizontal equidistante
+        // Definir 5 slots con posición horizontal equidistante
         const totalSlots = 5;
         const halfSpan   = ((totalSlots - 1) / 2) * Store.SLOT_SPACING;
 
@@ -105,7 +105,7 @@ export default class Store {
             // ── Texto de precio debajo del icono ──
             // Alineado con la poción
             const priceLabel = this.scene.add.text(slotX, slotY + 22, `${catalogEntry.price}`, {
-                fontSize:        '16px',
+                fontSize:        '20px',
                 fill:            '#FFD700',
                 fontStyle:       'bold',
                 stroke:          '#000000',
@@ -118,7 +118,7 @@ export default class Store {
             // ── Indicador de interacción (oculto por defecto) ──
             // Se muestra cuando el jugador está en rango
             const hint = this.scene.add.text(slotX, slotY - 28, '[E] Comprar', {
-                fontSize:        '16px',
+                fontSize:        '20px',
                 fill:            '#FFFFFF',
                 stroke:          '#000000',
                 strokeThickness: 2,
