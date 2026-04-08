@@ -16,7 +16,7 @@ import configTreesUrl from "../../assets/config/5_trees.png?url";
 
 // ───────── AUDIO ─────────
 import menuMusicUrl from "../../assets/sounds/musica_menu.mp3?url";
-
+import arcoSfxUrl from "../../assets/sounds/disparo_arco.mp3?url";
 export default class Boot extends Phaser.Scene {
   constructor() {
     super("Boot");
@@ -30,26 +30,42 @@ export default class Boot extends Phaser.Scene {
     const W = this.cameras.main.width;
     const H = this.cameras.main.height;
 
-    const box = this.add.rectangle(W / 2, H / 2, 320, 24, 0x000000, 0.35)
-      .setStrokeStyle(2, 0xffffff, 0.25);
+    // 🖤 Fondo negro
+    this.add.rectangle(0, 0, W, H, 0x000000).setOrigin(0);
 
-    const bar = this.add.rectangle(W / 2 - 160, H / 2, 0, 16, 0xffffff, 0.6)
-      .setOrigin(0, 0.5);
+    // 📝 Texto LOADING
+    const loadingText = this.add.text(W / 2, H / 2, "LOADING", {
+      fontFamily: "ReturnOfTheBoss",
+      fontSize: "72px",
+      color: "#ff0000",
+      stroke: "#000000",
+      strokeThickness: 6
+    }).setOrigin(0.5);
 
-    this.load.on("progress", (p) => (bar.width = 320 * p));
-    this.load.on("complete", () => {
-      box.destroy();
-      bar.destroy();
+    // ✨ Animación de puntos
+    let dots = 0;
+
+    this.time.addEvent({
+      delay: 400,
+      loop: true,
+      callback: () => {
+        dots = (dots + 1) % 4; // 0,1,2,3
+        loadingText.setText("LOADING" + ".".repeat(dots));
+      }
     });
 
+    // ───────── AUDIO ─────────
     this.load.audio("menu_music", menuMusicUrl);
+    this.load.audio("disparo_arco", arcoSfxUrl);
 
+    // ───────── MENU ─────────
     this.load.image("sky", skyUrl);
     this.load.image("clouds", cloudsUrl);
     this.load.image("backfield", backfieldUrl);
     this.load.image("trees", treesUrl);
     this.load.image("ground", groundUrl);
 
+    // ───────── CONFIG ─────────
     this.load.image("config_sky", configSkyUrl);
     this.load.image("config_clouds", configCloudsUrl);
     this.load.image("config_backfield", configBackfieldUrl);

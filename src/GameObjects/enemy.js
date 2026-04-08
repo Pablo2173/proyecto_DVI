@@ -15,120 +15,352 @@ import DropBread from './Consumables/Drops/dropBread.js';
 import DropMask from './Consumables/Drops/dropMask.js';
 import DropTail from './Consumables/Drops/dropTail.js';
 
+// ─────────────────────────────────────────
+//  ESTADOS
+// ─────────────────────────────────────────
 const StatusEnemy = {
-    IDLE: 0,
-    ALERTED: 1,
-    SEARCH: 2,
-    DEAD: 3,
-    STUNNED: 4
+    IDLE:     0,
+    ALERTED:  1,
+    SEARCH:   2,
+    DEAD:     3,
+    STUNNED:  4
 };
 
 export default class Enemy extends BaseCharacter {
+
+    // ─────────────────────────────────────────
+    //  CONSTRUCTOR
+    // ─────────────────────────────────────────
     constructor(scene, name, x, y, texture, frame = null, visionRadius, hp, speed, weapon, movementType, hasFeather) {
         super(scene, x, y, texture, frame, TEAM.ENEMY);
 
-        // --- FÍSICA (top-down) ---
-        if (scene.physics && scene.physics.add) {
+        // ── Física ──
+        if (scene.physics?.add) {
             scene.physics.add.existing(this);
             if (this.body) {
                 this.body.setCollideWorldBounds(true);
-                this.body.setAllowGravity(false); // Sin gravedad porque estamos haciendo un top-down
-                this.body.setImmovable(false); // Basicamente lo pongo a false para que le puedan empujar
+                this.body.setAllowGravity(false);
+                this.body.setImmovable(false);
                 this.body.setSize(20, 30);
                 this.body.setOffset(4, 4);
             }
         }
 
-        this._nombre = name;
-        this._hp = hp;
-        this._visionRadius = visionRadius;
-        this._facingAngle = Math.PI; //Lo he puesto en Math.PI para que empiece mirando para la izquierda
-        this._visionAngle = Math.PI / 2; //Esto es un cuarto de circulo para el cono de vision
-        this._speed = speed;
-        this._weapon = weapon;
-        this._state = StatusEnemy.IDLE;
-        this._movementType = movementType;
-        this._movementData = null; // para almacenar datos específicos del tipo de movimiento (ej. puntos de patrulla)
+        // ── Identidad ──
+        this._nombre        = name;
+        this._hp            = hp;
+        this._speed         = speed;
+        this._weapon        = weapon;
+        this._movementType  = movementType;
+        this._movementData  = null;
+        this.hasFeather     = hasFeather;
 
-        this._knockbackUntil = 0;
-        this._showVision = false;
+        // ── Visión ──
+        this._visionRadius  = visionRadius;
+        this._visionAngle   = Math.PI / 2;
+        this._facingAngle   = Math.PI;
+        this._showVision    = false;
         this._visionGraphics = scene.add.graphics();
-        this._spriteBaseKey = this._resolveSpriteBaseKey(texture);
-        this._isShowingHit = false;
-        this._hitUntil = 0;
-        this._hitDuration = 120;
 
-        this.hasFeather = hasFeather;
+        // ── Máquina de estados ──
+        this._state = StatusEnemy.IDLE;
 
-        // Tabla de loot de items de uso. Las subclases pueden sobreescribirla.
-        // Cada entrada: { id: string, probability: number }
-        this.lootTable = [];
-
-        // Item especial que suelta este enemigo al morir.
-        // Las subclases deben asignar el id correspondiente (ej. 'mask', 'tail').
-        this.specialDrop = null;
-
-        this.weaponMap = {
-            arco: Arco,
-            mcuaktro: Mcuaktro,
-            cuchillo: Cuchillo,
-            mazo: Mazo,
-            ramita: Ramita,
-            escoba: Escoba
-        };
-
-        this._lastQuackTime = 0; // Para evitar alertas duplicadas del mismo quack
-
-        this._quackCooldown = 100; // ms
+        // ── Timers internos ──
+        this._knockbackUntil        = 0;
         this._visionAlertFlashUntil = 0;
+        this._lastQuackTime         = 0;
+        this._quackCooldown         = 100;
 
-        // Delay antes de atacar cuando está en rango
-        this._inRangeStartTime = 0;    // Cuándo el jugador entró en rango por primera vez
-        this._attackDelay = 800;       // 1 segundo en ms antes de poder atacar
+        // ── Combate ──
+        this._inRangeStartTime  = 0;
+        this._attackDelay       = 800;      // ms antes del primer ataque al entrar en rango
+        this._inRangeLeaveCooldown = 500;   // ms que tiene que estar fuera del rango para resetear el delay
 
-        // Búsqueda tras perder al jugador: 2 vueltas rápidas y volver a patrulla si no lo re-detecta.
-        this._searchStartTime = 0;
-        this._searchDuration = 1000;
-        this._searchTurns = 2;
+        this._strafeDirection = Math.random() < 0.5 ? -1 : 1;
+        this._nextStrafeSwitchTime = 0;
+
+        this._lastDodgeTime = 0;
+        this._dodgeCooldown = 900;
+        this._dodgeDuration = 180;
+        this._dodgeSpeedMultiplier = 2.2;
+        this._projectileAwarenessRadius = 140;
+
+        // ── Búsqueda ──
+        this._searchStartTime       = 0;
+        this._searchDuration        = 2000;
+        this._searchTurns           = 2;
         this._searchStartFacingAngle = this._facingAngle;
 
+        // ── Visual de daño ──
+        this._spriteBaseKey  = this._resolveSpriteBaseKey(texture);
+        this._isShowingHit   = false;
+        this._hitUntil       = 0;
+        this._hitDuration    = 120;
 
-        // equipar arma si fue pasada
+        // ── Loot ──
+        this.lootTable   = [];
+        this.specialDrop = null;
+
+        this.weaponMap = { arco: Arco, mcuaktro: Mcuaktro, cuchillo: Cuchillo, mazo: Mazo, ramita: Ramita, escoba: Escoba };
+
         this.equipWeapon(weapon);
-
         this.drawVision({ color: 0xff0000, fillAlpha: 0.08 });
     }
 
-    mostrarNombre() {
-        console.log(`Mi nombre es ${this._nombre}`);
+    // ─────────────────────────────────────────
+    //  MÁQUINA DE ESTADOS — punto de entrada único para cambiar estado
+    // ─────────────────────────────────────────
+
+    /**
+     * Única forma de cambiar el estado. Llama a _onExitState y _onEnterState.
+     * Las subclases pueden sobreescribir _onEnterState/_onExitState para
+     * añadir comportamientos específicos sin romper la lógica base.
+     */
+    _transitionTo(newState, context = {}) {
+        if (this._state === newState) return;
+        this._onExitState(this._state, newState, context);
+        const prevState = this._state;
+        this._state = newState;
+        this._onEnterState(newState, prevState, context);
     }
 
-    _resolveSpriteBaseKey(textureKey) {
-        if (typeof textureKey !== 'string') return null;
-        const match = textureKey.match(/^(.*)_(idle|run|hit|ded)$/);
-        return match ? match[1] : null;
+    /** Llamado al SALIR de un estado. Sobreescribible en subclases. */
+    _onExitState(exitingState, _nextState, _context) {
+        // Limpiar tint de alerta al salir de ALERTED si no hay flash de daño activo
+        if (exitingState === StatusEnemy.ALERTED) {
+            if (this.tintTopLeft !== 0xFF0000) this.clearTint();
+        }
     }
 
-    _textureKeyFor(state) {
-        if (!this._spriteBaseKey) return null;
-        return `${this._spriteBaseKey}_${state}`;
+    /** Llamado al ENTRAR en un estado. Sobreescribible en subclases. */
+    _onEnterState(enteringState, _prevState, context) {
+        const now = this.scene?.time?.now ?? 0;
+
+        switch (enteringState) {
+
+            case StatusEnemy.ALERTED:
+                this._visionAlertFlashUntil = now + 500;
+                // No resetear _inRangeStartTime aquí — se gestiona en movementAlerted
+                this.onAlerted(context);
+                break;
+
+            case StatusEnemy.SEARCH:
+                this._searchStartTime        = context.time ?? now;
+                this._searchStartFacingAngle = this._facingAngle;
+                this._inRangeStartTime       = 0;
+                this.stop();
+                this.onStartSearch(context);
+                break;
+
+            case StatusEnemy.IDLE:
+                this._inRangeStartTime = 0;
+                this.onReturnIdle(context);
+                break;
+
+            case StatusEnemy.DEAD:
+                this.onDead(context);
+                break;
+
+            case StatusEnemy.STUNNED:
+                this.onStunned(context);
+                break;
+        }
     }
 
-    _animKeyFor(state) {
-        if (!this._spriteBaseKey) return null;
-        return `${this._spriteBaseKey}-${state}`;
+    // ─────────────────────────────────────────
+    //  HOOKS — sobreescribir en subclases para comportamientos únicos
+    // ─────────────────────────────────────────
+
+    /** Llamado cuando el enemigo se alerta por primera vez. */
+    onAlerted(_context) {}
+
+    /** Llamado cuando el enemigo entra en modo búsqueda. */
+    onStartSearch(_context) {}
+
+    /** Llamado cuando el enemigo vuelve a IDLE. */
+    onReturnIdle(_context) {}
+
+    /** Llamado cuando el enemigo muere (antes de los drops). */
+    onDead(_context) {}
+
+    /** Llamado cuando el enemigo es stunteado. */
+    onStunned(_context) {}
+
+    /**
+     * HOOK DE MOVIMIENTO EN COMBATE — sobreescribir en subclases.
+     *
+     * Define cómo se mueve el enemigo cuando está ALERTED y en rango de ataque.
+     * Por defecto: se queda parado. El zorro podría hacer strafing, el mapache
+     * podría retroceder, etc.
+     *
+     * @param {Phaser.GameObjects.GameObject} target — el jugador
+     * @param {number} dist — distancia actual al jugador
+     */
+    onCombatMovement(target, _dist) {
+        const now = this.scene?.time?.now ?? 0;
+
+        if (!this._nextStrafeSwitchTime || now >= this._nextStrafeSwitchTime) {
+            this._strafeDirection *= -1;
+            this._nextStrafeSwitchTime = now + Phaser.Math.Between(700, 1400);
+        }
+
+        this.moveLateral(target, 0.55, this._strafeDirection);
     }
 
     /**
-     * Mueve al enemigo hacia un target usando el body de física.
-     * @param {{x: number, y: number}} target
-     * @param {number} speed  píxeles/segundo
+     * HOOK DE PERSECUCIÓN — sobreescribir en subclases.
+     *
+     * Define cómo se mueve el enemigo cuando está ALERTED y fuera de rango.
+     * Por defecto: se acerca directamente.
+     *
+     * @param {Phaser.GameObjects.GameObject} target
+     * @param {number} dist
      */
-    moveTowards(target) {
-        if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') {
-            this.body?.setVelocity(0, 0);
+    onChaseMovement(target, _dist) {
+        this.moveTowards(target);
+    }
+
+    /**
+     * HOOK DE RETIRADA — sobreescribir en subclases.
+     *
+     * Define cómo se mueve el enemigo cuando está ALERTED y demasiado cerca.
+     * Por defecto: se aleja directamente.
+     *
+     * @param {Phaser.GameObjects.GameObject} target
+     * @param {number} dist
+     */
+    onRetreatMovement(target, _dist) {
+        this.moveAwayFrom(target);
+    }
+
+    // ─────────────────────────────────────────
+    //  DETECCIÓN Y ALERTA
+    // ─────────────────────────────────────────
+
+    canSee(target) {
+        if (this._state === StatusEnemy.DEAD) return false;
+        if (!target || typeof target.x !== 'number') return false;
+        if (typeof target.isInvisibleState === 'function' && target.isInvisibleState()) return false;
+
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+
+        if (dx * dx + dy * dy > this._visionRadius * this._visionRadius) return false;
+
+        const angleToTarget = Math.atan2(dy, dx);
+        let diff = angleToTarget - this._facingAngle;
+
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+
+        if (Math.abs(diff) > this._visionAngle / 2) return false;
+
+        return this.hasLineOfSight(target);
+    }
+
+    hasLineOfSight(target) {
+        if (!target || !this.scene) return false;
+
+        const layersToCheck = [
+            this.scene.colisionLayer,
+            this.scene.vallaLayer,
+            this.scene.desnivelLayer
+        ].filter(Boolean);
+
+        if (layersToCheck.length === 0) return true;
+
+        const line = new Phaser.Geom.Line(this.x, this.y, target.x, target.y);
+
+        for (const layer of layersToCheck) {
+            const tiles = layer.getTilesWithinShape(line, { isNotEmpty: true });
+
+            for (const tile of tiles) {
+                if (!tile) continue;
+
+                const tileWidth = layer.tilemap.tileWidth * layer.scaleX;
+                const tileHeight = layer.tilemap.tileHeight * layer.scaleY;
+
+                const tileRect = new Phaser.Geom.Rectangle(
+                    tile.pixelX * layer.scaleX,
+                    tile.pixelY * layer.scaleY,
+                    tileWidth,
+                    tileHeight
+                );
+
+                if (Phaser.Geom.Intersects.LineToRectangle(line, tileRect)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    detectAndAlert(player, time = this.scene?.time?.now ?? 0) {
+        if (!player) return false;
+
+        const playerIsInvisible = typeof player.isInvisibleState === 'function' && player.isInvisibleState();
+
+        if (playerIsInvisible) {
+            if (this._state === StatusEnemy.ALERTED) this._transitionTo(StatusEnemy.SEARCH, { time });
+            if (this._state === StatusEnemy.SEARCH && time >= this._searchStartTime + this._searchDuration) {
+                this._transitionTo(StatusEnemy.IDLE, { time });
+            }
+            return false;
+        }
+
+        if (this._state === StatusEnemy.DEAD) return false;
+
+        const seen = this.canSee(player);
+
+        if (seen) {
+            if (this._state !== StatusEnemy.ALERTED) {
+                this._transitionTo(StatusEnemy.ALERTED, { time, player });
+            }
+            return true;
+        }
+
+        if (this._state === StatusEnemy.SEARCH && time >= this._searchStartTime + this._searchDuration) {
+            this._transitionTo(StatusEnemy.IDLE, { time });
+        }
+
+        return false;
+    }
+
+    updateAwareness(player, time = this.scene?.time?.now ?? 0) {
+        this.detectAndAlert(player, time);
+        if (this._state === StatusEnemy.SEARCH) this._updateSearchFacing(time);
+        this._updateVisionAlertFlash(time);
+        this.drawVision({ color: 0xff0000, fillAlpha: 0.08 });
+    }
+
+    onAudioEvent(audioEvent) {
+        if (!audioEvent || typeof audioEvent.time !== 'number') return;
+        if (typeof this.scene?.duck?.isInvisibleState === 'function' && this.scene.duck.isInvisibleState()) {
+            if (this._state === StatusEnemy.ALERTED) this._transitionTo(StatusEnemy.SEARCH, { time: audioEvent.time });
             return;
         }
+
+        const alertingSounds = ['quack'];
+        if (!alertingSounds.includes(audioEvent.soundType)) return;
+        if (audioEvent.time <= this._lastQuackTime + this._quackCooldown) return;
+        this._lastQuackTime = audioEvent.time;
+
+        if (!audioEvent.position) return;
+        const dx = audioEvent.position.x - this.x;
+        const dy = audioEvent.position.y - this.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance <= (audioEvent.radius || 0) && this._state !== StatusEnemy.ALERTED) {
+            this._transitionTo(StatusEnemy.ALERTED, { time: audioEvent.time });
+        }
+    }
+
+    // ─────────────────────────────────────────
+    //  MOVIMIENTO
+    // ─────────────────────────────────────────
+
+    moveTowards(target) {
+        if (!target || typeof target.x !== 'number') { this.body?.setVelocity(0, 0); return; }
         const dx = target.x - this.x;
         const dy = target.y - this.y;
         const dist = Math.hypot(dx, dy);
@@ -137,16 +369,9 @@ export default class Enemy extends BaseCharacter {
         this.body.setVelocity((dx / dist) * this._speed, (dy / dist) * this._speed);
     }
 
-    /**
-     * Mueve al enemigo alejándose de un target usando el body de física.
-     * @param {{x: number, y: number}} target
-     */
     moveAwayFrom(target) {
-        if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') {
-            this.body?.setVelocity(0, 0);
-            return;
-        }
-        const dx = this.x - target.x; // invertido
+        if (!target || typeof target.x !== 'number') { this.body?.setVelocity(0, 0); return; }
+        const dx = this.x - target.x;
         const dy = this.y - target.y;
         const dist = Math.hypot(dx, dy);
         if (dist === 0) { this.body?.setVelocity(0, 0); return; }
@@ -155,275 +380,179 @@ export default class Enemy extends BaseCharacter {
     }
 
     /**
-     * Detiene el movimiento del enemigo.
+     * Movimiento lateral perpendicular al objetivo (strafing).
+     * Útil para subclases de enemigos a distancia.
+     * @param {object} target
+     * @param {number} speedMultiplier — fracción de this._speed (default 0.4)
+     * @param {number} direction — 1 o -1
      */
+    moveLateral(target, speedMultiplier = 0.4, direction = 1) {
+        if (!target) { this.stop(); return; }
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist === 0) { this.stop(); return; }
+        // Vector perpendicular al objetivo
+        const perpX = (-dy / dist) * direction;
+        const perpY = ( dx / dist) * direction;
+        this.body.setVelocity(perpX * this._speed * speedMultiplier, perpY * this._speed * speedMultiplier);
+    }
+
     stop() {
         this.body?.setVelocity(0, 0);
     }
 
     applyKnockback(nx, ny, speed = 100, duration = 120) {
-        if (!this.body) return;
-        if (!Number.isFinite(nx) || !Number.isFinite(ny)) return;
-
+        if (!this.body || !Number.isFinite(nx) || !Number.isFinite(ny)) return;
         const length = Math.hypot(nx, ny);
         if (length <= 0.0001) return;
-
-        const dirX = nx / length;
-        const dirY = ny / length;
-
         this._knockbackUntil = (this.scene?.time?.now ?? 0) + duration;
-        this.body.setVelocity(dirX * speed, dirY * speed);
+        this.body.setVelocity((nx / length) * speed, (ny / length) * speed);
     }
 
-    setVisionRadius(radius) {
-        this._visionRadius = radius;
+    tryDodgeIncomingProjectiles(time = this.scene?.time?.now ?? 0) {
+        if (!this.scene?.projectiles || !this.body || this.isDead()) return;
+        if (time < this._lastDodgeTime + this._dodgeCooldown) return;
+
+        const projectiles = this.scene.projectiles.getChildren?.() ?? [];
+
+        for (const projectile of projectiles) {
+            if (!projectile?.active) continue;
+
+            const dx = this.x - projectile.x;
+            const dy = this.y - projectile.y;
+            const distSq = dx * dx + dy * dy;
+
+            if (distSq > this._projectileAwarenessRadius * this._projectileAwarenessRadius) continue;
+
+            const vx = projectile.body?.velocity?.x ?? 0;
+            const vy = projectile.body?.velocity?.y ?? 0;
+
+            if (Math.abs(vx) < 1 && Math.abs(vy) < 1) continue;
+
+            // Comprobar si el proyectil viene hacia el enemigo
+            const towardDot = dx * vx + dy * vy;
+            if (towardDot <= 0) continue;
+
+            const projSpeed = Math.hypot(vx, vy);
+            if (projSpeed < 1) continue;
+
+            const perpX = -vy / projSpeed;
+            const perpY = vx / projSpeed;
+            const dodgeDir = Math.random() < 0.5 ? -1 : 1;
+
+            this.body.setVelocity(
+                perpX * this._speed * this._dodgeSpeedMultiplier * dodgeDir,
+                perpY * this._speed * this._dodgeSpeedMultiplier * dodgeDir
+            );
+
+            this._lastDodgeTime = time;
+            this._knockbackUntil = time + this._dodgeDuration;
+            return;
+        }
     }
 
-    // target: objeto con propiedades {x, y} (en este caso es el sprite del patete)
+    // ─────────────────────────────────────────
+    //  COMBATE — lógica base, personalizable via hooks
+    // ─────────────────────────────────────────
+
     /**
-     * Comprueba si el enemigo puede ver al target dentro de su cono de visión.
-     * @param {{x: number, y: number}} target
+     * Lógica de combate principal.
+     * Decide si perseguir, retroceder o atacar según distancias.
+     * El comportamiento dentro de cada zona se delega a los hooks.
      */
-    canSee(target) {
-        if (this._state === StatusEnemy.DEAD) return false;
-        if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') return false;
+    movementAlerted(target) {
+        if (!this.isAlerted() || !target) return;
 
-        if (typeof target.isInvisibleState === 'function' && target.isInvisibleState()) return false;
+        const dist = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
+        const optimalDist = this.weapon?.optimalDistance ?? 200;
+        const range = this.weapon?.range ?? 300;
+        const now = this.scene.time.now;
+        const hasLOS = this.hasLineOfSight(target);
 
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
-        const dist2 = dx * dx + dy * dy;
-        if (dist2 > this._visionRadius * this._visionRadius) return false;
-        const angleToTarget = Math.atan2(dy, dx);
-        let diff = angleToTarget - this._facingAngle;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        return Math.abs(diff) <= this._visionAngle / 2;
-    }
+        // Si no hay línea de visión, recolocarse en vez de disparar
+        if (!hasLOS) {
+            this._inRangeStartTime = 0;
 
+            if (!this._nextStrafeSwitchTime || now >= this._nextStrafeSwitchTime) {
+                this._strafeDirection = Math.random() < 0.5 ? -1 : 1;
+                this._nextStrafeSwitchTime = now + Phaser.Math.Between(500, 1100);
+            }
 
-    // Dibuja el radio de visión usando el Graphics propio del enemigo.
-    drawVision(options = {}) {
-        if (!this._visionGraphics || typeof this._visionGraphics.clear !== 'function') return;
-        const {
-            color = 0x00ff00,
-            fillAlpha = 0.15,
-            lineAlpha = 1,
-            lineWidth = 1,
-            clearBefore = true
-        } = options;
+            if (dist > optimalDist * 0.9) {
+                this.onChaseMovement(target, dist);
+            } else {
+                this.moveLateral(target, 0.8, this._strafeDirection);
+            }
 
-        if (clearBefore) this._visionGraphics.clear();
-
-        if (!this._showVision || this._state === StatusEnemy.DEAD || this._visionRadius <= 0) {
             return;
         }
 
-        const px = this.x;
-        const py = this.y;
-        const startAngle = this._facingAngle - (this._visionAngle / 2);
-        const endAngle = this._facingAngle + (this._visionAngle / 2);
+        if (dist < optimalDist * 0.65) {
+            this.onRetreatMovement(target, dist);
+            this._inRangeStartTime = 0;
+            return;
+        }
 
-        // Si Graphics soporta arc/path
-        if (typeof this._visionGraphics.beginPath === 'function' && typeof this._visionGraphics.arc === 'function' && typeof this._visionGraphics.fillPath === 'function') {
-            this._visionGraphics.fillStyle(color, fillAlpha);
-            this._visionGraphics.lineStyle(lineWidth, color, lineAlpha);
-            this._visionGraphics.beginPath();
-            this._visionGraphics.moveTo(px, py);
-            this._visionGraphics.arc(px, py, this._visionRadius, startAngle, endAngle, false);
-            this._visionGraphics.closePath();
-            this._visionGraphics.fillPath();
-            this._visionGraphics.strokePath();
-        } else {
-            // Fallback: dibuja el círculo completo si no hay arc
-            if (typeof this._visionGraphics.fillStyle === 'function') {
-                this._visionGraphics.fillStyle(color, fillAlpha);
-                this._visionGraphics.fillCircle(px, py, this._visionRadius);
-            } else if (typeof this._visionGraphics.fillCircle === 'function') {
-                this._visionGraphics.fillCircle(px, py, this._visionRadius);
-            }
-            if (typeof this._visionGraphics.lineStyle === 'function' && typeof this._visionGraphics.strokeCircle === 'function') {
-                this._visionGraphics.lineStyle(lineWidth, color, lineAlpha);
-                this._visionGraphics.strokeCircle(px, py, this._visionRadius);
-            }
+        if (dist > range) {
+            this.onChaseMovement(target, dist);
+            this._inRangeStartTime = 0;
+            return;
+        }
 
+        this.onCombatMovement(target, dist);
+
+        if (this.weapon && typeof this.weapon.attack === 'function') {
+            if (this._inRangeStartTime === 0) this._inRangeStartTime = now;
+            if (now - this._inRangeStartTime >= this._attackDelay) {
+                this.weapon.attack();
+            }
         }
     }
 
-    // Si el patete entra en el radio de vision del enemigo cambia su estado a alertado
-    /**
-     * Comprueba si el jugador es visible y alerta al enemigo.
-     * @param {{x: number, y: number}} player
-     * @returns {boolean} true si acaba de alertarse
-     */
-    detectAndAlert(player, time = this.scene?.time?.now ?? 0) {
-        if (!player) return false;
+    // ─────────────────────────────────────────
+    //  PATRULLA POR RUTA
+    // ─────────────────────────────────────────
 
-        const playerIsInvisible = typeof player.isInvisibleState === 'function' && player.isInvisibleState();
+    movementFollowRoute() {
+        if (!this._movementData?.routePoints || this._movementData.routePoints.length < 2) return;
+        if (this.isAlerted()) return;
 
-        // Solo dejamos de detectar al jugador si está invisible.
-        if (playerIsInvisible) {
-            if (this._state === StatusEnemy.ALERTED) {
-                this._startSearch(time);
-            }
+        const data          = this._movementData;
+        const points        = data.routePoints;
+        const currentTarget = points[data.currentPointIndex];
+        const dist          = Phaser.Math.Distance.Between(this.x, this.y, currentTarget.x, currentTarget.y);
 
-            if (this._state === StatusEnemy.SEARCH && this._searchStartTime > 0) {
-                if (time >= this._searchStartTime + this._searchDuration) {
-                    this._state = StatusEnemy.IDLE;
-                    this._inRangeStartTime = 0;
-                }
-            }
-
-            return false;
+        if (dist < 10) {
+            data.currentPointIndex = (data.currentPointIndex + 1) % points.length;
+            data.pauseTimer = 0;
+            return;
         }
 
-        const seen = this.canSee(player);
-        if (this._state === StatusEnemy.DEAD) return false;
+        data.pauseTimer = (data.pauseTimer ?? 0) + this.scene.game.loop.delta;
+        if (data.pauseTimer < 1000) { this.stop(); return; }
 
-        if (seen) {
-            if (this._state !== StatusEnemy.ALERTED) {
-                this._state = StatusEnemy.ALERTED;
-                this._visionAlertFlashUntil = time + 500;
-            }
-            return true;
-        }
-
-        if (this._state === StatusEnemy.ALERTED) {
-            //this._startSearch(time);
-            return false;
-        }
-
-        if (this._state === StatusEnemy.SEARCH && this._searchStartTime > 0) {
-            if (time >= this._searchStartTime + this._searchDuration) {
-                this._state = StatusEnemy.IDLE;
-                this._inRangeStartTime = 0;
-            }
-            return false;
-        }
-
-        return false;
+        this.moveTowards(currentTarget);
     }
+
+    // ─────────────────────────────────────────
+    //  BÚSQUEDA
+    // ─────────────────────────────────────────
 
     _startSearch(time = this.scene?.time?.now ?? 0) {
-        this._state = StatusEnemy.SEARCH;
-        this._searchStartTime = time;
-        this._searchStartFacingAngle = this._facingAngle;
-        this._inRangeStartTime = 0;
-        this.stop();
+        this._transitionTo(StatusEnemy.SEARCH, { time });
     }
 
     _updateSearchFacing(time = this.scene?.time?.now ?? 0) {
-        if (this._state !== StatusEnemy.SEARCH) return;
-        if (this._searchDuration <= 0) return;
-
-        const elapsed = Math.max(0, time - this._searchStartTime);
+        if (this._state !== StatusEnemy.SEARCH || this._searchDuration <= 0) return;
+        const elapsed  = Math.max(0, time - this._searchStartTime);
         const progress = Phaser.Math.Clamp(elapsed / this._searchDuration, 0, 1);
-        const sweepAngle = (Math.PI * 2) * this._searchTurns * progress;
-        this._facingAngle = this._searchStartFacingAngle + sweepAngle;
+        this._facingAngle = this._searchStartFacingAngle + (Math.PI * 2) * this._searchTurns * progress;
     }
 
-    updateAwareness(player, time = this.scene?.time?.now ?? 0) {
-        this.detectAndAlert(player, time);
-        if (this._state === StatusEnemy.SEARCH) {
-            this._updateSearchFacing(time);
-        }
-        this._updateVisionAlertFlash(time);
-        this.drawVision({ color: 0xff0000, fillAlpha: 0.08 });
-    }
-
-    _updateVisionAlertFlash(time) {
-        if (this._visionAlertFlashUntil <= 0) return;
-
-        if (time <= this._visionAlertFlashUntil) {
-            // No pisar el rojo de daño mientras dura su flash
-            if (this.tintTopLeft !== 0xFF0000) {
-                this.setTint(0xFFFF01);
-            }
-            return;
-        }
-
-        this._visionAlertFlashUntil = 0;
-        if (this.tintTopLeft !== 0xFF0000) {
-            this.clearTint();
-        }
-    }
-
-    isAlerted() {
-        return this._state === StatusEnemy.ALERTED;
-    }
-
-    /**
-     * Observador general para eventos de sonido
-     * @param {object} audioEvent Datos del evento de sonido: { soundType, source, position, radius, time, intensity }
-     */
-    onAudioEvent(audioEvent) {
-        if (!audioEvent || typeof audioEvent.time !== 'number') return;
-        if (typeof this.scene?.duck?.isInvisibleState === 'function' && this.scene.duck.isInvisibleState()) {
-            if (this._state === StatusEnemy.ALERTED) {
-                this._startSearch(audioEvent.time);
-            }
-            return;
-        }
-
-        // Tipos de sonido que alertan al enemigo
-        const alertingSounds = ['quack'];
-        if (!alertingSounds.includes(audioEvent.soundType)) return;
-
-        // Evita procesar múltiples eventos del mismo sonido
-        if (audioEvent.time <= this._lastQuackTime + this._quackCooldown) return;
-
-        this._lastQuackTime = audioEvent.time;
-
-        // Verifica si el enemigo está dentro del radio del sonido
-        if (!audioEvent.position) return;
-
-        const dx = audioEvent.position.x - this.x;
-        const dy = audioEvent.position.y - this.y;
-        const distance = Math.hypot(dx, dy);
-        const soundRadius = audioEvent.radius || 0;
-
-        // Si está dentro del radio del sonido, se alerta
-        if (distance <= soundRadius && this._state !== StatusEnemy.ALERTED) {
-            this._state = StatusEnemy.ALERTED;
-            this._visionAlertFlashUntil = audioEvent.time + 500;
-        }
-    }
-
-    getState() { return this._state; }
-    setState(state) { this._state = state; }
-    isDead() { return this._state === StatusEnemy.DEAD; }
-    isStunned() { return this._state === StatusEnemy.STUNNED; }
-
-
-    getState() {
-        return this._state;
-    }
-
-    setState(state) {
-        this._state = state;
-    }
-
-    isDead() {
-        return this._state === StatusEnemy.DEAD;
-    }
-
-    isStunned() {
-        return this._state === StatusEnemy.STUNNED;
-    }
-
-    resetAlertState() {
-        if (this._state !== StatusEnemy.ALERTED && this._state !== StatusEnemy.SEARCH) return;
-
-        this._state = StatusEnemy.IDLE;
-        this._visionAlertFlashUntil = 0;
-        this._inRangeStartTime = 0;
-        this._searchStartTime = 0;
-        this.stop();
-
-        if (this.tintTopLeft !== 0xFF0000) {
-            this.clearTint();
-        }
-    }
+    // ─────────────────────────────────────────
+    //  DAÑO Y MUERTE
+    // ─────────────────────────────────────────
 
     canTakeDamage() {
         return super.canTakeDamage() && !this.isDead();
@@ -431,23 +560,22 @@ export default class Enemy extends BaseCharacter {
 
     afterTakeDamage(damage, previousHealth, newHealth) {
         if (this._state !== StatusEnemy.ALERTED) {
-            this._state = StatusEnemy.ALERTED;
+            this._transitionTo(StatusEnemy.ALERTED, { source: 'damage' });
         }
-        console.log(`${this._nombre} recibió ${damage} de daño. HP actual: ${newHealth}`);
+        console.log(`${this._nombre} recibió ${damage} de daño. HP: ${newHealth}`);
     }
 
     onHealthDepleted() {
         this.die();
     }
-    /**
-     * Reduce el HP del enemigo por daño de un proyectil
-     * @param {number} damage - cantidad de daño a recibir
-     */
+
     takeDamage(damage) {
         if (this._state === StatusEnemy.DEAD) return;
         this._hp -= damage;
-        if (this._state !== StatusEnemy.ALERTED) this._state = StatusEnemy.ALERTED; // Si recibe daño, se alerta aunque no haya visto al jugador
-        console.log(`${this._nombre} recibió ${damage} de daño. HP actual: ${this._hp}`);
+        if (this._state !== StatusEnemy.ALERTED) {
+            this._transitionTo(StatusEnemy.ALERTED, { source: 'damage' });
+        }
+        console.log(`${this._nombre} recibió ${damage} de daño. HP: ${this._hp}`);
         this.flashRed();
         this._showHitVisual();
         if (this._hp <= 0) this.die();
@@ -455,27 +583,63 @@ export default class Enemy extends BaseCharacter {
 
     _showHitVisual(duration = this._hitDuration) {
         if (this._state === StatusEnemy.DEAD) return;
-
         const hitTexture = this._textureKeyFor('hit');
-        const now = this.scene?.time?.now ?? 0;
-
+        const now        = this.scene?.time?.now ?? 0;
         if (hitTexture && this.scene?.textures?.exists(hitTexture)) {
             this._isShowingHit = true;
-            this._hitUntil = now + duration;
+            this._hitUntil     = now + duration;
             this.anims?.stop();
             this.setTexture(hitTexture);
             return;
         }
-
-        // Fallback para texturas antiguas sin sprite hit
         this.flashRed(duration);
     }
 
-    /**
-     * Devuelve un offset aleatorio para dispersar los drops.
-     */
+    die() {
+        if (this._state === StatusEnemy.DEAD) return;
+        this._transitionTo(StatusEnemy.DEAD);
+
+        this._isShowingHit          = false;
+        this._visionAlertFlashUntil = 0;
+        console.log(`${this._nombre} ha muerto`);
+
+        this.dropWeapon();
+        this.dropFeather();
+        this.dropBread();
+        this.dropSpecialItem();
+
+        // Sprite de muerte
+        const dedTexture = this._textureKeyFor('ded');
+        if (dedTexture && this.scene.textures.exists(dedTexture)) {
+            this.anims?.stop();
+            this.setTexture(dedTexture);
+        } else {
+            const fallback = `${this.texture.key}_corpse`;
+            if      (this.scene.textures.exists(fallback))        this.setTexture(fallback);
+            else if (this.scene.textures.exists('enemy_corpse'))  this.setTexture('enemy_corpse');
+        }
+
+        if (this.body) {
+            this.body.stop();
+            this.body.setVelocity(0, 0);
+            this.body.enable = false;
+            if (this.body.checkCollision) this.body.checkCollision.none = true;
+        }
+
+        this._visionRadius = 0;
+        this.drawVision();
+
+        this.scene.time.delayedCall(10000, () => {
+            if (this?.scene) super.destroy();
+        });
+    }
+
+    // ─────────────────────────────────────────
+    //  DROPS
+    // ─────────────────────────────────────────
+
     _randomDropOffset(minRadius = 10, maxRadius = 50) {
-        const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+        const angle  = Phaser.Math.FloatBetween(0, Math.PI * 2);
         const radius = Phaser.Math.FloatBetween(minRadius, maxRadius);
         return { dx: Math.cos(angle) * radius, dy: Math.sin(angle) * radius };
     }
@@ -495,300 +659,115 @@ export default class Enemy extends BaseCharacter {
     }
 
     dropBread() {
-            // Cada enemigo suelta exactamente 3 panes al morir
         for (let i = 0; i < 3; i++) {
             const { dx, dy } = this._randomDropOffset();
             new DropBread(this.scene, this.x + dx, this.y + dy);
         }
     }
 
-    /**
-     * Suelta el item especial de este enemigo según this.specialDrop.
-     * Añadir soporte para un nuevo drop especial es trivial:
-     * basta con añadir un nuevo case aquí y asignar this.specialDrop en la subclase.
-     */
     dropSpecialItem() {
         if (!this.specialDrop) return;
-
         const { dx, dy } = this._randomDropOffset();
-          const spawnX = this.x + dx;
+        const spawnX = this.x + dx;
         const spawnY = this.y + dy;
-
         switch (this.specialDrop) {
-            case 'mask':
-                new DropMask(this.scene, spawnX, spawnY);
-                break;
-            case 'tail':
-                new DropTail(this.scene, spawnX, spawnY);
-                break;
-            // Añadir nuevos drops especiales aquí en el futuro
+            case 'mask': new DropMask(this.scene, spawnX, spawnY); break;
+            case 'tail': new DropTail(this.scene, spawnX, spawnY); break;
         }
     }
 
-    /**
-     * Ejecuta el algoritmo de probabilidad acumulada sobre this.lootTable
-     * y spawnea el item de uso correspondiente si hay drop.
-     *
-     * Algoritmo:
-     *   1. Calcula totalProbability = suma de todas las probabilidades.
-     *   2. maxRange = Math.max(100, totalProbability).
-     *   3. random = entero entre 1 y maxRange (incluidos).
-     *   4. Si random >= totalProbability → no hay drop.
-     *   5. Si random < totalProbability → recorre el array acumulando:
-     *        cumulative += item.probability
-     *        if (random < cumulative) → spawn ese item
-     *
-     * El item aparece a distancia fija (USE_ITEM_DROP_DISTANCE) del enemigo
-     * en una dirección aleatoria.
-     */
     dropUseItem() {
-        if (!this.lootTable || this.lootTable.length === 0) return;
+        if (!this.lootTable?.length) return;
 
-        // 3.1 Calcular probabilidad acumulada
-        const totalProbability = this.lootTable.reduce((sum, entry) => sum + entry.probability, 0);
+        const totalProbability = this.lootTable.reduce((sum, e) => sum + e.probability, 0);
+        const maxRange         = Math.max(100, totalProbability);
+        const random           = Phaser.Math.Between(1, maxRange);
 
-        // 3.2 Generar número aleatorio en rango [1, max(100, totalProbability)]
-        const maxRange = Math.max(100, totalProbability);
-        const random = Phaser.Math.Between(1, maxRange);
-
-        // si random >= totalProbability -> no hay drop
         if (random >= totalProbability) return;
-        new DropBread(this.scene, this.x + dx, this.y + dy);
-        // 3.3 Selección acumulativa del item
-        let cumulative = 0;
-        let selectedItem = null;
 
+        let cumulative   = 0;
+        let selectedItem = null;
         for (const entry of this.lootTable) {
             cumulative += entry.probability;
-            // Comparación estricta: random < cumulative (NO <=)
-            if (random < cumulative) {
-                selectedItem = entry;
-                break;
-            }
+            if (random < cumulative) { selectedItem = entry; break; }
         }
-
         if (!selectedItem) return;
 
-        // Distancia fija a la que aparece el item (no aleatoria)
-        const USE_ITEM_DROP_DISTANCE = 60;
+        const angle  = Phaser.Math.FloatBetween(0, Math.PI * 2);
+        const dist   = 60;
+        const spawnX = this.x + Math.cos(angle) * dist;
+        const spawnY = this.y + Math.sin(angle) * dist;
 
-        // Dirección aleatoria
-        const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-        const spawnX = this.x + Math.cos(angle) * USE_ITEM_DROP_DISTANCE;
-        const spawnY = this.y + Math.sin(angle) * USE_ITEM_DROP_DISTANCE;
-
-        // Crear el drop correspondiente según el id del item
-        if (selectedItem.id === 'mask') {
-            new DropMask(this.scene, spawnX, spawnY);
-        } else if (selectedItem.id === 'tail') {
-            new DropTail(this.scene, spawnX, spawnY);
-        }
-        // Aquí se pueden añadir más casos para otros items de uso
+        if      (selectedItem.id === 'mask') new DropMask(this.scene, spawnX, spawnY);
+        else if (selectedItem.id === 'tail') new DropTail(this.scene, spawnX, spawnY);
     }
 
-    die() {
-        if (this._state === StatusEnemy.DEAD) return; // evitar doble llamada
+    // ─────────────────────────────────────────
+    //  VISUAL
+    // ─────────────────────────────────────────
 
-        this._state = StatusEnemy.DEAD;
-        this._isShowingHit = false;
-        this._visionAlertFlashUntil = 0;
-        console.log(`${this._nombre} ha muerto`);
+    drawVision(options = {}) {
+        if (!this._visionGraphics || typeof this._visionGraphics.clear !== 'function') return;
+        const { color = 0x00ff00, fillAlpha = 0.15, lineAlpha = 1, lineWidth = 1, clearBefore = true } = options;
+        if (clearBefore) this._visionGraphics.clear();
+        if (!this._showVision || this._state === StatusEnemy.DEAD || this._visionRadius <= 0) return;
 
-        this.dropWeapon();
-        this.dropFeather();
-        this.dropBread();
-        this.dropSpecialItem();
+        const px         = this.x;
+        const py         = this.y;
+        const startAngle = this._facingAngle - (this._visionAngle / 2);
+        const endAngle   = this._facingAngle + (this._visionAngle / 2);
 
-        // Cambiar sprite al de muerto si existe
-        const dedTexture = this._textureKeyFor('ded');
-        if (dedTexture && this.scene.textures.exists(dedTexture)) {
-            this.anims?.stop();
-            this.setTexture(dedTexture);
+        if (typeof this._visionGraphics.beginPath === 'function') {
+            this._visionGraphics.fillStyle(color, fillAlpha);
+            this._visionGraphics.lineStyle(lineWidth, color, lineAlpha);
+            this._visionGraphics.beginPath();
+            this._visionGraphics.moveTo(px, py);
+            this._visionGraphics.arc(px, py, this._visionRadius, startAngle, endAngle, false);
+            this._visionGraphics.closePath();
+            this._visionGraphics.fillPath();
+            this._visionGraphics.strokePath();
         } else {
-            const deadTexture = `${this.texture.key}_corpse`;
-            if (this.scene.textures.exists(deadTexture)) {
-                this.setTexture(deadTexture);
-            } else if (this.scene.textures.exists('enemy_corpse')) {
-                this.setTexture('enemy_corpse');
-            }
+            this._visionGraphics.fillStyle(color, fillAlpha);
+            this._visionGraphics.fillCircle(px, py, this._visionRadius);
         }
-
-        // Desactivar física
-        if (this.body) {
-            this.body.stop();
-            this.body.setVelocity(0, 0);
-            this.body.enable = false;
-            if (this.body.checkCollision) this.body.checkCollision.none = true;
-        }
-
-        this._visionRadius = 0;
-        this.drawVision();
-
-        this.scene.time.delayedCall(10000, () => {
-            if (this && this.scene) super.destroy();
-        });
     }
 
-    /**
-     * Obtiene el HP actual del enemigo
-     * @returns {number} HP actual
-     */
-    getHP() { return this._hp; }
-
-
-    // Reproduce un parpadeo rojo rápido para indicar daño recibido
     flashRed(duration = 100) {
         if (!this.scene) return;
         this.setTint(0xff0000);
         this.scene.time.delayedCall(duration, () => {
-            if (this && this.clearTint) this.clearTint();
+            if (this?.clearTint) this.clearTint();
         });
     }
 
-    /**
-     * Sobre-escribimos destroy para también limpiar arma y barra.
-     */
-    destroy(fromScene) {
-
-        if (this._visionGraphics) {
-            this._visionGraphics.destroy();
-            this._visionGraphics = null;
-        }
-
-        //if (this.weapon)    this.weapon.destroy();
-        //if (this.weaponBar) this.weaponBar.destroy();
-
-        super.destroy(fromScene);
-    }
-
-    /*
---------------------------------------------------------------------------------
-                   MOVIMIENTOS PREDEFINIDOS PARA ENEMIGOS
---------------------------------------------------------------------------------
-    */
-
-    //persecución cuando está alertado
-    movementAlerted(target) {
-        if (!this.isAlerted() || !target) return;
-        const dist = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
-        const optimalDist = this.weapon?.optimalDistance ?? 200;
-        const range = this.weapon?.range ?? 300;
-
-
-        if (dist < optimalDist) {
-            this.moveAwayFrom(target);
-            // Resetear el contador cuando el jugador sale del rango
-            this._inRangeStartTime = 0;
-        } else if (dist > range) {
-            this.moveTowards(target);
-            // Resetear el contador cuando el jugador sale del rango
-            this._inRangeStartTime = 0;
-        } else {
-            this.stop();
-            // Atacar cuando estamos en rango óptimo, pero con delay de 1 segundo
-            if (this.weapon && typeof this.weapon.attack === 'function') {
-                // Si es la primera vez que detectamos al jugador en rango, iniciar el contador
-                if (this._inRangeStartTime === 0) {
-                    this._inRangeStartTime = this.scene.time.now;
-                }
-
-                // Verificar si ya pasó el delay
-                const timeSinceInRange = this.scene.time.now - this._inRangeStartTime;
-                if (timeSinceInRange >= this._attackDelay) {
-                    this.weapon.attack();
-                }
-            }
-        }
-    }
-
-
-
-
-
-
-
-
-
-    /**
-     * Sigue una ruta poligonal establecida
-     * El polígono es un array de puntos [{x, y}, {x, y}, ...]
-     * El enemigo patrulla entre los puntos en orden
-     */
-    movementFollowRoute() {
-        if (!this._movementData || !this._movementData.routePoints || this._movementData.routePoints.length < 2) {
+    _updateVisionAlertFlash(time) {
+        if (this._visionAlertFlashUntil <= 0) return;
+        if (time <= this._visionAlertFlashUntil) {
+            if (this.tintTopLeft !== 0xFF0000) this.setTint(0xFFFF01);
             return;
         }
-
-        if (this.isAlerted()) return;
-
-        const data = this._movementData;
-        const points = data.routePoints;
-        const currentTarget = points[data.currentPointIndex];
-
-        // Distancia al punto objetivo
-        const dist = Phaser.Math.Distance.Between(this.x, this.y, currentTarget.x, currentTarget.y);
-
-        // Si llegamos al punto, pasar al siguiente
-        if (dist < 10) {
-            data.currentPointIndex = (data.currentPointIndex + 1) % points.length;
-            data.pauseTimer = 0;
-            return;
-        }
-
-        // Hacer pausa en cada punto durante 1 segundo
-        if (data.pauseTimer === undefined) data.pauseTimer = 0;
-        data.pauseTimer += this.scene.game.loop.delta;
-
-        if (data.pauseTimer < 1000) {
-            this.stop();
-            return;
-        }
-
-        // Moverse hacia el siguiente punto
-        this.moveTowards(currentTarget);
+        this._visionAlertFlashUntil = 0;
+        if (this.tintTopLeft !== 0xFF0000) this.clearTint();
     }
 
-    /*
---------------------------------------------------------------------------------
-                          PRECARGA DEL OBJETO ENEMIGO
---------------------------------------------------------------------------------
-    */
+    _resolveSpriteBaseKey(textureKey) {
+        if (typeof textureKey !== 'string') return null;
+        const match = textureKey.match(/^(.*)_(idle|run|hit|ded)$/);
+        return match ? match[1] : null;
+    }
 
-    preUpdate(time, delta) {
-        const isUnderKnockback = time < this._knockbackUntil;
+    _textureKeyFor(state) {
+        return this._spriteBaseKey ? `${this._spriteBaseKey}_${state}` : null;
+    }
 
-        // Ejecutar movimiento si está en IDLE
-        if (!isUnderKnockback && this._state === StatusEnemy.IDLE && this._movementType) {
-            if (this._movementType === 'followRoute') {
-                this.movementFollowRoute();
-            }
-        } else if (!isUnderKnockback && this._state === StatusEnemy.SEARCH) {
-            this.stop();
-            this._updateSearchFacing(time);
-        } else if (!isUnderKnockback && this.isAlerted()) {
-            if (this.scene.duck) this.movementAlerted(this.scene.duck);
-        }
-
-        // Los sprites de enemigos vienen invertidos respecto a la dirección de movimiento.
-        this._updateFacingFromVelocity();
-
-        // Actualizar estado visual (idle/run/hit/dead)
-        this._updateVisualState(time);
-
-        // el arma también debe actualizarse para seguir al enemigo
-        if (this.weapon && typeof this.weapon.update === 'function') this.weapon.update();
-        // actualizar posición de la barra si existe
-        if (this.weaponBar && typeof this.weaponBar.update === 'function') this.weaponBar.update();
-
-        if (super.preUpdate) super.preUpdate(time, delta);
+    _animKeyFor(state) {
+        return this._spriteBaseKey ? `${this._spriteBaseKey}-${state}` : null;
     }
 
     _updateFacingFromVelocity() {
         if (!this.body) return;
         const vx = this.body.velocity?.x ?? 0;
         if (Math.abs(vx) < 1) return;
-
-        // Misma convención que el pato para que la dirección visual coincida con el movimiento.
         if (vx > 0) this.setFlipX(true);
         if (vx < 0) this.setFlipX(false);
     }
@@ -796,27 +775,88 @@ export default class Enemy extends BaseCharacter {
     _updateVisualState(time = this.scene?.time?.now ?? 0) {
         if (!this.body || !this.anims || this._state === StatusEnemy.DEAD) return;
         if (!this._spriteBaseKey) return;
-
         if (this._isShowingHit) {
             if (time < this._hitUntil) return;
             this._isShowingHit = false;
         }
 
-        const speed = Math.hypot(this.body.velocity.x, this.body.velocity.y);
-        const isMoving = speed > 1;
-        const targetState = isMoving ? 'run' : 'idle';
+        const speed         = Math.hypot(this.body.velocity.x, this.body.velocity.y);
+        const targetState   = speed > 1 ? 'run' : 'idle';
         const targetTexture = this._textureKeyFor(targetState);
-        const targetAnim = this._animKeyFor(targetState);
+        const targetAnim    = this._animKeyFor(targetState);
 
         if (targetTexture && this.texture?.key !== targetTexture && this.scene.textures.exists(targetTexture)) {
             this.setTexture(targetTexture);
         }
-
         if (targetAnim && this.scene.anims.exists(targetAnim)) {
             if (!this.anims.isPlaying || this.anims.currentAnim?.key !== targetAnim) {
                 this.play(targetAnim, true);
             }
         }
+    }
+
+    // ─────────────────────────────────────────
+    //  PREUPDATE — bucle principal
+    // ─────────────────────────────────────────
+
+    preUpdate(time, delta) {
+        this.tryDodgeIncomingProjectiles(time);
+        const isUnderKnockback = time < this._knockbackUntil;
+
+        if (!isUnderKnockback) {
+            switch (this._state) {
+                case StatusEnemy.IDLE:
+                    if (this._movementType === 'followRoute') this.movementFollowRoute();
+                    break;
+                case StatusEnemy.SEARCH:
+                    this.stop();
+                    this._updateSearchFacing(time);
+                    break;
+                case StatusEnemy.ALERTED:
+                    if (this.scene.duck) this.movementAlerted(this.scene.duck);
+                    break;
+                // DEAD y STUNNED no hacen nada por defecto
+            }
+        }
+
+        this._updateFacingFromVelocity();
+        this._updateVisualState(time);
+
+        if (this.weapon?.update)    this.weapon.update();
+        if (this.weaponBar?.update) this.weaponBar.update();
+
+        if (super.preUpdate) super.preUpdate(time, delta);
+    }
+
+    // ─────────────────────────────────────────
+    //  HELPERS PÚBLICOS
+    // ─────────────────────────────────────────
+
+    mostrarNombre()  { console.log(`Mi nombre es ${this._nombre}`); }
+    getHP()          { return this._hp; }
+    getState()       { return this._state; }
+    isDead()         { return this._state === StatusEnemy.DEAD; }
+    isAlerted()      { return this._state === StatusEnemy.ALERTED; }
+    isStunned()      { return this._state === StatusEnemy.STUNNED; }
+    setVisionRadius(r) { this._visionRadius = r; }
+
+    setState(state) {
+        // Mantener compatibilidad con código externo que llame setState directamente
+        this._transitionTo(state);
+    }
+
+    resetAlertState() {
+        if (this._state !== StatusEnemy.ALERTED && this._state !== StatusEnemy.SEARCH) return;
+        this._transitionTo(StatusEnemy.IDLE);
+        if (this.tintTopLeft !== 0xFF0000) this.clearTint();
+    }
+
+    destroy(fromScene) {
+        if (this._visionGraphics) {
+            this._visionGraphics.destroy();
+            this._visionGraphics = null;
+        }
+        super.destroy(fromScene);
     }
 }
 
