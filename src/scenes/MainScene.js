@@ -116,7 +116,6 @@ import truckRedFront from '../../assets/tilesets/truck-red-front.png';
 
 //Plumas
 import feather_icon from '../../assets/sprites/UI/pluma.png';
-import FeatherUI from '../GameObjects/featherUI.js';
 
 export default class MainScene extends Phaser.Scene {
     constructor() {
@@ -273,255 +272,6 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('mask_icon', mask_icon);
         this.load.image('fox_tail', fox_tail);
     }
-
-    /*
-    create() {
-
-        const SCALE = 3;
-        
-        const map = this.make.tilemap({ 
-        key: 'level1',
-        tileWidth: 16 * SCALE,  
-        tileHeight: 16 * SCALE
-        });
-
-        const tilesetNames = [
-            'dark-grass-middle-middle', 'sidewalk-1', 'asphalt-road-1', 'asphalt-road-3',
-            'asphalt-road-2', 'sidewalk-5', 'dirtpath-1', 'dirtpath-8', 'dirtpath-9',
-            'dirtpath-10', 'dirtpath-11', 'dirtpath-15', 'dirtpath-12', 'dirtpath-13',
-            'dirtpath-14', 'dirtpath-2', 'dirtpath-5', 'dirtpath-4', 'dirtpath-6',
-            'house-2', 'wood-fence-left-middle', 'wood-fence-right-middle',
-            'wood-fence-interior-corner-1', 'wood-fence-bottom-middle',
-            'wood-fence-interior-corner-2', 'wood-fence-interior-corner-3',
-            'wood-fence-top-left-corner', 'apartment-building', 'grocery-store',
-            'tree-1', 'small-bushes-blue-berries', 'water-fountain',
-            'wood-fence-interior-corner-4', 'tall-grass-middle', 'bush'
-        ];
-
-        const tilesets = tilesetNames.map(name => map.addTilesetImage(name, name));
-
-        const baseLayer = map.createLayer('base', tilesets, 0, 0);
-        baseLayer.setScale(SCALE);
-
-        const patronesLayer = map.createLayer('Capa de patrones 1', tilesets, 0, 0);
-        patronesLayer.setScale(SCALE);
-
-        const colisionLayer = map.createLayer('Zonas con colision', tilesets, 0, 0);
-        colisionLayer.setScale(SCALE);
-
-        const esteticaLayer = map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
-        esteticaLayer.setScale(SCALE);
-
-        colisionLayer.setCollisionByProperty({ collides: true });
-
-        this.physics.world.setBounds(0, 0, map.widthInPixels * SCALE, map.heightInPixels * SCALE);
-        this.cameras.main.setBounds(0, 0, map.widthInPixels * SCALE, map.heightInPixels * SCALE);
-
-        this.anims.create({
-            key: 'duck-idle',
-            frames: this.anims.generateFrameNumbers('idle_duck', { start: 0, end: 3 }),
-            frameRate: 8,
-            repeat: -1
-        });
-
-        this.anims.create({
-            key: 'duck-walk',
-            frames: this.anims.generateFrameNumbers('duck_walk', { start: 0, end: 3 }),
-            frameRate: 8,
-            repeat: -1
-        });
-
-        this.anims.create({
-            key: 'duck-cuack',
-            frames: this.anims.generateFrameNumbers('duck-cuack', { start: 0, end: 0 }),
-            frameRate: 8,
-            repeat: 0
-        });
-
-        this.anims.create({
-            key: 'duck-dash',
-            frames: this.anims.generateFrameNumbers('duck-dash', { start: 0, end: 3 }),
-            frameRate: 16,
-            repeat: 0
-        });
-
-        this.anims.create({
-            key: 'duck-swimming',
-            frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
-            frameRate: 8,
-            repeat: -1
-        });
-
-        // Animaciones de Zorro
-        this.anims.create({
-            key: 'zorro-idle',
-            frames: this.anims.generateFrameNumbers('zorro_idle', { start: 0, end: 3 }),
-            frameRate: 8,
-            repeat: -1
-        });
-
-        this.anims.create({
-            key: 'zorro-run',
-            frames: this.anims.generateFrameNumbers('zorro_run', { start: 0, end: 3 }),
-            frameRate: 12,
-            repeat: -1
-        });
-
-        // Animaciones de Mapache
-        this.anims.create({
-            key: 'mapache-idle',
-            frames: this.anims.generateFrameNumbers('mapache_idle', { start: 0, end: 3 }),
-            frameRate: 8,
-            repeat: -1
-        });
-
-        this.anims.create({
-            key: 'mapache-run',
-            frames: this.anims.generateFrameNumbers('mapache_run', { start: 0, end: 3 }),
-            frameRate: 12,
-            repeat: -1
-        });
-
-        // ── Fondo ──
-        //const bg = this.add.rectangle(0, 0, this.scale.width, this.scale.height, 0x87CEEB);
-        //bg.setOrigin(0);
-
-        // ── Sonido ──
-        this.cuackSound = this.sound.add('cuack', { volume: 1 });
-
-        // ── Grupo de drops — debe crearse ANTES que el pato y los drops ──
-        this.dropItems = this.add.group();
-        
-        // ── Grupo de consumables ──
-        this.consumableItems = this.add.group();
-
-        // ── Grupo de proyectiles ──
-        this.projectiles = this.add.group();
-
-        // ── Pato ──
-        this.duck = new Duck(this, 1700, 9500, 'mcuaktro');
-        
-        // ── Barra de consumibles ──
-        this.consumableBar = new ConsumableBar(this, this.duck);
-
-
-
-        // ── Atacar con click izquierdo (puntual o mantenido) ──
-        this.input.on('pointerdown', () => {
-            if (this.duck && this.duck.weapon) this.duck.weapon.attack();
-        });
-
-        // ── Soltar click: necesario para armas con carga (arco) ──
-        this.input.on('pointerup', () => {
-            if (this.duck && this.duck.weapon && this.duck.weapon.releaseAttack) {
-                this.duck.weapon.releaseAttack();
-            }
-        });
-
-        // ── Enemigos desde rutas ──
-        this.enemies = this.physics.add.group();
-        this.setupEnemiesFromRoutes(SCALE);
-
-        // ── Eventos de audio para todos los enemigos ──
-        this.events.on('audio:event', (audioEvent) => {
-            if (this.enemies) {
-                this.enemies.getChildren().forEach(enemy => {
-                    if (enemy) enemy.onAudioEvent(audioEvent);
-                });
-            }
-        });
-
-        // ── Graphics para radio de visión ──
-        this.visionGraphics = this.add.graphics();
-        this.enemyAlertTime = null;
-
-        // ── Spawn de drops de ejemplo ──
-        // Múltiples panes en posiciones estratégicas para testing
-        new Bread(this, 50, 50);      // Cerca del spawn del pato
-        new Bread(this, 200, 100);    // Arriba a la derecha
-        new Bread(this, 400, 200);    // Centro-derecha
-        new Bread(this, 100, 300);    // Abajo a la izquierda
-        new Bread(this, 350, 400);    // Centro-abajo
-        new Bread(this, 600, 150);    // Derecha-arriba
-        new Bread(this, 250, 500);    // Abajo-centro
-        
-        // AttackPotion para testing
-        new AttackPotion(this, 1700, 9600); // Cerca del duck
-        
-        // SpeedPotion para testing
-        new SpeedPotion(this, 1750, 9600); // Cerca del duck
-        
-        // Mazo en posición fija
-        new DropWeapon(this, 450, 450, Mazo, 'mazo');
-
-        // Arco en posición aleatoria
-        new DropWeapon(
-            this,
-            Phaser.Math.Between(0, 1000),
-            Phaser.Math.Between(0, 1000),
-            Arco,
-            'arco'
-        );
-
-        // ── Spawn de charco de agua visible temporal ──   
-        const puddle = new Puddle(this, 300, 300, 100);
-        const g = this.add.graphics();
-        g.lineStyle(2, 0x0000ff, 1);
-        g.strokeCircle(puddle.x, puddle.y, puddle.radius);
-
-
-
-        // ── Barra superior UI (x3) ──
-        const upBar = this.add.image(960, 0, 'up_bar');
-        upBar.setOrigin(0.5, 0);
-        upBar.setScale(3);
-        upBar.setScrollFactor(0);
-
-        // ── HUD ──
-        this.add.text(10, 10,
-            'Mover: WASD / Flechas | Dash: Espacio | Recoger arma: E | Atacar: Click | Cuack: C',
-            { fontSize: '14px', fill: '#FFFFFF' }
-        );
-
-        this.physics.add.collider(this.duck, colisionLayer); //colisiones del mapa
-        this.physics.add.collider(this.enemies, colisionLayer);
-
-        // contacto enemigo → pato
-        this.physics.add.overlap(this.duck, this.enemies, (duck, enemy) => {
-            this._onEnemyHitDuck(duck, enemy);
-        });
-
-        // proyectil → enemigo
-        this.physics.add.overlap(this.projectiles, this.enemies, (projectile, enemy) => {
-            this._onProjectileHitEnemy(projectile, enemy);
-        });
-
-        // proyectil → pato
-        this.physics.add.overlap(this.projectiles, this.duck, (projectile, duck) => {
-            this._onProjectileHitDuck(projectile, duck);
-        });
-
-        //Spawn de pluma para testing
-        this.featherUI = new FeatherUI(this, this.duck);
-        this.enemiesKilled = 0;
-
-       //TESTING PLUMAS EN EL MAPA
-        const testPluma = this.add.image(this.duck.x, this.duck.y - 100, 'feather_icon');
-        testPluma.setScale(1);
-        testPluma.setDepth(9999);
-
-        const graphics = this.add.graphics();
-        graphics.lineStyle(3, 0xff0000, 1);
-        graphics.strokeRect(
-            testPluma.getBounds().x,
-            testPluma.getBounds().y,
-            testPluma.getBounds().width,
-            testPluma.getBounds().height
-        ); 
-        
-        // Cámara
-        // No usar startFollow, lo haremos manualmente en update()
-    }*/
 
     create() {
         const SCALE = 4;
@@ -798,35 +548,9 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         // UI
         // ─────────────────────────────────────────
-        this.consumableBar = new ConsumableBar(this, this.duck);
-        this.featherUI = new FeatherUI(this, this.duck);
-        this.enemiesKilled = 0;
-
-        // La consumable bar empieza completamente vacía: no se añade ningún item por defecto
-
-        const upBar = this.add.image(960, 0, 'up_bar');
-        upBar.setOrigin(0.5, 0);
-        upBar.setScale(3);
-        upBar.setScrollFactor(0);
-        upBar.setDepth(9000);
-
-        this.controlsText = this.add.text(
-            10,
-            10,
-            'Mover: WASD / Flechas | Dash: Espacio | Recoger arma: E | Atacar: Click | Cuack: C',
-            { fontSize: '14px', fill: '#FFFFFF' }
-        );
-        this.controlsText.setScrollFactor(0);
-        this.controlsText.setDepth(9001);
-
-        // ─────────────────────────────────────────
-        // SISTEMA MONETARIO DE PAN
-        // Contador global de panes recogidos (moneda del juego).
-        // El icono y texto se crean dentro del mismo contenedor HUD que las vidas,
-        // justo debajo del contador de plumas con un offset relativo a él.
-        // ─────────────────────────────────────────
         this.breadCount = 0;
-        this._createBreadUI();
+        this.consumableBar = new ConsumableBar(this, this.duck);
+        this.enemiesKilled = 0;
 
         // ─────────────────────────────────────────
         // OVERLAY DE MUERTE
@@ -1378,18 +1102,9 @@ export default class MainScene extends Phaser.Scene {
             this.controlsText = null;
         }
 
-        // Limpiar UI del pan al destruir/reiniciar la escena
-        if (this.breadHudBg) {
-            this.breadHudBg.destroy();
-            this.breadHudBg = null;
-        }
-        if (this.breadIcon) {
-            this.breadIcon.destroy();
-            this.breadIcon = null;
-        }
-        if (this.breadText) {
-            this.breadText.destroy();
-            this.breadText = null;
+        if (this.consumableBar) {
+            this.consumableBar.destroy();
+            this.consumableBar = null;
         }
     }
 
@@ -1654,87 +1369,25 @@ export default class MainScene extends Phaser.Scene {
     // ─────────────────────────────────────────
 
     /**
-     * Crea los elementos de UI del contador de pan dentro del mismo rectángulo HUD
-     * que las vidas (featherUI). El icono y el texto se posicionan justo debajo
-     * del contador de plumas usando offsets relativos al contenedor de vidas.
-     *
-     * Referencia de alineación:
-     *   - featherUI ocupa la esquina superior derecha del HUD.
-     *   - El pan se coloca con el mismo margen derecho y un offset vertical
-     *     que lo sitúa inmediatamente debajo de las plumas.
-     * @private
-     */
-    _createBreadUI() {
-        // ── Referencia al contenedor de vidas (featherUI) ──
-        // featherUI dibuja su fondo en la esquina superior derecha.
-        // Tomamos su posición X de anclaje y añadimos el margen vertical
-        // suficiente para quedar debajo de las plumas sin solaparse.
-
-        // Ancho del panel de vidas tal como lo define featherUI (ajustar si cambia)
-        const hudPanelWidth  = 160;  // ancho aproximado del panel de vidas
-        const hudPanelRight  = this.scale.width - 10; // margen derecho del panel
-        const hudPanelLeft   = hudPanelRight - hudPanelWidth;
-
-        // Offset vertical relativo: altura del área de vidas + pequeño margen
-        const livesAreaHeight = 40;  // altura aproximada que ocupa el icono de plumas
-        const verticalMargin  = 6;   // separación entre vidas y pan
-        const hudTop          = 10;  // margen superior del panel (mismo que featherUI)
-        const breadRowY       = hudTop + livesAreaHeight + verticalMargin;
-
-        // Altura total que ocupa la fila del pan (icono + margen inferior)
-        const breadRowHeight  = 28;
-
-        // ── Extensión del HUD: fondo extra que amplía el rectángulo de vidas hacia abajo ──
-        // Se usa el mismo color de fondo negro semitransparente que featherUI.
-        // ❗ NO se crea un rectángulo nuevo: este rectángulo extiende visualmente el mismo HUD.
-        this.breadHudBg = this.add.rectangle(
-            hudPanelLeft,
-            breadRowY - 4,
-            hudPanelWidth,
-            breadRowHeight + 8,
-            0x000000,
-            0.55
-        );
-        this.breadHudBg.setOrigin(0, 0);
-        this.breadHudBg.setScrollFactor(0);
-        this.breadHudBg.setDepth(9099); // justo debajo del icono y texto
-
-        // ── Icono de pan ──
-        // Alineado al mismo borde izquierdo que el icono de plumas dentro del panel
-        this.breadIcon = this.add.image(hudPanelLeft + 16, breadRowY + breadRowHeight / 2, 'bread_item');
-        this.breadIcon.setScale(2);
-        this.breadIcon.setScrollFactor(0);
-        this.breadIcon.setDepth(9100);
-
-        // ── Texto del contador ──
-        // Mismo offset horizontal que el texto de plumas respecto a su icono
-        this.breadText = this.add.text(hudPanelLeft + 32, breadRowY + 4, 'x 0', {
-            fontSize: '18px',
-            fill: '#FFD700',
-            fontStyle: 'bold',
-            stroke: '#000000',
-            strokeThickness: 3
-        });
-        this.breadText.setScrollFactor(0);
-        this.breadText.setDepth(9101);
-    }
-
-    /**
      * Incrementa el contador de pan (moneda del juego) y actualiza la UI.
      * Llamado por Bread.interact() y DropBread.interact() al recoger un pan.
      * @param {number} amount - Cantidad de panes a añadir
      */
     addBread(amount) {
         this.breadCount += amount;
-        this.updateBreadUI();
+
+        if (this.consumableBar) {
+            this.consumableBar.update();
+            this.consumableBar.pulseBread?.();
+        }
     }
 
     /**
      * Actualiza el texto del contador de pan en el HUD.
      */
     updateBreadUI() {
-        if (this.breadText) {
-            this.breadText.setText(`x ${this.breadCount}`);
+        if (this.consumableBar) {
+            this.consumableBar.update();
         }
     }
 

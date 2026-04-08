@@ -56,10 +56,10 @@ export default class Enemy extends BaseCharacter {
         this.hasFeather     = hasFeather;
 
         // ── Visión ──
-        this._visionRadius  = visionRadius;
-        this._visionAngle   = Math.PI / 2;
-        this._facingAngle   = Math.PI;
-        this._showVision    = false;
+        this._visionRadius   = visionRadius;
+        this._visionAngle    = Math.PI / 2;
+        this._facingAngle    = Math.PI;
+        this._showVision     = false;
         this._visionGraphics = scene.add.graphics();
 
         // ── Máquina de estados ──
@@ -72,23 +72,43 @@ export default class Enemy extends BaseCharacter {
         this._quackCooldown         = 100;
 
         // ── Combate ──
-        this._inRangeStartTime  = 0;
-        this._attackDelay       = 800;      // ms antes del primer ataque al entrar en rango
-        this._inRangeLeaveCooldown = 500;   // ms que tiene que estar fuera del rango para resetear el delay
+        this._inRangeStartTime     = 0;
+        this._attackDelay          = 800;
+        this._inRangeLeaveCooldown = 500;
 
-        this._strafeDirection = Math.random() < 0.5 ? -1 : 1;
+        // ── Strafing ──
+        this._strafeDirection      = Math.random() < 0.5 ? -1 : 1;
         this._nextStrafeSwitchTime = 0;
 
-        this._lastDodgeTime = 0;
-        this._dodgeCooldown = 900;
-        this._dodgeDuration = 180;
-        this._dodgeSpeedMultiplier = 2.2;
+        // ── Esquiva de proyectiles ──
+        this._lastDodgeTime             = 0;
+        this._dodgeCooldown             = 900;
+        this._dodgeDuration             = 180;
+        this._dodgeSpeedMultiplier      = 2.2;
         this._projectileAwarenessRadius = 140;
+        // Dirección de esquiva: se alterna para evitar zigzag errático
+        this._currentDodgeDir = 0;
+
+        // ── Memoria — última posición conocida del jugador ──
+        // Permite que el enemigo vaya al último punto visto aunque pierda LOS
+        this._lastKnownPlayerX = null;
+        this._lastKnownPlayerY = null;
+        this._lastSeenTime     = 0;
+        this._memoryDuration   = 4000; // ms que recuerda la posición antes de ir a SEARCH
+
+        // ── Reposicionamiento (sin línea de visión) ──
+        this._reposStrafeDir       = Math.random() < 0.5 ? -1 : 1;
+        this._reposNextSwitchTime  = 0;
+        this._reposStuckCheckTimer = 0;
+        this._reposLastX           = 0;
+        this._reposLastY           = 0;
+        this._reposStuckThreshold  = 8;   // píxeles mínimos de movimiento para no considerarse atascado
+        this._reposStuckCheckMs    = 600; // cada cuánto ms se comprueba si está atascado
 
         // ── Búsqueda ──
-        this._searchStartTime       = 0;
-        this._searchDuration        = 2000;
-        this._searchTurns           = 2;
+        this._searchStartTime        = 0;
+        this._searchDuration         = 2000;
+        this._searchTurns            = 2;
         this._searchStartFacingAngle = this._facingAngle;
 
         // ── Visual de daño ──
@@ -108,14 +128,9 @@ export default class Enemy extends BaseCharacter {
     }
 
     // ─────────────────────────────────────────
-    //  MÁQUINA DE ESTADOS — punto de entrada único para cambiar estado
+    //  MÁQUINA DE ESTADOS
     // ─────────────────────────────────────────
 
-    /**
-     * Única forma de cambiar el estado. Llama a _onExitState y _onEnterState.
-     * Las subclases pueden sobreescribir _onEnterState/_onExitState para
-     * añadir comportamientos específicos sin romper la lógica base.
-     */
     _transitionTo(newState, context = {}) {
         if (this._state === newState) return;
         this._onExitState(this._state, newState, context);
@@ -124,23 +139,18 @@ export default class Enemy extends BaseCharacter {
         this._onEnterState(newState, prevState, context);
     }
 
-    /** Llamado al SALIR de un estado. Sobreescribible en subclases. */
     _onExitState(exitingState, _nextState, _context) {
-        // Limpiar tint de alerta al salir de ALERTED si no hay flash de daño activo
         if (exitingState === StatusEnemy.ALERTED) {
             if (this.tintTopLeft !== 0xFF0000) this.clearTint();
         }
     }
 
-    /** Llamado al ENTRAR en un estado. Sobreescribible en subclases. */
     _onEnterState(enteringState, _prevState, context) {
         const now = this.scene?.time?.now ?? 0;
 
         switch (enteringState) {
-
             case StatusEnemy.ALERTED:
                 this._visionAlertFlashUntil = now + 500;
-                // No resetear _inRangeStartTime aquí — se gestiona en movementAlerted
                 this.onAlerted(context);
                 break;
 
@@ -154,6 +164,8 @@ export default class Enemy extends BaseCharacter {
 
             case StatusEnemy.IDLE:
                 this._inRangeStartTime = 0;
+                this._lastKnownPlayerX = null;
+                this._lastKnownPlayerY = null;
                 this.onReturnIdle(context);
                 break;
 
@@ -168,66 +180,41 @@ export default class Enemy extends BaseCharacter {
     }
 
     // ─────────────────────────────────────────
-    //  HOOKS — sobreescribir en subclases para comportamientos únicos
+    //  HOOKS — sobreescribir en subclases
     // ─────────────────────────────────────────
 
-    /** Llamado cuando el enemigo se alerta por primera vez. */
     onAlerted(_context) {}
-
-    /** Llamado cuando el enemigo entra en modo búsqueda. */
     onStartSearch(_context) {}
-
-    /** Llamado cuando el enemigo vuelve a IDLE. */
     onReturnIdle(_context) {}
-
-    /** Llamado cuando el enemigo muere (antes de los drops). */
     onDead(_context) {}
-
-    /** Llamado cuando el enemigo es stunteado. */
     onStunned(_context) {}
 
     /**
-     * HOOK DE MOVIMIENTO EN COMBATE — sobreescribir en subclases.
-     *
-     * Define cómo se mueve el enemigo cuando está ALERTED y en rango de ataque.
-     * Por defecto: se queda parado. El zorro podría hacer strafing, el mapache
-     * podría retroceder, etc.
-     *
-     * @param {Phaser.GameObjects.GameObject} target — el jugador
-     * @param {number} dist — distancia actual al jugador
+     * Movimiento en rango óptimo con LOS.
+     * Por defecto: strafing con cambio de dirección aleatorio.
+     * Sobreescribir en subclases (ej. mapache que carga, zorro que hace
+     * strafing más agresivo, etc.)
      */
     onCombatMovement(target, _dist) {
         const now = this.scene?.time?.now ?? 0;
-
         if (!this._nextStrafeSwitchTime || now >= this._nextStrafeSwitchTime) {
-            this._strafeDirection *= -1;
+            this._strafeDirection     *= -1;
             this._nextStrafeSwitchTime = now + Phaser.Math.Between(700, 1400);
         }
-
         this.moveLateral(target, 0.55, this._strafeDirection);
     }
 
     /**
-     * HOOK DE PERSECUCIÓN — sobreescribir en subclases.
-     *
-     * Define cómo se mueve el enemigo cuando está ALERTED y fuera de rango.
-     * Por defecto: se acerca directamente.
-     *
-     * @param {Phaser.GameObjects.GameObject} target
-     * @param {number} dist
+     * Movimiento cuando el jugador está fuera del rango de ataque.
+     * Por defecto: aproximación directa.
      */
     onChaseMovement(target, _dist) {
         this.moveTowards(target);
     }
 
     /**
-     * HOOK DE RETIRADA — sobreescribir en subclases.
-     *
-     * Define cómo se mueve el enemigo cuando está ALERTED y demasiado cerca.
-     * Por defecto: se aleja directamente.
-     *
-     * @param {Phaser.GameObjects.GameObject} target
-     * @param {number} dist
+     * Movimiento cuando el jugador está demasiado cerca.
+     * Por defecto: retroceder directamente.
      */
     onRetreatMovement(target, _dist) {
         this.moveAwayFrom(target);
@@ -244,15 +231,12 @@ export default class Enemy extends BaseCharacter {
 
         const dx = target.x - this.x;
         const dy = target.y - this.y;
-
         if (dx * dx + dy * dy > this._visionRadius * this._visionRadius) return false;
 
         const angleToTarget = Math.atan2(dy, dx);
         let diff = angleToTarget - this._facingAngle;
-
-        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff > Math.PI)  diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
-
         if (Math.abs(diff) > this._visionAngle / 2) return false;
 
         return this.hasLineOfSight(target);
@@ -273,26 +257,19 @@ export default class Enemy extends BaseCharacter {
 
         for (const layer of layersToCheck) {
             const tiles = layer.getTilesWithinShape(line, { isNotEmpty: true });
-
             for (const tile of tiles) {
                 if (!tile) continue;
-
-                const tileWidth = layer.tilemap.tileWidth * layer.scaleX;
+                const tileWidth  = layer.tilemap.tileWidth  * layer.scaleX;
                 const tileHeight = layer.tilemap.tileHeight * layer.scaleY;
-
-                const tileRect = new Phaser.Geom.Rectangle(
+                const tileRect   = new Phaser.Geom.Rectangle(
                     tile.pixelX * layer.scaleX,
                     tile.pixelY * layer.scaleY,
                     tileWidth,
                     tileHeight
                 );
-
-                if (Phaser.Geom.Intersects.LineToRectangle(line, tileRect)) {
-                    return false;
-                }
+                if (Phaser.Geom.Intersects.LineToRectangle(line, tileRect)) return false;
             }
         }
-
         return true;
     }
 
@@ -314,6 +291,11 @@ export default class Enemy extends BaseCharacter {
         const seen = this.canSee(player);
 
         if (seen) {
+            // Actualizar memoria de posición
+            this._lastKnownPlayerX = player.x;
+            this._lastKnownPlayerY = player.y;
+            this._lastSeenTime     = time;
+
             if (this._state !== StatusEnemy.ALERTED) {
                 this._transitionTo(StatusEnemy.ALERTED, { time, player });
             }
@@ -356,13 +338,22 @@ export default class Enemy extends BaseCharacter {
     }
 
     // ─────────────────────────────────────────
-    //  MOVIMIENTO
+    //  MOVIMIENTO BASE
     // ─────────────────────────────────────────
 
     moveTowards(target) {
         if (!target || typeof target.x !== 'number') { this.body?.setVelocity(0, 0); return; }
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
+        const dx   = target.x - this.x;
+        const dy   = target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist === 0) { this.body?.setVelocity(0, 0); return; }
+        this._facingAngle = Math.atan2(dy, dx);
+        this.body.setVelocity((dx / dist) * this._speed, (dy / dist) * this._speed);
+    }
+
+    moveTowardsPoint(px, py) {
+        const dx   = px - this.x;
+        const dy   = py - this.y;
         const dist = Math.hypot(dx, dy);
         if (dist === 0) { this.body?.setVelocity(0, 0); return; }
         this._facingAngle = Math.atan2(dy, dx);
@@ -371,8 +362,8 @@ export default class Enemy extends BaseCharacter {
 
     moveAwayFrom(target) {
         if (!target || typeof target.x !== 'number') { this.body?.setVelocity(0, 0); return; }
-        const dx = this.x - target.x;
-        const dy = this.y - target.y;
+        const dx   = this.x - target.x;
+        const dy   = this.y - target.y;
         const dist = Math.hypot(dx, dy);
         if (dist === 0) { this.body?.setVelocity(0, 0); return; }
         this._facingAngle = Math.atan2(dy, dx);
@@ -380,22 +371,47 @@ export default class Enemy extends BaseCharacter {
     }
 
     /**
-     * Movimiento lateral perpendicular al objetivo (strafing).
-     * Útil para subclases de enemigos a distancia.
+     * Strafing perpendicular al objetivo.
      * @param {object} target
-     * @param {number} speedMultiplier — fracción de this._speed (default 0.4)
+     * @param {number} speedMultiplier — fracción de this._speed
      * @param {number} direction — 1 o -1
      */
     moveLateral(target, speedMultiplier = 0.4, direction = 1) {
         if (!target) { this.stop(); return; }
-        const dx = target.x - this.x;
-        const dy = target.y - this.y;
+        const dx   = target.x - this.x;
+        const dy   = target.y - this.y;
         const dist = Math.hypot(dx, dy);
         if (dist === 0) { this.stop(); return; }
-        // Vector perpendicular al objetivo
         const perpX = (-dy / dist) * direction;
         const perpY = ( dx / dist) * direction;
         this.body.setVelocity(perpX * this._speed * speedMultiplier, perpY * this._speed * speedMultiplier);
+    }
+
+    /**
+     * Mezcla de aproximación y strafing.
+     * Útil para rodear obstáculos manteniéndose orientado al objetivo.
+     * @param {object} target
+     * @param {number} chaseRatio — 0..1 (cuánto va hacia el objetivo vs lateral)
+     * @param {number} lateralDir — 1 o -1
+     */
+    moveBlended(target, chaseRatio = 0.6, lateralDir = 1) {
+        if (!target) { this.stop(); return; }
+        const dx   = target.x - this.x;
+        const dy   = target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist === 0) { this.stop(); return; }
+
+        const fwdX     = dx / dist;
+        const fwdY     = dy / dist;
+        const perpX    = (-dy / dist) * lateralDir;
+        const perpY    = ( dx / dist) * lateralDir;
+        const latRatio = 1 - chaseRatio;
+
+        this._facingAngle = Math.atan2(dy, dx);
+        this.body.setVelocity(
+            (fwdX * chaseRatio + perpX * latRatio) * this._speed,
+            (fwdY * chaseRatio + perpY * latRatio) * this._speed
+        );
     }
 
     stop() {
@@ -410,6 +426,14 @@ export default class Enemy extends BaseCharacter {
         this.body.setVelocity((nx / length) * speed, (ny / length) * speed);
     }
 
+    // ─────────────────────────────────────────
+    //  ESQUIVA DE PROYECTILES
+    // ─────────────────────────────────────────
+
+    /**
+     * Detecta proyectiles enemigos que se aproximan y esquiva perpendicularmente.
+     * La dirección se alterna cada esquiva para evitar zigzag errático.
+     */
     tryDodgeIncomingProjectiles(time = this.scene?.time?.now ?? 0) {
         if (!this.scene?.projectiles || !this.body || this.isDead()) return;
         if (time < this._lastDodgeTime + this._dodgeCooldown) return;
@@ -418,75 +442,128 @@ export default class Enemy extends BaseCharacter {
 
         for (const projectile of projectiles) {
             if (!projectile?.active) continue;
+            // Solo esquivar proyectiles del jugador
+            if (projectile.team === 'enemy') continue;
 
-            const dx = this.x - projectile.x;
-            const dy = this.y - projectile.y;
+            const dx     = this.x - projectile.x;
+            const dy     = this.y - projectile.y;
             const distSq = dx * dx + dy * dy;
-
             if (distSq > this._projectileAwarenessRadius * this._projectileAwarenessRadius) continue;
 
             const vx = projectile.body?.velocity?.x ?? 0;
             const vy = projectile.body?.velocity?.y ?? 0;
-
             if (Math.abs(vx) < 1 && Math.abs(vy) < 1) continue;
 
-            // Comprobar si el proyectil viene hacia el enemigo
+            // Solo esquivar si el proyectil viene hacia el enemigo
             const towardDot = dx * vx + dy * vy;
             if (towardDot <= 0) continue;
 
             const projSpeed = Math.hypot(vx, vy);
             if (projSpeed < 1) continue;
 
+            // Alternar dirección de esquiva en cada dodge
+            this._currentDodgeDir = this._currentDodgeDir === 0
+                ? (Math.random() < 0.5 ? 1 : -1)
+                : -this._currentDodgeDir;
+
             const perpX = -vy / projSpeed;
-            const perpY = vx / projSpeed;
-            const dodgeDir = Math.random() < 0.5 ? -1 : 1;
+            const perpY =  vx / projSpeed;
 
             this.body.setVelocity(
-                perpX * this._speed * this._dodgeSpeedMultiplier * dodgeDir,
-                perpY * this._speed * this._dodgeSpeedMultiplier * dodgeDir
+                perpX * this._speed * this._dodgeSpeedMultiplier * this._currentDodgeDir,
+                perpY * this._speed * this._dodgeSpeedMultiplier * this._currentDodgeDir
             );
 
-            this._lastDodgeTime = time;
+            this._lastDodgeTime  = time;
             this._knockbackUntil = time + this._dodgeDuration;
             return;
         }
     }
 
     // ─────────────────────────────────────────
-    //  COMBATE — lógica base, personalizable via hooks
+    //  REPOSICIONAMIENTO SIN LOS
     // ─────────────────────────────────────────
 
     /**
-     * Lógica de combate principal.
-     * Decide si perseguir, retroceder o atacar según distancias.
-     * El comportamiento dentro de cada zona se delega a los hooks.
+     * Intenta rodear el obstáculo que bloquea la LOS usando moveBlended.
+     * Si detecta que está atascado (apenas se ha movido), invierte la dirección
+     * de rodeo para salir del bloqueo.
+     *
+     * @param {{x:number, y:number}} target — último punto conocido del jugador
+     * @param {number} now — timestamp actual
      */
+    _repositionTowardsTarget(target, now) {
+        // Cambiar dirección de rodeo periódicamente
+        if (!this._reposNextSwitchTime || now >= this._reposNextSwitchTime) {
+            this._reposStrafeDir     *= -1;
+            this._reposNextSwitchTime = now + Phaser.Math.Between(500, 1100);
+        }
+
+        // Detección de atasco
+        this._reposStuckCheckTimer = (this._reposStuckCheckTimer ?? 0) + this.scene.game.loop.delta;
+        if (this._reposStuckCheckTimer >= this._reposStuckCheckMs) {
+            const moved = Math.hypot(this.x - this._reposLastX, this.y - this._reposLastY);
+            if (moved < this._reposStuckThreshold) {
+                // Invertir dirección inmediatamente
+                this._reposStrafeDir     *= -1;
+                this._reposNextSwitchTime = now + Phaser.Math.Between(400, 900);
+            }
+            this._reposLastX           = this.x;
+            this._reposLastY           = this.y;
+            this._reposStuckCheckTimer = 0;
+        }
+
+        const dist       = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
+        const chaseRatio = dist > 200 ? 0.65 : 0.4; // más lateral cuando ya está cerca del último punto
+        this.moveBlended(target, chaseRatio, this._reposStrafeDir);
+    }
+
+    // ─────────────────────────────────────────
+    //  COMBATE PRINCIPAL
+    // ─────────────────────────────────────────
+
     movementAlerted(target) {
         if (!this.isAlerted() || !target) return;
 
-        const dist = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
+        const now         = this.scene.time.now;
+        const dist        = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
         const optimalDist = this.weapon?.optimalDistance ?? 200;
-        const range = this.weapon?.range ?? 300;
-        const now = this.scene.time.now;
-        const hasLOS = this.hasLineOfSight(target);
+        const range       = this.weapon?.range ?? 300;
+        const hasLOS      = this.hasLineOfSight(target);
 
-        // Si no hay línea de visión, recolocarse en vez de disparar
+        // Actualizar memoria si hay LOS
+        if (hasLOS) {
+            this._lastKnownPlayerX = target.x;
+            this._lastKnownPlayerY = target.y;
+            this._lastSeenTime     = now;
+        }
+
+        // ── Sin LOS: ir al último punto conocido intentando rodear el obstáculo ──
         if (!hasLOS) {
             this._inRangeStartTime = 0;
 
-            if (!this._nextStrafeSwitchTime || now >= this._nextStrafeSwitchTime) {
-                this._strafeDirection = Math.random() < 0.5 ? -1 : 1;
-                this._nextStrafeSwitchTime = now + Phaser.Math.Between(500, 1100);
-            }
+            const memoryValid = this._lastKnownPlayerX !== null
+                && (now - this._lastSeenTime) < this._memoryDuration;
 
-            if (dist > optimalDist * 0.9) {
-                this.onChaseMovement(target, dist);
+            if (memoryValid) {
+                const memTarget  = { x: this._lastKnownPlayerX, y: this._lastKnownPlayerY };
+                const distToMem  = Phaser.Math.Distance.Between(this.x, this.y, memTarget.x, memTarget.y);
+
+                if (distToMem < 30) {
+                    // Llegó al último punto conocido pero sin ver al jugador → buscar
+                    this._transitionTo(StatusEnemy.SEARCH, { time: now });
+                } else {
+                    this._repositionTowardsTarget(memTarget, now);
+                }
             } else {
-                this.moveLateral(target, 0.8, this._strafeDirection);
+                // Memoria expirada → buscar
+                this._transitionTo(StatusEnemy.SEARCH, { time: now });
             }
 
             return;
         }
+
+        // ── Con LOS ──
 
         if (dist < optimalDist * 0.65) {
             this.onRetreatMovement(target, dist);
@@ -500,6 +577,7 @@ export default class Enemy extends BaseCharacter {
             return;
         }
 
+        // En rango óptimo
         this.onCombatMovement(target, dist);
 
         if (this.weapon && typeof this.weapon.attack === 'function') {
@@ -525,7 +603,7 @@ export default class Enemy extends BaseCharacter {
 
         if (dist < 10) {
             data.currentPointIndex = (data.currentPointIndex + 1) % points.length;
-            data.pauseTimer = 0;
+            data.pauseTimer        = 0;
             return;
         }
 
@@ -608,15 +686,14 @@ export default class Enemy extends BaseCharacter {
         this.dropBread();
         this.dropSpecialItem();
 
-        // Sprite de muerte
         const dedTexture = this._textureKeyFor('ded');
         if (dedTexture && this.scene.textures.exists(dedTexture)) {
             this.anims?.stop();
             this.setTexture(dedTexture);
         } else {
             const fallback = `${this.texture.key}_corpse`;
-            if      (this.scene.textures.exists(fallback))        this.setTexture(fallback);
-            else if (this.scene.textures.exists('enemy_corpse'))  this.setTexture('enemy_corpse');
+            if      (this.scene.textures.exists(fallback))       this.setTexture(fallback);
+            else if (this.scene.textures.exists('enemy_corpse')) this.setTexture('enemy_corpse');
         }
 
         if (this.body) {
@@ -668,11 +745,9 @@ export default class Enemy extends BaseCharacter {
     dropSpecialItem() {
         if (!this.specialDrop) return;
         const { dx, dy } = this._randomDropOffset();
-        const spawnX = this.x + dx;
-        const spawnY = this.y + dy;
         switch (this.specialDrop) {
-            case 'mask': new DropMask(this.scene, spawnX, spawnY); break;
-            case 'tail': new DropTail(this.scene, spawnX, spawnY); break;
+            case 'mask': new DropMask(this.scene, this.x + dx, this.y + dy); break;
+            case 'tail': new DropTail(this.scene, this.x + dx, this.y + dy); break;
         }
     }
 
@@ -682,7 +757,6 @@ export default class Enemy extends BaseCharacter {
         const totalProbability = this.lootTable.reduce((sum, e) => sum + e.probability, 0);
         const maxRange         = Math.max(100, totalProbability);
         const random           = Phaser.Math.Between(1, maxRange);
-
         if (random >= totalProbability) return;
 
         let cumulative   = 0;
@@ -694,9 +768,8 @@ export default class Enemy extends BaseCharacter {
         if (!selectedItem) return;
 
         const angle  = Phaser.Math.FloatBetween(0, Math.PI * 2);
-        const dist   = 60;
-        const spawnX = this.x + Math.cos(angle) * dist;
-        const spawnY = this.y + Math.sin(angle) * dist;
+        const spawnX = this.x + Math.cos(angle) * 60;
+        const spawnY = this.y + Math.sin(angle) * 60;
 
         if      (selectedItem.id === 'mask') new DropMask(this.scene, spawnX, spawnY);
         else if (selectedItem.id === 'tail') new DropTail(this.scene, spawnX, spawnY);
@@ -748,7 +821,6 @@ export default class Enemy extends BaseCharacter {
         }
         this._visionAlertFlashUntil = 0;
         if (this.tintTopLeft !== 0xFF0000) this.clearTint();
-
     }
 
     _resolveSpriteBaseKey(textureKey) {
@@ -757,13 +829,8 @@ export default class Enemy extends BaseCharacter {
         return match ? match[1] : null;
     }
 
-    _textureKeyFor(state) {
-        return this._spriteBaseKey ? `${this._spriteBaseKey}_${state}` : null;
-    }
-
-    _animKeyFor(state) {
-        return this._spriteBaseKey ? `${this._spriteBaseKey}-${state}` : null;
-    }
+    _textureKeyFor(state) { return this._spriteBaseKey ? `${this._spriteBaseKey}_${state}` : null; }
+    _animKeyFor(state)    { return this._spriteBaseKey ? `${this._spriteBaseKey}-${state}` : null; }
 
     _updateFacingFromVelocity() {
         if (!this.body) return;
@@ -797,11 +864,13 @@ export default class Enemy extends BaseCharacter {
     }
 
     // ─────────────────────────────────────────
-    //  PREUPDATE — bucle principal
+    //  PREUPDATE
     // ─────────────────────────────────────────
 
     preUpdate(time, delta) {
+        // La esquiva tiene prioridad sobre el resto del movimiento
         this.tryDodgeIncomingProjectiles(time);
+
         const isUnderKnockback = time < this._knockbackUntil;
 
         if (!isUnderKnockback) {
@@ -816,7 +885,6 @@ export default class Enemy extends BaseCharacter {
                 case StatusEnemy.ALERTED:
                     if (this.scene.duck) this.movementAlerted(this.scene.duck);
                     break;
-                // DEAD y STUNNED no hacen nada por defecto
             }
         }
 
@@ -833,16 +901,15 @@ export default class Enemy extends BaseCharacter {
     //  HELPERS PÚBLICOS
     // ─────────────────────────────────────────
 
-    mostrarNombre()  { console.log(`Mi nombre es ${this._nombre}`); }
-    getHP()          { return this._hp; }
-    getState()       { return this._state; }
-    isDead()         { return this._state === StatusEnemy.DEAD; }
-    isAlerted()      { return this._state === StatusEnemy.ALERTED; }
-    isStunned()      { return this._state === StatusEnemy.STUNNED; }
+    mostrarNombre()    { console.log(`Mi nombre es ${this._nombre}`); }
+    getHP()            { return this._hp; }
+    getState()         { return this._state; }
+    isDead()           { return this._state === StatusEnemy.DEAD; }
+    isAlerted()        { return this._state === StatusEnemy.ALERTED; }
+    isStunned()        { return this._state === StatusEnemy.STUNNED; }
     setVisionRadius(r) { this._visionRadius = r; }
 
     setState(state) {
-        // Mantener compatibilidad con código externo que llame setState directamente
         this._transitionTo(state);
     }
 
