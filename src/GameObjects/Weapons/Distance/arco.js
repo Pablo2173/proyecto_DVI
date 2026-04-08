@@ -94,6 +94,8 @@ export default class Arco extends Weapon {
         this.isCharging = false;
         this.maxChargeReachedAt = null;
 
+        this.scene.sound.play("disparo_arco", { volume: 1.5 }); 
+
         // Siempre dispara al soltar, el rango escala con la carga
         const chargeRatio = this.chargePercent / 100;
         this._piercing = (this.chargePercent >= 100);
@@ -241,6 +243,9 @@ export default class Arco extends Weapon {
     // No recargar automáticamente
     on_wait() { }
     on_shoot() {
+        if (this.isEnemy) {
+            this.scene.sound.play("disparo_arco", { volume: 1.5 });
+        }
         this.consumeDurability(1);
         this._syncWearBar();
     }

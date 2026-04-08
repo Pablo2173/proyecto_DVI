@@ -315,14 +315,15 @@ export default class Duck extends BaseCharacter {
         this.scene.time.delayedCall(this.dashDuration, () => {
             if (this.state === DUCK_STATE.DASHING) {
                 this.weapon?.onDash?.();
+
+                this.isDashInvisible = false;
+
+                // Restaurar alpha solo si no hay otra fuente de invisibilidad activa.
+                if (!this.isInvisible && this.state !== DUCK_STATE.INVISIBLE && this.invisibleUntil <= this.scene.time.now) {
+                    this.setAlpha(1);
+                }
+
                 if (this.state === DUCK_STATE.DASHING) {
-                    this.isDashInvisible = false;
-
-                    // Restaurar alpha solo si no hay otra fuente de invisibilidad activa.
-                    if (!this.isInvisible && this.state !== DUCK_STATE.INVISIBLE && this.invisibleUntil <= this.scene.time.now) {
-                        this.setAlpha(1);
-                    }
-
                     this.setState(DUCK_STATE.IDLE);
                 }
             }
