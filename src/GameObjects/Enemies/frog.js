@@ -2,14 +2,19 @@ import Enemy, { StatusEnemy } from "../enemy";
 
 export default class Frog extends Enemy {
 
-    constructor(scene, name, x, y, texture, frame, weapon = null, movementType, visionRadius = 0, hp = 80, speed = 110, hasFeather) {
+    constructor(scene, name, x, y, texture, frame, weapon = null, movementType, visionRadius = 0, hp = 80, speed = 110, hasFeather = false) {
         // Pasamos null como weapon para que Enemy no intente equipar nada en super()
         super(scene, name, x, y, texture, frame, visionRadius, hp, speed, null, movementType, hasFeather);
         this.setScale(4);
+    }
 
-        // La rana no suelta item especial por defecto
-        this.specialDrop = null;
-        this.hasFeather = hasFeather;
+    preUpdate(time, delta) {
+        super.preUpdate?.(time, delta);
+        // Siempre forzar inmovilidad
+        if (this.body) {
+            this.body.setImmovable(true);
+            this.body.setVelocity(0, 0);
+        }
     }
     
     takeDamage(damage) {
