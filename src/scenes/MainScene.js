@@ -24,6 +24,7 @@ import SpeedAttackPotion from '../GameObjects/Consumables/SpeedAttackPotion.js';
 
 
 import DropBread from '../GameObjects/Consumables/Drops/dropBread.js';
+import DropFeather from '../GameObjects/Consumables/Drops/dropFeather.js';
 
 
 import Enemy from '../GameObjects/enemy.js';
@@ -195,7 +196,7 @@ export default class MainScene extends Phaser.Scene {
         });
 
         this.load.image('enemy', enemy_sprite);
-        
+
         // Cargar spritesheets de zorro (4 frames cada uno, 32x32)
         this.load.spritesheet('zorro_idle', zorro_idle, {
             frameWidth: 32,
@@ -209,7 +210,7 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('zorro_ded', zorro_ded);
         // Alias para el sprite muerto (usado en Enemy.die())
         this.load.image('zorro_idle_corpse', zorro_ded);
-        
+
         // Cargar spritesheets de mapache (4 frames cada uno, 32x32)
         this.load.spritesheet('mapache_idle', mapache_idle, {
             frameWidth: 32,
@@ -235,7 +236,7 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('cuervo_hit', cuervo_hit);
         this.load.image('cuervo_ded', cuervo_ded);
         this.load.image('cuervo_idle_corpse', cuervo_ded);
-        
+
         this.load.audio('cuack', cuackSound);
         this.load.audio('death_sound', deathSound);
 
@@ -249,9 +250,10 @@ export default class MainScene extends Phaser.Scene {
         Bala.preload(this);
         Escoba.preload(this);
 
-        // Preload de consumibles
+
+
         Bread.preload(this);
-        
+
         AttackPotion.preload(this);
         SpeedPotion.preload(this);
         SpeedAttackPotion.preload(this);
@@ -344,6 +346,12 @@ export default class MainScene extends Phaser.Scene {
         this.estetica1Layer = this.map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
         this.estetica1Layer.setScale(SCALE);
 
+        this.puertaAbiertaLayer = this.map.createLayer('puerta', tilesets, 0, 0);
+        this.puertaAbiertaLayer.setScale(SCALE);
+
+        this.puertaCerradaLayer = this.map.createLayer('puertaCerrada', tilesets, 0, 0);
+        this.puertaCerradaLayer.setScale(SCALE);
+
         this.vallaLayer = this.map.createLayer('Valla', tilesets, 0, 0);
         this.vallaLayer.setScale(SCALE);
 
@@ -396,6 +404,7 @@ export default class MainScene extends Phaser.Scene {
         // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
         // Esto evita depender de propiedades "collides" en cada tile del tileset.
         this.colisionLayer.setCollisionByExclusion([-1], true);
+        this.puertaCerradaLayer.setCollisionByExclusion([-1], true);
         this.vallaLayer.setCollisionByExclusion([-1], true);
         this.desnivelLayer.setCollisionByExclusion([-1], true);
         this.zonasAcuaticasLayer.setCollisionByExclusion([-1], true);
@@ -629,61 +638,7 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         // CONSUMIBLES DESDE TILED
         // ─────────────────────────────────────────
-        // Sistema para evitar repeticiones: tipos disponibles y usados
-        this.availableConsumableTypes = ['bread', 'speed_potion', 'attack_potion', 'speed_attack_potion'];
-        this.usedConsumableTypes = [];
-
-        const consumableLayer = this.map.getObjectLayer('consumables') || this.map.getObjectLayer('consummable') || this.map.getObjectLayer('consumable');
-
-        if (consumableLayer) {
-            consumableLayer.objects.forEach(obj => {
-                const objectName = (obj.name || '').toLowerCase();
-                const objectTypeRaw = (obj.type || '').toLowerCase();
-                const objectTypeProp = (obj.properties && obj.properties.find(p => p.name === 'type')?.value || '').toLowerCase();
-                const objectType = objectTypeRaw || objectTypeProp;
-
-                // Aceptar nombre/tipo 'consumable' o 'consummable' (se aceptan ambos por si hay typo)
-                const isConsumableObject =
-                    objectName === 'consumable' || objectName === 'consummable' ||
-                    objectType === 'consumable' || objectType === 'consummable';
-                if (!isConsumableObject) {
-                    return;
-                }
-
-                let selectedType = null;
-
-                // Si en Tiled el objeto viene con obj.type: 'speed_potion', use eso.
-                if (objectType && this.availableConsumableTypes.includes(objectType)) {
-                    selectedType = objectType;
-                }
-
-                if (!selectedType) {
-                    // Elegir tipo aleatorio sin repetición
-                    if (this.availableConsumableTypes.length > 0) {
-                        const randomIndex = Phaser.Math.Between(0, this.availableConsumableTypes.length - 1);
-                        selectedType = this.availableConsumableTypes.splice(randomIndex, 1)[0];
-                        this.usedConsumableTypes.push(selectedType);
-                    } else {
-                        // Si se agotaron, resetear y permitir repeticiones
-                        this.availableConsumableTypes = [...this.usedConsumableTypes];
-                        this.usedConsumableTypes = [];
-                        const randomIndex = Phaser.Math.Between(0, this.availableConsumableTypes.length - 1);
-                        selectedType = this.availableConsumableTypes.splice(randomIndex, 1)[0];
-                        this.usedConsumableTypes.push(selectedType);
-                    }
-                }
-
-                if (!selectedType) {
-                    console.warn('Consumable sin tipo válido:', obj);
-                    return;
-                }
-
-                console.log('Spawn consumable:', selectedType, 'en', obj.x, obj.y, 'layer', consumableLayer.name);
-                this.createConsumable(selectedType, obj.x * SCALE, obj.y * SCALE);
-            });
-        } else {
-            console.warn('No se encontró una capa de consumables en Tiled. Nombres válidos: consumables, consummable, consumable.');
-        }
+        this.setupConsumablesFromLayer(SCALE);
 
 
         // Eventos de audio para todos los enemigos
@@ -700,6 +655,7 @@ export default class MainScene extends Phaser.Scene {
         // COLISIONES
         // ─────────────────────────────────────────
         this.physics.add.collider(this.duck, this.colisionLayer);
+        this.physics.add.collider(this.duck, this.puertaCerradaLayer);
         this.physics.add.collider(
             this.duck,
             this.desnivelLayer,
@@ -707,14 +663,14 @@ export default class MainScene extends Phaser.Scene {
             (duck) => duck?.body?.velocity?.y < 0,
             this
         );
-        
+
         this.physics.add.collider(
-                this.duck,
-                this.vallaLayer,
-                null,
-                (duck) => duck?.state !== DUCK_STATE.DASHING, // si estas haciendo dash no tienes colision con las vallas
-                this
-            );
+            this.duck,
+            this.vallaLayer,
+            null,
+            (duck) => duck?.state !== DUCK_STATE.DASHING, // si estas haciendo dash no tienes colision con las vallas
+            this
+        );
 
         // Colisiones con todos los enemigos
         this.enemies.getChildren().forEach(enemy => {
@@ -728,6 +684,11 @@ export default class MainScene extends Phaser.Scene {
 
         // proyectil -> capa de colisión del mapa
         this.physics.add.collider(this.projectiles, this.colisionLayer, (projectile) => {
+            if (!projectile || !projectile.active) return;
+            projectile.destroy();
+        });
+
+        this.physics.add.collider(this.projectiles, this.puertaCerradaLayer, (projectile) => {
             if (!projectile || !projectile.active) return;
             projectile.destroy();
         });
@@ -1015,6 +976,7 @@ export default class MainScene extends Phaser.Scene {
 
         if (!enemy.ignoresObstacleHitbox) {
             this.physics.add.collider(enemy, this.colisionLayer);
+            this.physics.add.collider(enemy, this.puertaCerradaLayer);
             this.physics.add.collider(enemy, this.vallaLayer);
             this.physics.add.collider(enemy, this.zonasAcuaticasLayer);
         }
@@ -1341,6 +1303,84 @@ export default class MainScene extends Phaser.Scene {
         }
     }
 
+    /*
+        CREACCIÓN DE CONSUMIBLES USANDO LA CAPA DE CONSUMABLES DE TILED
+    */
+    setupConsumablesFromLayer(scale) {
+        const consumableLayer = this.map.getObjectLayer('consumables') || this.map.getObjectLayer('consummable') || this.map.getObjectLayer('consumable');
+
+        if (!consumableLayer || !Array.isArray(consumableLayer.objects)) {
+            console.warn('No se encontró una capa de consumables en Tiled. Nombres válidos: consumables, consummable, consumable.');
+            return;
+        }
+
+        const allConsumableTypes = ['bread', 'attack_potion', 'speed_potion', 'speed_attack_potion', 'feather'];
+
+        consumableLayer.objects.forEach((obj) => {
+            const resolvedType = this.resolveConsumableTypeFromObject(obj, allConsumableTypes);
+            const selectedType = resolvedType || Phaser.Utils.Array.GetRandom(allConsumableTypes);
+
+            if (!selectedType) {
+                console.warn('Consumable sin tipo válido:', obj);
+                return;
+            }
+
+            this.createConsumable(selectedType, obj.x * scale, obj.y * scale);
+        });
+    }
+
+    /**
+     * Intenta resolver el tipo de consumible desde el objeto de Tiled.
+     * Prioridad: obj.name -> property.name.
+     * Si no coincide con un tipo válido, el caller debe usar aleatorio.
+     * @param {Phaser.Types.Tilemaps.TiledObject} obj
+     * @param {string[]} validTypes
+     * @returns {string|null}
+     */
+    resolveConsumableTypeFromObject(obj, validTypes) {
+        const normalize = (value) => {
+            const normalized = String(value || '')
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, '_')
+                .replace(/-/g, '_');
+
+            switch (normalized) {
+                case 'dropfeather':
+                case 'drop_feather':
+                    return 'feather';
+                case 'bread_item':
+                case 'dropbread':
+                case 'drop_bread':
+                    return 'bread';
+                case 'attackpotion':
+                    return 'attack_potion';
+                case 'speedpotion':
+                    return 'speed_potion';
+                case 'speed_attackpotion':
+                case 'speedattackpotion':
+                    return 'speed_attack_potion';
+                default:
+                    return normalized;
+            }
+        };
+
+        const objectName = normalize(obj?.name);
+        if (objectName && objectName !== 'consumable' && objectName !== 'consummable' && validTypes.includes(objectName)) {
+            return objectName;
+        }
+
+        const propertyName = Array.isArray(obj?.properties)
+            ? normalize(obj.properties.find(p => String(p.name || '').toLowerCase() === 'name')?.value)
+            : '';
+
+        if (propertyName && propertyName !== 'consumable' && propertyName !== 'consummable' && validTypes.includes(propertyName)) {
+            return propertyName;
+        }
+
+        return null;
+    }
+
     /**
      * Crea un consumible basado en el tipo especificado
      * @param {string} type - Tipo del consumible ('bread', 'attack_potion', 'speed_potion', etc.)
@@ -1360,7 +1400,10 @@ export default class MainScene extends Phaser.Scene {
                 break;
             case 'speed_attack_potion':
                 new SpeedAttackPotion(this, x, y);
-                break;  
+                break;
+            case 'feather':
+                new DropFeather(this, x, y);
+                break;
             default:
                 console.warn(`Tipo de consumible desconocido: ${type}`);
         }
