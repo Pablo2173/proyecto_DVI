@@ -654,8 +654,14 @@ export default class Enemy extends BaseCharacter {
             this._transitionTo(StatusEnemy.ALERTED, { source: 'damage' });
         }
         console.log(`${this._nombre} recibió ${damage} de daño. HP: ${this._hp}`);
+    
         this.flashRed();
+        if (!this._lastDamageSound || this.scene.time.now > this._lastDamageSound + 100) {
+            this.scene.sound.play('damage_hit', { volume: 0.6 });
+            this._lastDamageSound = this.scene.time.now;
+        }
         this._showHitVisual();
+
         if (this._hp <= 0) this.die();
     }
 
@@ -680,6 +686,11 @@ export default class Enemy extends BaseCharacter {
         this._isShowingHit          = false;
         this._visionAlertFlashUntil = 0;
         console.log(`${this._nombre} ha muerto`);
+
+        this.scene.sound.play('death_sound', {
+            volume: 0.7,
+            rate: Phaser.Math.FloatBetween(0.92, 1.08)
+        });
 
         this.dropWeapon();
         this.dropFeather();

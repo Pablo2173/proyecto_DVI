@@ -90,7 +90,11 @@ export default class Escoba extends Weapon {
     _releaseCharge() {
         if (!this.isCharging) return;
         this.isCharging = false;
-
+        
+        this.scene.sound.play('escoba_sound', {
+            volume: 0.8,
+            rate: Phaser.Math.FloatBetween(0.92, 1.08)
+        });
         // Daño base + multiplicador según carga (1x hasta 1.5x)
         const damageMult = 1 + (this.chargeLevel * 0.5);
         

@@ -67,7 +67,11 @@ export default class Ramita extends Weapon {
     attack() {
         if (!this._canAttack()) return;
         this.lastAttackTime = this.scene.time.now;
-
+        
+        this.scene.sound.play('ramita_sound', {
+            volume: 0.5,
+            rate: Phaser.Math.FloatBetween(0.95, 1.05)
+        });
         new RamitaSwing(this.scene, this.owner.x, this.owner.y, {
             owner: this.owner,
             team: this.owner?.team ?? 'neutral',

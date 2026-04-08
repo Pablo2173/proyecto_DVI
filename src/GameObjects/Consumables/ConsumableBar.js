@@ -302,7 +302,7 @@ export default class ConsumableBar {
         this.controlsText = this.scene.add.text(
             this.panelX + 20,
             this.panelY + this.panelHeight - 18,
-            'WASD MOVER · ESPACIO DASH · E RECOGER · CLICK ATACAR · C CUACK',
+            'WASD MOVER · ESPACIO DASH · E INTERACTUAR · CLICK ATACAR · C CUACK',
             {
                 fontFamily: 'ReturnOfTheBoss',
                 fontSize: '20px',

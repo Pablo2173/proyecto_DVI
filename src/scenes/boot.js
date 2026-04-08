@@ -17,6 +17,17 @@ import configTreesUrl from "../../assets/config/5_trees.png?url";
 // ───────── AUDIO ─────────
 import menuMusicUrl from "../../assets/sounds/musica_menu.mp3?url";
 import arcoSfxUrl from "../../assets/sounds/disparo_arco.mp3?url";
+import damageRecibidoUrl from "../../assets/sounds/daño_recibido.mp3?url";
+import cuchilloUrl from "../../assets/sounds/cuchillo.mp3?url";
+import ramitaUrl from "../../assets/sounds/ramita.mp3?url";
+import mazoUrl from "../../assets/sounds/mazo.mp3?url";
+import escobaUrl from "../../assets/sounds/escoba.mp3?url";
+import armaUrl from "../../assets/sounds/m4.mp3?url";
+import deathUrl from "../../assets/sounds/death.mp3?url";
+
+
+
+
 export default class Boot extends Phaser.Scene {
   constructor() {
     super("Boot");
@@ -57,6 +68,13 @@ export default class Boot extends Phaser.Scene {
     // ───────── AUDIO ─────────
     this.load.audio("menu_music", menuMusicUrl);
     this.load.audio("disparo_arco", arcoSfxUrl);
+    this.load.audio('damage_hit', damageRecibidoUrl);
+    this.load.audio('cuchillo_sound', cuchilloUrl);
+    this.load.audio('ramita_sound', ramitaUrl);
+    this.load.audio('mazo_sound', mazoUrl);
+    this.load.audio('escoba_sound', escobaUrl);
+    this.load.audio('arma_sound', armaUrl);
+    this.load.audio('death_sound', deathUrl);
 
     // ───────── MENU ─────────
     this.load.image("sky", skyUrl);

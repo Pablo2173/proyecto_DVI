@@ -215,6 +215,14 @@ export default class Duck extends BaseCharacter {
     afterTakeDamage(amount, previousHealth, newHealth) {
         console.log(`Vida ahora: ${newHealth}`);
 
+        if (!this._lastDamageSound || this.scene.time.now > this._lastDamageSound + 120) {
+            this.scene.sound.play('damage_hit', {
+                volume: 0.6,
+                rate: Phaser.Math.FloatBetween(0.95, 1.05)
+            });
+            this._lastDamageSound = this.scene.time.now;
+        }
+
         this.updateFeathersFromHealth();
 
         if (newHealth <= 0 || this.scene?.isPlayerDead || !this.scene?.time) {

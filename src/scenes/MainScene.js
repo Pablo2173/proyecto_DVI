@@ -602,13 +602,15 @@ export default class MainScene extends Phaser.Scene {
         this.input.on('pointerdown', (pointer) => {
             if (this.isPlayerDead) return;
             if (pointer?.button !== 0) return;
-            if (this.duck && this.duck.weapon) {
+            console.log('[INPUT] pointerdown — weapon:', this.duck?.weapon?.constructor?.name, '| active:', this.duck?.weapon?.active);
+            if (this.duck && this.duck.weapon && this.duck.weapon.attack) {
                 this.duck.weapon.attack();
             }
         });
 
         this.input.on('pointerup', (pointer) => {
             if (pointer?.button !== 0) return;
+            console.log('[INPUT] pointerup — arma actual:', this.duck?.weapon?.constructor?.name);
             if (this.duck && this.duck.weapon && this.duck.weapon.releaseAttack) {
                 this.duck.weapon.releaseAttack();
             }
@@ -616,7 +618,7 @@ export default class MainScene extends Phaser.Scene {
 
         // Tecla E: usada exclusivamente para recoger items de tipo 'interact' (DropMask)
         this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-
+        
         // ─────────────────────────────────────────
         // ENEMIGOS DESDE RUTAS
         // ─────────────────────────────────────────

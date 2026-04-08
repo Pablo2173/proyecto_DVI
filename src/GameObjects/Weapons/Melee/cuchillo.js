@@ -34,6 +34,11 @@ export default class Cuchillo extends Weapon {
         if (!this._canAttack()) return;
         this.lastAttackTime = this.scene.time.now;
 
+        this.scene.sound.play('cuchillo_sound', {
+            volume: 0.5,
+            rate: Phaser.Math.FloatBetween(0.96, 1.04)
+        });
+
         new CuchilloSwing(this.scene, this.owner.x, this.owner.y, {
             owner: this.owner,
             team: this.owner?.team ?? 'neutral',

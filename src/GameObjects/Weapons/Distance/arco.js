@@ -94,7 +94,10 @@ export default class Arco extends Weapon {
         this.isCharging = false;
         this.maxChargeReachedAt = null;
 
-        this.scene.sound.play("disparo_arco", { volume: 1.5 }); 
+        this.scene.sound.play('disparo_arco', {
+            volume: 0.5,
+            rate: Phaser.Math.FloatBetween(0.92, 1.08)
+        });
 
         // Siempre dispara al soltar, el rango escala con la carga
         const chargeRatio = this.chargePercent / 100;

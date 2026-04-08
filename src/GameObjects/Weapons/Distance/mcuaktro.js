@@ -35,6 +35,12 @@ export default class Mcuaktro extends Weapon {
 
     // Called when shooting a bullet
     on_shoot(){
+
+        this.scene.sound.play('arma_sound', {
+            volume: 0.6,
+            rate: Phaser.Math.FloatBetween(0.95, 1.05)
+        });
+        
         if (!this.bar) return;
         
         if (this.isEnemy) {
