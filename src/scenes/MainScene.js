@@ -241,6 +241,7 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('cuervo_hit', cuervo_hit);
         this.load.image('cuervo_ded', cuervo_ded);
         this.load.image('cuervo_idle_corpse', cuervo_ded);
+
         // Sprites de la Rana Comerciante
         this.load.spritesheet('rana_idle', rana_idle, {
             frameWidth: 32,
@@ -758,6 +759,9 @@ export default class MainScene extends Phaser.Scene {
                 key: 'cuervo-idle',
                 frames: this.anims.generateFrameNumbers('cuervo_idle', { start: 0, end: 3 }),
         // Animaciones de Rana
+            });
+        }
+
         if (!this.anims.exists('rana-idle') && this.textures.exists('rana_idle')) {
             this.anims.create({
                 key: 'rana-idle',

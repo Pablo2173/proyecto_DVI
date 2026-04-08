@@ -13,11 +13,11 @@ export default class Frog extends Enemy {
     }
     
     takeDamage(damage) {
-    // Solo reducir vida y mostrar daño, sin alertar ni activar persecución
-    this._hp -= damage;
-    this.flashRed();
-    this._showHitVisual();
-    if (this._hp <= 0) this.die();
-}
+        // Solo reducir vida y mostrar daño, sin alertar ni activar persecución
+        this._hp -= damage;
+        this.flashRed();
+        this._showHitVisual();
+        if (this._hp <= 0) this.die();
+    }
 
 }
