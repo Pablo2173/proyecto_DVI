@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import BaseCharacter from './baseCharacter.js';
+import BaseCharacter from './BaseCharacter.js';
 import { TEAM } from './team.js';
 
 import Arco from './Weapons/Distance/arco.js';
@@ -18,8 +18,9 @@ import DropTail from './Consumables/Drops/dropTail.js';
 const StatusEnemy = {
     IDLE: 0,
     ALERTED: 1,
-    DEAD: 2,
-    STUNNED: 3
+    SEARCH: 2,
+    DEAD: 3,
+    STUNNED: 4
 };
 
 export default class Enemy extends BaseCharacter {
@@ -33,8 +34,8 @@ export default class Enemy extends BaseCharacter {
                 this.body.setCollideWorldBounds(true);
                 this.body.setAllowGravity(false); // Sin gravedad porque estamos haciendo un top-down
                 this.body.setImmovable(false); // Basicamente lo pongo a false para que le puedan empujar
-                this.body.setSize(16, 16); //falta poner el tamanyo del sprite, este es provisional
-                this.body.setOffset(8, 8);
+                this.body.setSize(20, 30);
+                this.body.setOffset(4, 4);
             }
         }
 
@@ -50,7 +51,7 @@ export default class Enemy extends BaseCharacter {
         this._movementData = null; // para almacenar datos específicos del tipo de movimiento (ej. puntos de patrulla)
 
         this._knockbackUntil = 0;
-        this._showVision = true;
+        this._showVision = false;
         this._visionGraphics = scene.add.graphics();
         this._spriteBaseKey = this._resolveSpriteBaseKey(texture);
         this._isShowingHit = false;
@@ -84,6 +85,12 @@ export default class Enemy extends BaseCharacter {
         // Delay antes de atacar cuando está en rango
         this._inRangeStartTime = 0;    // Cuándo el jugador entró en rango por primera vez
         this._attackDelay = 800;       // 1 segundo en ms antes de poder atacar
+
+        // Búsqueda tras perder al jugador: 2 vueltas rápidas y volver a patrulla si no lo re-detecta.
+        this._searchStartTime = 0;
+        this._searchDuration = 1000;
+        this._searchTurns = 2;
+        this._searchStartFacingAngle = this._facingAngle;
 
 
         // equipar arma si fue pasada
@@ -251,23 +258,75 @@ export default class Enemy extends BaseCharacter {
      */
     detectAndAlert(player, time = this.scene?.time?.now ?? 0) {
         if (!player) return false;
-        if (typeof player.isInvisibleState === 'function' && player.isInvisibleState()) {
-            this.resetAlertState();
+
+        const playerIsInvisible = typeof player.isInvisibleState === 'function' && player.isInvisibleState();
+
+        // Solo dejamos de detectar al jugador si está invisible.
+        if (playerIsInvisible) {
+            if (this._state === StatusEnemy.ALERTED) {
+                this._startSearch(time);
+            }
+
+            if (this._state === StatusEnemy.SEARCH && this._searchStartTime > 0) {
+                if (time >= this._searchStartTime + this._searchDuration) {
+                    this._state = StatusEnemy.IDLE;
+                    this._inRangeStartTime = 0;
+                }
+            }
+
             return false;
         }
 
         const seen = this.canSee(player);
         if (this._state === StatusEnemy.DEAD) return false;
-        if (seen && this._state !== StatusEnemy.ALERTED) {
-            this._state = StatusEnemy.ALERTED;
-            this._visionAlertFlashUntil = time + 500;
+
+        if (seen) {
+            if (this._state !== StatusEnemy.ALERTED) {
+                this._state = StatusEnemy.ALERTED;
+                this._visionAlertFlashUntil = time + 500;
+            }
             return true;
         }
+
+        if (this._state === StatusEnemy.ALERTED) {
+            //this._startSearch(time);
+            return false;
+        }
+
+        if (this._state === StatusEnemy.SEARCH && this._searchStartTime > 0) {
+            if (time >= this._searchStartTime + this._searchDuration) {
+                this._state = StatusEnemy.IDLE;
+                this._inRangeStartTime = 0;
+            }
+            return false;
+        }
+
         return false;
+    }
+
+    _startSearch(time = this.scene?.time?.now ?? 0) {
+        this._state = StatusEnemy.SEARCH;
+        this._searchStartTime = time;
+        this._searchStartFacingAngle = this._facingAngle;
+        this._inRangeStartTime = 0;
+        this.stop();
+    }
+
+    _updateSearchFacing(time = this.scene?.time?.now ?? 0) {
+        if (this._state !== StatusEnemy.SEARCH) return;
+        if (this._searchDuration <= 0) return;
+
+        const elapsed = Math.max(0, time - this._searchStartTime);
+        const progress = Phaser.Math.Clamp(elapsed / this._searchDuration, 0, 1);
+        const sweepAngle = (Math.PI * 2) * this._searchTurns * progress;
+        this._facingAngle = this._searchStartFacingAngle + sweepAngle;
     }
 
     updateAwareness(player, time = this.scene?.time?.now ?? 0) {
         this.detectAndAlert(player, time);
+        if (this._state === StatusEnemy.SEARCH) {
+            this._updateSearchFacing(time);
+        }
         this._updateVisionAlertFlash(time);
         this.drawVision({ color: 0xff0000, fillAlpha: 0.08 });
     }
@@ -300,7 +359,9 @@ export default class Enemy extends BaseCharacter {
     onAudioEvent(audioEvent) {
         if (!audioEvent || typeof audioEvent.time !== 'number') return;
         if (typeof this.scene?.duck?.isInvisibleState === 'function' && this.scene.duck.isInvisibleState()) {
-            this.resetAlertState();
+            if (this._state === StatusEnemy.ALERTED) {
+                this._startSearch(audioEvent.time);
+            }
             return;
         }
 
@@ -324,6 +385,7 @@ export default class Enemy extends BaseCharacter {
         // Si está dentro del radio del sonido, se alerta
         if (distance <= soundRadius && this._state !== StatusEnemy.ALERTED) {
             this._state = StatusEnemy.ALERTED;
+            this._visionAlertFlashUntil = audioEvent.time + 500;
         }
     }
 
@@ -350,11 +412,12 @@ export default class Enemy extends BaseCharacter {
     }
 
     resetAlertState() {
-        if (this._state !== StatusEnemy.ALERTED) return;
+        if (this._state !== StatusEnemy.ALERTED && this._state !== StatusEnemy.SEARCH) return;
 
         this._state = StatusEnemy.IDLE;
         this._visionAlertFlashUntil = 0;
         this._inRangeStartTime = 0;
+        this._searchStartTime = 0;
         this.stop();
 
         if (this.tintTopLeft !== 0xFF0000) {
@@ -432,7 +495,7 @@ export default class Enemy extends BaseCharacter {
     }
 
     dropBread() {
-        // Cada enemigo suelta exactamente 3 panes al morir
+            // Cada enemigo suelta exactamente 3 panes al morir
         for (let i = 0; i < 3; i++) {
             const { dx, dy } = this._randomDropOffset();
             new DropBread(this.scene, this.x + dx, this.y + dy);
@@ -448,7 +511,7 @@ export default class Enemy extends BaseCharacter {
         if (!this.specialDrop) return;
 
         const { dx, dy } = this._randomDropOffset();
-        const spawnX = this.x + dx;
+          const spawnX = this.x + dx;
         const spawnY = this.y + dy;
 
         switch (this.specialDrop) {
@@ -488,9 +551,9 @@ export default class Enemy extends BaseCharacter {
         const maxRange = Math.max(100, totalProbability);
         const random = Phaser.Math.Between(1, maxRange);
 
-        // ❗ REGLA CLAVE: si random >= totalProbability → no hay drop
+        // si random >= totalProbability -> no hay drop
         if (random >= totalProbability) return;
-
+        new DropBread(this.scene, this.x + dx, this.y + dy);
         // 3.3 Selección acumulativa del item
         let cumulative = 0;
         let selectedItem = null;
@@ -534,7 +597,7 @@ export default class Enemy extends BaseCharacter {
         this.dropWeapon();
         this.dropFeather();
         this.dropBread();
-        this.dropSpecialItem(); // sistema unificado: suelta el item especial del enemigo
+        this.dropSpecialItem();
 
         // Cambiar sprite al de muerto si existe
         const dedTexture = this._textureKeyFor('ded');
@@ -639,6 +702,13 @@ export default class Enemy extends BaseCharacter {
     }
 
 
+
+
+
+
+
+
+
     /**
      * Sigue una ruta poligonal establecida
      * El polígono es un array de puntos [{x, y}, {x, y}, ...]
@@ -692,6 +762,9 @@ export default class Enemy extends BaseCharacter {
             if (this._movementType === 'followRoute') {
                 this.movementFollowRoute();
             }
+        } else if (!isUnderKnockback && this._state === StatusEnemy.SEARCH) {
+            this.stop();
+            this._updateSearchFacing(time);
         } else if (!isUnderKnockback && this.isAlerted()) {
             if (this.scene.duck) this.movementAlerted(this.scene.duck);
         }

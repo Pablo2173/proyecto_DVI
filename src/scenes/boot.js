@@ -1,12 +1,21 @@
 import Phaser from "phaser";
 
-// Vite convierte estos imports en URLs válidas en dev y build
+// ───────── MENU ─────────
 import skyUrl from "../../assets/menu/sky.png?url";
 import cloudsUrl from "../../assets/menu/clouds.png?url";
 import backfieldUrl from "../../assets/menu/backfield.png?url";
 import treesUrl from "../../assets/menu/trees.png?url";
 import groundUrl from "../../assets/menu/ground.png?url";
 
+// ───────── CONFIG ─────────
+import configSkyUrl from "../../assets/config/1_sky.png?url";
+import configCloudsUrl from "../../assets/config/2_clouds.png?url";
+import configBackfieldUrl from "../../assets/config/3_rocksandbush.png?url";
+import configGroundUrl from "../../assets/config/4_path.png?url";
+import configTreesUrl from "../../assets/config/5_trees.png?url";
+
+// ───────── AUDIO ─────────
+import menuMusicUrl from "../../assets/sounds/musica_menu.mp3?url";
 
 export default class Boot extends Phaser.Scene {
   constructor() {
@@ -14,12 +23,10 @@ export default class Boot extends Phaser.Scene {
   }
 
   preload() {
-    // Debug: si algo falla lo verás seguro
     this.load.on("loaderror", (file) => {
       console.error("❌ Error cargando asset:", file?.key, file?.src);
     });
 
-    // Barra simple
     const W = this.cameras.main.width;
     const H = this.cameras.main.height;
 
@@ -35,23 +42,23 @@ export default class Boot extends Phaser.Scene {
       bar.destroy();
     });
 
-    // ✅ Carga garantizada
+    this.load.audio("menu_music", menuMusicUrl);
+
     this.load.image("sky", skyUrl);
     this.load.image("clouds", cloudsUrl);
     this.load.image("backfield", backfieldUrl);
     this.load.image("trees", treesUrl);
     this.load.image("ground", groundUrl);
- 
+
+    this.load.image("config_sky", configSkyUrl);
+    this.load.image("config_clouds", configCloudsUrl);
+    this.load.image("config_backfield", configBackfieldUrl);
+    this.load.image("config_ground", configGroundUrl);
+    this.load.image("config_trees", configTreesUrl);
   }
 
   create() {
-    // Verificación extra: si esto da false, algo sigue mal
-    console.log("sky exists?", this.textures.exists("sky"));
-    console.log("clouds exists?", this.textures.exists("clouds"));
-    console.log("backfield exists?", this.textures.exists("backfield"));
-    console.log("trees exists?", this.textures.exists("trees"));
-    console.log("ground exists?", this.textures.exists("ground"));
-
+    console.log("menu_music exists?", this.cache.audio.exists("menu_music"));
     this.scene.start("MenuScene");
   }
 }

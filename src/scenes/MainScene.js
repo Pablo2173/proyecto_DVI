@@ -19,8 +19,8 @@ import Bread from '../GameObjects/Consumables/bread.js';
 
 import AttackPotion from '../GameObjects/Consumables/attackPotion.js';
 
-import SpeedPotion from '../GameObjects/Consumables/speedPotion.js';
-import SpeedAttackPotion from '../GameObjects/Consumables/speedAttackPotion.js';
+import SpeedPotion from '../GameObjects/Consumables/SpeedPotion.js';
+import SpeedAttackPotion from '../GameObjects/Consumables/SpeedAttackPotion.js';
 
 
 import DropBread from '../GameObjects/Consumables/Drops/dropBread.js';
@@ -30,19 +30,21 @@ import Enemy from '../GameObjects/enemy.js';
 import { DUCK_STATE } from '../GameObjects/duck.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
 import sprint_sprite from '../../assets/sprites/duck/sprint_duck.png';
+import dash_duck_sprite from '../../assets/Sprites/duck/dash_duck.png';
 import cuack_sprite from '../../assets/sprites/duck/Cuack_duck.png';
+import duck_swimming_sprite from '../../assets/sprites/duck/swimming_duck.png';
 import enemy_sprite from '../../assets/sprites/player.png';
 
 // Sprites de enemigos específicos
-import zorro_idle from '../../assets/Sprites/Zorro/zorro_idle.png';
-import zorro_run from '../../assets/Sprites/Zorro/zorro_run.png';
-import zorro_hit from '../../assets/Sprites/Zorro/zorro_hit.png';
-import zorro_ded from '../../assets/Sprites/Zorro/zorro_ded.png';
+import zorro_idle from '../../assets/sprites/Zorro/zorro_idle.png';
+import zorro_run from '../../assets/sprites/Zorro/zorro_run.png';
+import zorro_hit from '../../assets/sprites/Zorro/zorro_hit.png';
+import zorro_ded from '../../assets/sprites/Zorro/zorro_ded.png';
 
-import mapache_idle from '../../assets/Sprites/Mapache/mapache_idle.png';
-import mapache_run from '../../assets/Sprites/Mapache/mapache_run.png';
-import mapache_hit from '../../assets/Sprites/Mapache/mapache_hit.png';
-import mapache_ded from '../../assets/Sprites/Mapache/mapache_ded.png';
+import mapache_idle from '../../assets/sprites/Mapache/mapache_idle.png';
+import mapache_run from '../../assets/sprites/Mapache/mapache_run.png';
+import mapache_hit from '../../assets/sprites/Mapache/mapache_hit.png';
+import mapache_ded from '../../assets/sprites/Mapache/mapache_ded.png';
 
 //Sounds
 import cuackSound from '../../assets/sounds/cuack.mp3';
@@ -51,8 +53,9 @@ import deathSound from '../../assets/sounds/YouDied.mp3';
 import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
 import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
 import up_bar from '../../assets/sprites/UI/up_bar.png';
+import dash_charge_sprite from '../../assets/Sprites/UI/dash_charge.png';
 import Puddle from '../GameObjects/puddle.js';
-import ConsumableBar from '../GameObjects/Consumables/consumableBar.js';
+import ConsumableBar from '../GameObjects/Consumables/ConsumableBar.js';
 
 // Enemigos
 import Zorro from '../GameObjects/Enemies/zorro.js';
@@ -176,7 +179,12 @@ export default class MainScene extends Phaser.Scene {
             frameHeight: 32
         });
 
-        this.load.spritesheet('duck-dash', sprint_sprite, { // Cambiar a sprite de bolita
+        this.load.spritesheet('duck-swimming', duck_swimming_sprite, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+
+        this.load.spritesheet('duck-dash', dash_duck_sprite, {
             frameWidth: 32,
             frameHeight: 32
         });
@@ -240,6 +248,7 @@ export default class MainScene extends Phaser.Scene {
 
         // Preload de UI
         this.load.image('up_bar', up_bar);
+        this.load.image('dash_charge', dash_charge_sprite);
         this.load.image('feather_icon', feather_icon);
 
         // Preload de drops de enemigos
@@ -498,7 +507,12 @@ export default class MainScene extends Phaser.Scene {
 
     create() {
         const SCALE = 4;
+        //PARAR música del menú
+        const menuMusic = this.sound.get("menu_music");
 
+        if (menuMusic) {
+            menuMusic.stop();
+        }
         // ─────────────────────────────────────────
         // CONFIG GENERAL DE LA ESCENA
         // ─────────────────────────────────────────
@@ -543,6 +557,12 @@ export default class MainScene extends Phaser.Scene {
 
         this.patrones2Layer = this.map.createLayer('Capa de patrones 2', tilesets, 0, 0);
         this.patrones2Layer.setScale(SCALE);
+
+        this.carreteraLayer = this.map.createLayer('carretera', tilesets, 0, 0);
+        this.carreteraLayer.setScale(SCALE);
+
+        this.desnivelLayer = this.map.createLayer('Desnivel', tilesets, 0, 0);
+        this.desnivelLayer.setScale(SCALE);
 
         this.zonasAcuaticasLayer = this.map.createLayer('Zonas aquaticas', tilesets, 0, 0);
         this.zonasAcuaticasLayer.setScale(SCALE);
@@ -608,6 +628,9 @@ export default class MainScene extends Phaser.Scene {
         // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
         // Esto evita depender de propiedades "collides" en cada tile del tileset.
         this.colisionLayer.setCollisionByExclusion([-1], true);
+        this.vallaLayer.setCollisionByExclusion([-1], true);
+        this.desnivelLayer.setCollisionByExclusion([-1], true);
+        this.zonasAcuaticasLayer.setCollisionByExclusion([-1], true);
 
         const worldWidth = this.map.widthInPixels * SCALE;
         const worldHeight = this.map.heightInPixels * SCALE;
@@ -654,6 +677,15 @@ export default class MainScene extends Phaser.Scene {
                 frames: this.anims.generateFrameNumbers('duck-dash', { start: 0, end: 3 }),
                 frameRate: 16,
                 repeat: 0
+            });
+        }
+
+        if (!this.anims.exists('duck-swimming')) {
+            this.anims.create({
+                key: 'duck-swimming',
+                frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
+                frameRate: 8,
+                repeat: -1
             });
         }
 
@@ -912,6 +944,21 @@ export default class MainScene extends Phaser.Scene {
         // COLISIONES
         // ─────────────────────────────────────────
         this.physics.add.collider(this.duck, this.colisionLayer);
+        this.physics.add.collider(
+            this.duck,
+            this.desnivelLayer,
+            null,
+            (duck) => duck?.body?.velocity?.y < 0,
+            this
+        );
+        
+        this.physics.add.collider(
+                this.duck,
+                this.vallaLayer,
+                null,
+                (duck) => duck?.state !== DUCK_STATE.DASHING, // si estas haciendo dash no tienes colision con las vallas
+                this
+            );
 
         // Colisiones con todos los enemigos
         this.enemies.getChildren().forEach(enemy => {
@@ -923,6 +970,7 @@ export default class MainScene extends Phaser.Scene {
                 this
             );
             this.physics.add.collider(enemy, this.colisionLayer);
+            this.physics.add.collider(enemy, this.vallaLayer);
             this.physics.add.overlap(this.projectiles, enemy, (projectile, en) => {
                 if (this.isPlayerDead) return;
                 this._onProjectileHitEnemy(projectile, en);
@@ -931,6 +979,7 @@ export default class MainScene extends Phaser.Scene {
                 if (this.isPlayerDead) return;
                 this._onEnemyHitDuck(duck, en);
             });
+            this.physics.add.collider(enemy, this.zonasAcuaticasLayer);
         });
 
         this.physics.add.overlap(this.projectiles, this.duck, (projectile, duck) => {
@@ -1249,10 +1298,7 @@ export default class MainScene extends Phaser.Scene {
         if (duck.state === DUCK_STATE.DASHING) return;
         if (duck.isInvulnerable) return;
 
-        const contactDamage = enemy.contactDamage ?? 10;
-        duck.takeDamage(contactDamage);
-
-        console.log(`¡El pato recibió daño cuerpo a cuerpo! Daño: ${contactDamage}, Vida restante: ${duck.health}, Plumas restantes: ${duck.feathers}`);
+        return;
     }
 
     _onProjectileHitDuck(projectile, duck) {
