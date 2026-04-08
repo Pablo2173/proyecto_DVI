@@ -724,12 +724,6 @@ export default class MainScene extends Phaser.Scene {
             projectile.destroy();
         });
 
-        // Consumibles y drops
-        new Bread(this, 500, 9400);
-        new Bread(this, 1800, 9200);
-        new DropWeapon(this, 1500, 9600, Mazo, 'mazo');
-        new DropWeapon(this, this.playerSpawn.x + 120, this.playerSpawn.y + 40, Arco, 'arco');
-
         //inicialización de la cámara centrada en el jugador antes del update
         //como el movimiento depende del ratón inicializaremos el puntero en la posición del jugador
         this.cameras.main.centerOn(this.playerSpawn.x, this.playerSpawn.y);
