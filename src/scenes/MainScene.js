@@ -823,12 +823,6 @@ export default class MainScene extends Phaser.Scene {
 
         // La consumable bar empieza completamente vacía: no se añade ningún item por defecto
 
-        const upBar = this.add.image(960, 0, 'up_bar');
-        upBar.setOrigin(0.5, 0);
-        upBar.setScale(3);
-        upBar.setScrollFactor(0);
-        upBar.setDepth(9000);
-
         this.controlsText = this.add.text(
             10,
             10,
@@ -845,7 +839,6 @@ export default class MainScene extends Phaser.Scene {
         // justo debajo del contador de plumas con un offset relativo a él.
         // ─────────────────────────────────────────
         this.breadCount = 0;
-        this._createBreadUI();
 
         // ─────────────────────────────────────────
         // OVERLAY DE MUERTE
@@ -936,7 +929,7 @@ export default class MainScene extends Phaser.Scene {
         const spawnFrog = new Frog(
             this,
             'Rana_spawn',
-            spawnMapache.x + 30,
+            spawnMapache.x + 120,
             spawnMapache.y,
             'rana_idle',
             null,
@@ -1070,12 +1063,6 @@ export default class MainScene extends Phaser.Scene {
             if (!projectile || !projectile.active) return;
             projectile.destroy();
         });
-
-        // Consumibles y drops
-        new Bread(this, 500, 9400);
-        new Bread(this, 1800, 9200);
-        new DropWeapon(this, 1500, 9600, Mazo, 'mazo');
-        new DropWeapon(this, this.playerSpawn.x + 120, this.playerSpawn.y + 40, Arco, 'arco');
 
         // Tienda
         this.store = new Store(
@@ -1687,71 +1674,6 @@ export default class MainScene extends Phaser.Scene {
     // ─────────────────────────────────────────
 
     /**
-     * Crea los elementos de UI del contador de pan dentro del mismo rectángulo HUD
-     * que las vidas (featherUI). El icono y el texto se posicionan justo debajo
-     * del contador de plumas usando offsets relativos al contenedor de vidas.
-     *
-     * Referencia de alineación:
-     *   - featherUI ocupa la esquina superior derecha del HUD.
-     *   - El pan se coloca con el mismo margen derecho y un offset vertical
-     *     que lo sitúa inmediatamente debajo de las plumas.
-     * @private
-     */
-    _createBreadUI() {
-        // ── Referencia al contenedor de vidas (featherUI) ──
-        // featherUI dibuja su fondo en la esquina superior derecha.
-        // Tomamos su posición X de anclaje y añadimos el margen vertical
-        // suficiente para quedar debajo de las plumas sin solaparse.
-
-        // Ancho del panel de vidas tal como lo define featherUI (ajustar si cambia)
-        const hudPanelWidth  = 160;  // ancho aproximado del panel de vidas
-        const hudPanelRight  = this.scale.width - 10; // margen derecho del panel
-        const hudPanelLeft   = hudPanelRight - hudPanelWidth;
-
-        // Offset vertical relativo: altura del área de vidas + pequeño margen
-        const livesAreaHeight = 40;  // altura aproximada que ocupa el icono de plumas
-        const verticalMargin  = 6;   // separación entre vidas y pan
-        const hudTop          = 10;  // margen superior del panel (mismo que featherUI)
-        const breadRowY       = hudTop + livesAreaHeight + verticalMargin;
-
-        // Altura total que ocupa la fila del pan (icono + margen inferior)
-        const breadRowHeight  = 28;
-
-        // ── Extensión del HUD: fondo extra que amplía el rectángulo de vidas hacia abajo ──
-        // Se usa el mismo color de fondo negro semitransparente que featherUI.
-        this.breadHudBg = this.add.rectangle(
-            hudPanelLeft,
-            breadRowY - 4,
-            hudPanelWidth,
-            breadRowHeight + 8,
-            0x000000,
-            0.55
-        );
-        this.breadHudBg.setOrigin(0, 0);
-        this.breadHudBg.setScrollFactor(0);
-        this.breadHudBg.setDepth(9099); // justo debajo del icono y texto
-
-        // ── Icono de pan ──
-        // Alineado al mismo borde izquierdo que el icono de plumas dentro del panel
-        this.breadIcon = this.add.image(hudPanelLeft + 16, breadRowY + breadRowHeight / 2, 'bread_item');
-        this.breadIcon.setScale(2);
-        this.breadIcon.setScrollFactor(0);
-        this.breadIcon.setDepth(9100);
-
-        // ── Texto del contador ──
-        // Mismo offset horizontal que el texto de plumas respecto a su icono
-        this.breadText = this.add.text(hudPanelLeft + 32, breadRowY + 4, 'x 0', {
-            fontSize: '18px',
-            fill: '#FFD700',
-            fontStyle: 'bold',
-            stroke: '#000000',
-            strokeThickness: 3
-        });
-        this.breadText.setScrollFactor(0);
-        this.breadText.setDepth(9101);
-    }
-
-    /**
      * Incrementa el contador de pan (moneda del juego) y actualiza la UI.
      * Llamado por Bread.interact() y DropBread.interact() al recoger un pan.
      * @param {number} amount - Cantidad de panes a añadir
@@ -1769,5 +1691,4 @@ export default class MainScene extends Phaser.Scene {
             this.breadText.setText(`x ${this.breadCount}`);
         }
     }
-
 }

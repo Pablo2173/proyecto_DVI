@@ -22,6 +22,7 @@ export default class ConsumableBar {
         this.selectedSlotIndex = -1;
 
         this.createSlots();
+        this.createBreadSlot();
         this.setupKeyboardInput();
     }
 
@@ -51,31 +52,24 @@ export default class ConsumableBar {
         for (let i = 0; i < 9; i++) {
             const x = this.startX + (i * (this.slotWidth + this.slotSpacing));
             const y = this.startY;
-
-            // Crear un contenedor para cada slot
             const slot = {
-                index: i + 1, // Números 1-9
+                index: i + 1,
                 x: x,
                 y: y,
                 background: null,
                 text: null,
-                itemText: null
+                itemText: null,
+                itemSprite: null
             };
-
-            // Fondo del slot (ahora es interactivo)
             slot.background = this.scene.add.rectangle(x, y, this.slotWidth, this.slotHeight, 0x333333, 0.7);
             slot.background.setOrigin(0);
             slot.background.setScrollFactor(0);
             slot.background.setStrokeStyle(2, 0xffffff, 0.5);
             slot.background.setDepth(9100);
             slot.background.setInteractive();
-
-            // Evento de click en el slot
             slot.background.on('pointerdown', () => {
                 this.onSlotClick(i);
             });
-
-            // Número del slot (1-9)
             slot.text = this.scene.add.text(x + 5, y + 5, String(slot.index), {
                 fontSize: '16px',
                 fill: '#FFFFFF',
@@ -83,16 +77,53 @@ export default class ConsumableBar {
             });
             slot.text.setOrigin(0);
             slot.text.setScrollFactor(0);
-
-
-
             slot.text.setDepth(9102);
-
-
-            // Sprite del item (vacío por ahora)
             slot.itemSprite = null;
-
             this.slots.push(slot);
+        }
+    }
+
+    // Slot especial para el pan (no seleccionable)
+    createBreadSlot() {
+        const i = 9; // slot 10
+        const x = this.startX + (i * (this.slotWidth + this.slotSpacing));
+        const y = this.startY;
+        this.breadSlot = {
+            x: x,
+            y: y,
+            background: this.scene.add.rectangle(x, y, this.slotWidth, this.slotHeight, 0x333333, 0.7),
+            icon: null,
+            text: null
+        };
+        this.breadSlot.background.setOrigin(0);
+        this.breadSlot.background.setScrollFactor(0);
+        this.breadSlot.background.setStrokeStyle(2, 0xffffff, 0.5);
+        this.breadSlot.background.setDepth(9100);
+        // No interactivo, no seleccionable
+        // Icono de pan
+        // Icono más arriba
+        this.breadSlot.icon = this.scene.add.image(x + this.slotWidth / 2, y + this.slotHeight / 2 - 12, 'bread_item');
+        this.breadSlot.icon.setScale(2);
+        this.breadSlot.icon.setScrollFactor(0);
+        this.breadSlot.icon.setDepth(9101);
+        // Texto más abajo
+        this.breadSlot.text = this.scene.add.text(x + this.slotWidth / 2, y + this.slotHeight / 2 + 22, '', {
+            fontSize: '20px',
+            fill: '#FFD700',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3
+        });
+        this.breadSlot.text.setOrigin(0.5);
+        this.breadSlot.text.setScrollFactor(0);
+        this.breadSlot.text.setDepth(9102);
+        this.updateBreadSlot();
+    }
+
+    updateBreadSlot() {
+        if (this.breadSlot && this.scene.breadCount !== undefined) {
+            let count = Math.min(999, this.scene.breadCount);
+            this.breadSlot.text.setText('x ' + count);
         }
     }
 
@@ -100,6 +131,8 @@ export default class ConsumableBar {
      * Actualiza la visualización de los consumibles
      */
     update() {
+        // Actualizar slot de pan
+        this.updateBreadSlot();
         if (!this.duck.consumables) return;
 
         // Verificar input de teclado para consumir items
