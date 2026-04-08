@@ -121,7 +121,7 @@ export default class Store {
                 fontSize:        '16px',
                 fill:            '#FFFFFF',
                 stroke:          '#000000',
-                strokeThickness: 3,
+                strokeThickness: 2,
                 align:           'center',
             });
             hint.setOrigin(0.5, 1);
