@@ -914,6 +914,25 @@
                  "width":0,
                  "x":572,
                  "y":1908
+                }, 
+                {
+                 "height":0,
+                 "id":83,
+                 "name":"",
+                 "opacity":1,
+                 "point":true,
+                 "properties":[
+                        {
+                         "name":"name",
+                         "type":"string",
+                         "value":"speed_attack_potion"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":648,
+                 "y":1904
                 }],
          "opacity":1,
          "properties":[
@@ -928,7 +947,7 @@
          "y":0
         }],
  "nextlayerid":24,
- "nextobjectid":83,
+ "nextobjectid":84,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.0",
