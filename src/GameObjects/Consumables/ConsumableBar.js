@@ -1,291 +1,472 @@
 import Phaser from 'phaser';
-// Importar consumibles directamente
-import AttackPotion from './attackPotion.js';
-import SpeedPotion from './SpeedPotion.js';
 
 export default class ConsumableBar {
-
     constructor(scene, duck) {
         this.scene = scene;
         this.duck = duck;
 
-        // Posiciones y dimensiones de los slots
-        this.slotWidth = 80;
-        this.slotHeight = 80;
-        this.slotSpacing = 10;
-        this.startX = 100; // Posición inicial en X
-        this.startY = 30;  // Posición inicial en Y (dentro de up_bar)
+        const screenWidth = this.scene.scale.width;
 
-        this.slots = []; // Array de objetos gráficos para cada slot
+        // Layout general
+        this.panelX = 28;
+        this.panelY = 14;
+        this.panelWidth = screenWidth - 56;   // casi todo el ancho
+        this.panelHeight = 150;
 
-        // Índice del slot actualmente seleccionado (0-8). -1 = ninguno seleccionado
+        // Inventario
+        this.slotWidth = 74;
+        this.slotHeight = 74;
+        this.slotSpacing = 14;
+        this.slotCount = 6;
+        this.slotsStartX = this.panelX + 26;
+        this.slotsY = this.panelY + 18;
+
+        // Recursos derecha (en horizontal, no apilados)
+        this.resourcesBlockWidth = 600;
+        this.resourcesStartX = this.panelX + this.panelWidth - this.resourcesBlockWidth;
+        this.resourceCenterY = this.panelY + this.panelHeight / 2;
+
         this.selectedSlotIndex = -1;
+        this.slots = [];
 
-        this.createSlots();
+        this.buildHUD();
         this.setupKeyboardInput();
+        this.update();
     }
 
-    /**
-     * Configura los controles de teclado para usar consumibles
-     */
+    // ─────────────────────────────────────────
+    // BUILD
+    // ─────────────────────────────────────────
+
+    buildHUD() {
+        // Sin fondo marrón/negro sólido: solo marco decorativo
+        this.topLine = this.scene.add.rectangle(
+            this.panelX,
+            this.panelY,
+            this.panelWidth,
+            3,
+            0xe4c46a,
+            0.95
+        );
+        this.topLine.setOrigin(0, 0);
+        this.topLine.setScrollFactor(0);
+        this.topLine.setDepth(9090);
+
+        this.bottomLine = this.scene.add.rectangle(
+            this.panelX,
+            this.panelY + this.panelHeight - 3,
+            this.panelWidth,
+            3,
+            0xe4c46a,
+            0.95
+        );
+        this.bottomLine.setOrigin(0, 0);
+        this.bottomLine.setScrollFactor(0);
+        this.bottomLine.setDepth(9090);
+
+        this.leftLine = this.scene.add.rectangle(
+            this.panelX,
+            this.panelY,
+            3,
+            this.panelHeight,
+            0x8f6a22,
+            0.85
+        );
+        this.leftLine.setOrigin(0, 0);
+        this.leftLine.setScrollFactor(0);
+        this.leftLine.setDepth(9090);
+
+        this.rightLine = this.scene.add.rectangle(
+            this.panelX + this.panelWidth - 3,
+            this.panelY,
+            3,
+            this.panelHeight,
+            0x8f6a22,
+            0.85
+        );
+        this.rightLine.setOrigin(0, 0);
+        this.rightLine.setScrollFactor(0);
+        this.rightLine.setDepth(9090);
+
+        // Esquinas decorativas
+        this.cornerTL = this.createCorner(this.panelX, this.panelY, true, true);
+        this.cornerTR = this.createCorner(this.panelX + this.panelWidth, this.panelY, false, true);
+        this.cornerBL = this.createCorner(this.panelX, this.panelY + this.panelHeight, true, false);
+        this.cornerBR = this.createCorner(this.panelX + this.panelWidth, this.panelY + this.panelHeight, false, false);
+
+        // Separador vertical elegante
+        this.divider = this.scene.add.rectangle(
+            this.resourcesStartX - 30,
+            this.panelY + 14,
+            3,
+            this.panelHeight - 28,
+            0xd4af37,
+            0.75
+        );
+        this.divider.setOrigin(0, 0);
+        this.divider.setScrollFactor(0);
+        this.divider.setDepth(9091);
+
+        // Línea interior pequeña al lado del separador
+        this.dividerGlow = this.scene.add.rectangle(
+            this.resourcesStartX - 26,
+            this.panelY + 20,
+            1,
+            this.panelHeight - 40,
+            0xfff2b3,
+            0.65
+        );
+        this.dividerGlow.setOrigin(0, 0);
+        this.dividerGlow.setScrollFactor(0);
+        this.dividerGlow.setDepth(9091);
+
+        this.createSlots();
+        this.createResourceArea();
+        this.createControlsHint();
+    }
+
+    createCorner(x, y, isLeft, isTop) {
+        const corner = this.scene.add.text(
+            x,
+            y,
+            '◆',
+            {
+                fontFamily: 'Arial',
+                fontSize: '20px',
+                color: '#f4d97b',
+                stroke: '#000000',
+                strokeThickness: 3
+            }
+        );
+
+        corner.setScrollFactor(0);
+        corner.setDepth(9092);
+
+        const offsetX = isLeft ? -1 : -11;
+        const offsetY = isTop ? -9 : -11;
+        corner.setPosition(x + offsetX, y + offsetY);
+
+        return corner;
+    }
+
+    createSlots() {
+        for (let i = 0; i < this.slotCount; i++) {
+            const x = this.slotsStartX + i * (this.slotWidth + this.slotSpacing);
+            const y = this.slotsY;
+
+            const slot = {
+                index: i,
+                x,
+                y,
+                background: null,
+                inner: null,
+                numberText: null,
+                itemSprite: null
+            };
+
+            slot.background = this.scene.add.rectangle(
+                x,
+                y,
+                this.slotWidth,
+                this.slotHeight,
+                0x000000,
+                0.22
+            );
+            slot.background.setOrigin(0, 0);
+            slot.background.setScrollFactor(0);
+            slot.background.setDepth(9100);
+            slot.background.setStrokeStyle(3, 0xcda349, 0.95);
+            slot.background.setInteractive({ useHandCursor: true });
+
+            slot.inner = this.scene.add.rectangle(
+                x + 5,
+                y + 5,
+                this.slotWidth - 10,
+                this.slotHeight - 10,
+                0x000000,
+                0.14
+            );
+            slot.inner.setOrigin(0, 0);
+            slot.inner.setScrollFactor(0);
+            slot.inner.setDepth(9100);
+
+            slot.background.on('pointerdown', () => {
+                this.selectSlot(i);
+                this.useSelectedItem();
+            });
+
+            slot.numberText = this.scene.add.text(
+                x + 7,
+                y + 53,
+                String(i + 1),
+                {
+                    fontFamily: 'ReturnOfTheBoss',
+                    fontSize: '14px',
+                    color: '#f8e7b5',
+                    stroke: '#000000',
+                    strokeThickness: 3
+                }
+            );
+            slot.numberText.setScrollFactor(0);
+            slot.numberText.setDepth(9103);
+
+            this.slots.push(slot);
+        }
+
+        this.useHintText = this.scene.add.text(
+            this.slotsStartX + this.slotCount * (this.slotWidth + this.slotSpacing) + 10,
+            this.panelY + 41,
+            'F = USAR',
+            {
+                fontFamily: 'ReturnOfTheBoss',
+                fontSize: '22px',
+                color: '#f8e7b5',
+                stroke: '#000000',
+                strokeThickness: 5
+            }
+        );
+        this.useHintText.setScrollFactor(0);
+        this.useHintText.setDepth(9102);
+    }
+
+    createResourceArea() {
+        this.resourcesTitle = this.scene.add.text(
+            this.resourcesStartX,
+            this.panelY + 8,
+            'RECURSOS',
+            {
+                fontFamily: 'ReturnOfTheBoss',
+                fontSize: '25px',
+                color: '#ffd977',
+                stroke: '#000000',
+                strokeThickness: 4
+            }
+        );
+        this.resourcesTitle.setScrollFactor(0);
+        this.resourcesTitle.setDepth(9102);
+
+        // BLOQUE PLUMAS (izquierda del bloque de recursos)
+        this.featherIcon = this.scene.add.image(
+            this.resourcesStartX + 120,
+            this.resourceCenterY + 10,
+            'feather_icon'
+        );
+        this.featherIcon.setOrigin(0, 0.5);
+        this.featherIcon.setScrollFactor(0);
+        this.featherIcon.setDepth(9102);
+        this.featherIcon.setScale(0.15);
+
+        this.featherText = this.scene.add.text(
+            this.resourcesStartX + 230,
+            this.resourceCenterY - 8,
+            '0 / 0',
+            {
+                fontFamily: 'ReturnOfTheBoss',
+                fontSize: '30px',
+                color: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 5
+            }
+        );
+        this.featherText.setScrollFactor(0);
+        this.featherText.setDepth(9103);
+
+        // BLOQUE PAN (a la derecha de plumas, horizontal)
+        this.breadIcon = this.scene.add.image(
+            this.resourcesStartX + 370,
+            this.resourceCenterY + 10,
+            'bread_item'
+        );
+        this.breadIcon.setOrigin(0, 0.5);
+        this.breadIcon.setScrollFactor(0);
+        this.breadIcon.setDepth(9102);
+        this.breadIcon.setScale(4);
+
+        this.breadText = this.scene.add.text(
+            this.resourcesStartX + 460,
+            this.resourceCenterY - 8,
+            'x 0',
+            {
+                fontFamily: 'ReturnOfTheBoss',
+                fontSize: '30px',
+                color: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 5
+            }
+        );
+        this.breadText.setScrollFactor(0);
+        this.breadText.setDepth(9103);
+    }
+
+    createControlsHint() {
+        this.controlsText = this.scene.add.text(
+            this.panelX + 20,
+            this.panelY + this.panelHeight - 18,
+            'WASD MOVER · ESPACIO DASH · E RECOGER · CLICK ATACAR · C CUACK',
+            {
+                fontFamily: 'ReturnOfTheBoss',
+                fontSize: '20px',
+                color: '#f8e7b5',        // blanco
+                stroke: '#000000',       // dorado
+                strokeThickness: 4
+            }
+        );
+
+        this.controlsText.setOrigin(0, 1);
+        this.controlsText.setScrollFactor(0);
+        this.controlsText.setDepth(9102);
+        this.controlsText.setAlpha(0.92);
+    }
+    // ─────────────────────────────────────────
+    // INPUT
+    // ─────────────────────────────────────────
+
     setupKeyboardInput() {
-        // Crear teclas para los números 1-9
         this.key1 = this.scene.input.keyboard.addKey('ONE');
         this.key2 = this.scene.input.keyboard.addKey('TWO');
         this.key3 = this.scene.input.keyboard.addKey('THREE');
         this.key4 = this.scene.input.keyboard.addKey('FOUR');
         this.key5 = this.scene.input.keyboard.addKey('FIVE');
         this.key6 = this.scene.input.keyboard.addKey('SIX');
-        this.key7 = this.scene.input.keyboard.addKey('SEVEN');
-        this.key8 = this.scene.input.keyboard.addKey('EIGHT');
-        this.key9 = this.scene.input.keyboard.addKey('NINE');
-
-        // Tecla F: usar el item del slot seleccionado
         this.keyF = this.scene.input.keyboard.addKey('F');
     }
 
-    /**
-     * Crea los 9 slots visuales para los consumibles
-     */
-    createSlots() {
-        for (let i = 0; i < 9; i++) {
-            const x = this.startX + (i * (this.slotWidth + this.slotSpacing));
-            const y = this.startY;
-
-            // Crear un contenedor para cada slot
-            const slot = {
-                index: i + 1, // Números 1-9
-                x: x,
-                y: y,
-                background: null,
-                text: null,
-                itemText: null
-            };
-
-            // Fondo del slot (ahora es interactivo)
-            slot.background = this.scene.add.rectangle(x, y, this.slotWidth, this.slotHeight, 0x333333, 0.7);
-            slot.background.setOrigin(0);
-            slot.background.setScrollFactor(0);
-            slot.background.setStrokeStyle(2, 0xffffff, 0.5);
-            slot.background.setDepth(9100);
-            slot.background.setInteractive();
-
-            // Evento de click en el slot
-            slot.background.on('pointerdown', () => {
-                this.onSlotClick(i);
-            });
-
-            // Número del slot (1-9)
-            slot.text = this.scene.add.text(x + 5, y + 5, String(slot.index), {
-                fontSize: '16px',
-                fill: '#FFFFFF',
-                fontStyle: 'bold'
-            });
-            slot.text.setOrigin(0);
-            slot.text.setScrollFactor(0);
-
-
-
-            slot.text.setDepth(9102);
-
-
-            // Sprite del item (vacío por ahora)
-            slot.itemSprite = null;
-
-            this.slots.push(slot);
-        }
-    }
-
-    /**
-     * Actualiza la visualización de los consumibles
-     */
-    update() {
-        if (!this.duck.consumables) return;
-
-        // Verificar input de teclado para consumir items
-        this.checkKeyboardInput();
-
-        // Limpiar todos los slots
-        this.slots.forEach(slot => {
-            if (slot.itemSprite) {
-                slot.itemSprite.destroy();
-                slot.itemSprite = null;
-            }
-            slot.background.setStrokeStyle(2, 0xffffff, 0.5);
-        });
-
-        // Llenar los slots con los consumibles actuales
-        // El pan (bread) ya NO aparece como consumible en la barra: es moneda
-        this.duck.consumables.forEach((consumable, index) => {
-            if (index < this.slots.length) {
-                const slot = this.slots[index];
-
-                // Crear imagen del consumible
-                const spriteKey = this.getSpriteKey(consumable.type);
-                if (spriteKey) {
-                    slot.itemSprite = this.scene.add.image(
-                        slot.x + this.slotWidth / 2,
-                        slot.y + this.slotHeight / 2,
-                        spriteKey
-                    );
-                    slot.itemSprite.setScale(this.getItemScale(consumable.type));
-                    slot.itemSprite.setScrollFactor(0);
-                    slot.itemSprite.setDepth(9101);
-                }
-
-                // Cambiar color del borde si hay item
-                slot.background.setStrokeStyle(2, 0x00FF00, 1);
-            }
-        });
-
-        // Resaltar el slot seleccionado con borde dorado
-        if (this.selectedSlotIndex >= 0 && this.selectedSlotIndex < this.slots.length) {
-            this.slots[this.selectedSlotIndex].background.setStrokeStyle(3, 0xFFD700, 1);
-        }
-    }
-
-    getItemScale(type) {
-        const scaleMap = {
-            bread: 3,
-            attack_potion: 3,
-            speed_potion: 3,
-            speed_attack_potion: 3,
-            mask: 3,
-            fox_tail: 0.1
-        };
-
-        return scaleMap[type] ?? 3;
-    }
-    /**
-     * Verifica el input de teclado para consumir items
-     */
     checkKeyboardInput() {
-        // Usar checkDown con cooldown para evitar consumos múltiples
-        if (this.scene.input.keyboard.checkDown(this.key1, 250)) {
-            this.selectSlot(0); // Slot 1 (índice 0)
-        }
-        if (this.scene.input.keyboard.checkDown(this.key2, 250)) {
-            this.selectSlot(1); // Slot 2 (índice 1)
-        }
-        if (this.scene.input.keyboard.checkDown(this.key3, 250)) {
-            this.selectSlot(2); // Slot 3 (índice 2)
-        }
-        if (this.scene.input.keyboard.checkDown(this.key4, 250)) {
-            this.selectSlot(3); // Slot 4 (índice 3)
-        }
-        if (this.scene.input.keyboard.checkDown(this.key5, 250)) {
-            this.selectSlot(4); // Slot 5 (índice 4)
-        }
-        if (this.scene.input.keyboard.checkDown(this.key6, 250)) {
-            this.selectSlot(5); // Slot 6 (índice 5)
-        }
-        if (this.scene.input.keyboard.checkDown(this.key7, 250)) {
-            this.selectSlot(6); // Slot 7 (índice 6)
-        }
-        if (this.scene.input.keyboard.checkDown(this.key8, 250)) {
-            this.selectSlot(7); // Slot 8 (índice 7)
-        }
-        if (this.scene.input.keyboard.checkDown(this.key9, 250)) {
-            this.selectSlot(8); // Slot 9 (índice 8)
-        }
+        if (this.scene.input.keyboard.checkDown(this.key1, 250)) this.selectSlot(0);
+        if (this.scene.input.keyboard.checkDown(this.key2, 250)) this.selectSlot(1);
+        if (this.scene.input.keyboard.checkDown(this.key3, 250)) this.selectSlot(2);
+        if (this.scene.input.keyboard.checkDown(this.key4, 250)) this.selectSlot(3);
+        if (this.scene.input.keyboard.checkDown(this.key5, 250)) this.selectSlot(4);
+        if (this.scene.input.keyboard.checkDown(this.key6, 250)) this.selectSlot(5);
 
-        // Tecla F: usar el item del slot seleccionado (NO mezclar con E)
         if (Phaser.Input.Keyboard.JustDown(this.keyF)) {
             this.useSelectedItem();
         }
     }
 
-    /**
-     * Selecciona un slot sin consumir el item
-     * @param {number} slotIndex - Índice del slot a seleccionar (0-8)
-     */
     selectSlot(slotIndex) {
         this.selectedSlotIndex = slotIndex;
     }
 
-    /**
-     * Usa el item del slot actualmente seleccionado.
-     * Solo se ejecuta si hay un item en el slot seleccionado.
-     */
     useSelectedItem() {
         if (this.selectedSlotIndex < 0) return;
-        if (!this.duck.consumables || this.selectedSlotIndex >= this.duck.consumables.length) {
-            return; // Slot vacío o fuera de rango
-        }
+        if (!this.duck.consumables || this.selectedSlotIndex >= this.duck.consumables.length) return;
 
         const item = this.duck.consumables[this.selectedSlotIndex];
 
-        // Ejecutar efecto específico según el tipo de item
         if (item.type === 'mask') {
             this.duck.activateInvisibility();
-            // Eliminar la máscara del slot tras el uso
             this.duck.consumables.splice(this.selectedSlotIndex, 1);
-            // Actualizar la visualización
+            this.pulseSlot(this.selectedSlotIndex);
             this.update();
             return;
         }
 
-        // Para el resto de tipos se reutiliza el flujo existente
         this.onSlotClick(this.selectedSlotIndex);
     }
 
-    /**
-     * Obtiene la clave del sprite basado en el tipo de consumible
-     * @param {string} type - Tipo del consumible
-     * @returns {string|null} - Clave del sprite o null si no existe
-     */
-    getSpriteKey(type) {
-        const spriteMap = {
-            // 'bread' eliminado: el pan es moneda, no un consumible equipable
+    // ─────────────────────────────────────────
+    // UPDATE HUD
+    // ─────────────────────────────────────────
 
-            'attack_potion': 'attack_potion',
-            'speed_potion': 'speed_potion',
-            'speed_attack_potion': 'speed_attack_potion',
-            'fox_tail': 'fox_tail',
-            // Agregar más tipos aquí cuando se necesite
+    update() {
+        if (!this.duck) return;
 
-            'mask': 'mask_icon'
-            // Agregar más tipos aquí: 'health': 'health_potion', etc.
-
-        };
-        return spriteMap[type] || null;
+        this.checkKeyboardInput();
+        this.refreshSlots();
+        this.refreshResources();
     }
 
-    /**
-     * Maneja el click en un slot
-     * @param {number} slotIndex - Índice del slot clickeado (0-8)
-     */
-    onSlotClick(slotIndex) {
-        if (!this.duck.consumables || slotIndex >= this.duck.consumables.length) {
-            return; // Slot vacío
+    refreshSlots() {
+        this.slots.forEach(slot => {
+            if (slot.itemSprite) {
+                slot.itemSprite.destroy();
+                slot.itemSprite = null;
+            }
+
+            slot.background.setFillStyle(0x000000, 0.22);
+            slot.background.setStrokeStyle(3, 0xcda349, 0.95);
+            slot.inner.setFillStyle(0x000000, 0.14);
+        });
+
+        const consumables = this.duck.consumables ?? [];
+
+        consumables.forEach((consumable, index) => {
+            if (index >= this.slots.length) return;
+
+            const slot = this.slots[index];
+            const spriteKey = this.getSpriteKey(consumable.type);
+
+            if (spriteKey) {
+                slot.itemSprite = this.scene.add.image(
+                    slot.x + this.slotWidth / 2,
+                    slot.y + this.slotHeight / 2 - 2,
+                    spriteKey
+                );
+                slot.itemSprite.setScale(this.getItemScale(consumable.type));
+                slot.itemSprite.setScrollFactor(0);
+                slot.itemSprite.setDepth(9101);
+            }
+
+            slot.background.setFillStyle(0x000000, 0.28);
+            slot.background.setStrokeStyle(3, 0xf1d07a, 1);
+            slot.inner.setFillStyle(0x000000, 0.18);
+        });
+
+        if (this.selectedSlotIndex >= 0 && this.selectedSlotIndex < this.slots.length) {
+            const selectedSlot = this.slots[this.selectedSlotIndex];
+            selectedSlot.background.setStrokeStyle(4, 0xffe8a3, 1);
         }
 
+        if (!this.extraItemsText) {
+            this.extraItemsText = this.scene.add.text(
+                this.useHintText.x + 8,
+                this.useHintText.y + 28,
+                '',
+                {
+                    fontFamily: 'ReturnOfTheBoss',
+                    fontSize: '16px',
+                    color: '#ffefad',
+                    stroke: '#000000',
+                    strokeThickness: 3
+                }
+            );
+            this.extraItemsText.setScrollFactor(0);
+            this.extraItemsText.setDepth(9103);
+        }
+
+        const extra = Math.max(0, consumables.length - this.slotCount);
+        this.extraItemsText.setText(extra > 0 ? `+${extra}` : '');
+    }
+
+    refreshResources() {
+        const feathers = this.duck.feathers ?? 0;
+        const maxFeathers = this.duck.maxFeathers ?? 0;
+        const breadCount = this.scene.breadCount ?? 0;
+
+        this.featherText.setText(`${feathers} / ${maxFeathers}`);
+        this.breadText.setText(`x ${breadCount}`);
+    }
+
+    // ─────────────────────────────────────────
+    // CONSUMABLES
+    // ─────────────────────────────────────────
+
+    onSlotClick(slotIndex) {
+        if (!this.duck.consumables || slotIndex >= this.duck.consumables.length) return;
+
         const consumable = this.duck.consumables[slotIndex];
-
-        // Llamar al efecto de uso del consumable
         this.useConsumable(consumable);
-
-        // Remover del inventario
         this.duck.consumables.splice(slotIndex, 1);
 
-        // Actualizar la visualización
+        this.pulseSlot(slotIndex);
         this.update();
     }
 
-    /**
-     * Usa un consumible llamando a su función use_effect
-     * @param {Object} consumable - El objeto consumible con type y value
-     */
     useConsumable(consumable) {
-        // Ejecutar el efecto directamente basado en el tipo
         this.executeUseEffect(consumable.type, this.duck);
     }
 
-    /**
-     * Ejecuta el efecto de uso basado en el tipo de consumible
-     * @param {string} type - Tipo del consumible
-     * @param {Duck} duck - El pato que usa el consumible
-     */
     executeUseEffect(type, duck) {
         switch (type) {
             case 'attack_potion':
@@ -299,45 +480,76 @@ export default class ConsumableBar {
                 break;
             case 'fox_tail':
                 this.useFoxTailEffect(duck);
-                break;    
-            // Agregar más casos aquí para otros consumibles
+                break;
             default:
                 console.log(`Efecto de uso no definido para: ${type}`);
         }
     }
 
-    /**
-     * Efecto específico del bread: crea otro pan cerca del pato
-     * @param {Duck} duck - El pato que usa el consumible
-     */
-    useBreadEffect(duck) {
-        console.log('Usando pan: creando nuevo pan cerca del pato');
-
-        // Generar posición aleatoria cerca del pato (radio de 100-200 píxeles)
-        const angle = Math.random() * Math.PI * 2;
-        const distance = 100 + Math.random() * 100; // Entre 100 y 200 píxeles
-
-        const x = duck.x + Math.cos(angle) * distance;
-        const y = duck.y + Math.sin(angle) * distance;
-
-        // Crear nuevo pan directamente
-        // Nota: useBreadEffect ya no se invoca desde executeUseEffect (bread es moneda)
+    getSpriteKey(type) {
+        const spriteMap = {
+            attack_potion: 'attack_potion',
+            speed_potion: 'speed_potion',
+            speed_attack_potion: 'speed_attack_potion',
+            fox_tail: 'fox_tail',
+            mask: 'mask_icon'
+        };
+        return spriteMap[type] || null;
     }
 
-    /**
-     * Efecto específico de la poción de ataque: duplica el daño por 30 segundos
-     * @param {Duck} duck - El pato que usa el consumible
-     */
+    getItemScale(type) {
+        const scaleMap = {
+            attack_potion: 3.2,
+            speed_potion: 3.2,
+            speed_attack_potion: 3.2,
+            mask: 3.1,
+            fox_tail: 0.1
+        };
+        return scaleMap[type] ?? 3;
+    }
+
+    pulseSlot(slotIndex) {
+        if (slotIndex < 0 || slotIndex >= this.slots.length) return;
+        const slot = this.slots[slotIndex];
+
+        this.scene.tweens.add({
+            targets: [slot.background, slot.inner],
+            scaleX: 1.08,
+            scaleY: 1.08,
+            duration: 90,
+            yoyo: true,
+            ease: 'Sine.Out'
+        });
+    }
+
+    pulseBread() {
+        this.scene.tweens.add({
+            targets: [this.breadIcon, this.breadText],
+            scaleX: 1.12,
+            scaleY: 1.12,
+            duration: 100,
+            yoyo: true,
+            ease: 'Sine.Out'
+        });
+    }
+
+    pulseFeathers() {
+        this.scene.tweens.add({
+            targets: [this.featherIcon, this.featherText],
+            scaleX: 1.08,
+            scaleY: 1.08,
+            duration: 100,
+            yoyo: true,
+            ease: 'Sine.Out'
+        });
+    }
+
     useAttackPotionEffect(duck) {
         console.log('Usando poción de ataque: duplicando daño por 30 segundos');
 
-        // Duplicar el multiplicador de daño
-        if (!duck.damageMultiplier) {
-            duck.damageMultiplier = 1;
-        }
+        if (!duck.damageMultiplier) duck.damageMultiplier = 1;
         duck.damageMultiplier *= 2;
 
-        // Resetear después de 30 segundos
         duck.scene.time.delayedCall(30000, () => {
             if (duck.damageMultiplier) {
                 duck.damageMultiplier /= 2;
@@ -346,20 +558,12 @@ export default class ConsumableBar {
         });
     }
 
-    /**
-     * Efecto específico de la poción de velocidad: duplica la velocidad por 15 segundos
-     * @param {Duck} duck - El pato que usa el consumible
-     */
     useSpeedPotionEffect(duck) {
         console.log('Usando poción de velocidad: duplicando velocidad por 15 segundos');
 
-        // Duplicar el multiplicador de velocidad
-        if (!duck.speedMultiplier) {
-            duck.speedMultiplier = 1;
-        }
+        if (!duck.speedMultiplier) duck.speedMultiplier = 1;
         duck.speedMultiplier *= 2;
 
-        // Resetear después de 15 segundos
         duck.scene.time.delayedCall(15000, () => {
             if (duck.speedMultiplier) {
                 duck.speedMultiplier /= 2;
@@ -380,7 +584,6 @@ export default class ConsumableBar {
             duck.weapon._attackSpeedBase = duck.weapon.attackSpeed;
         }
 
-        // El attackSpeed es el tiempo entre ataques, así que reducirlo acelera la cadencia
         duck.weapon.attackSpeed = duck.weapon._attackSpeedBase / 2;
         duck.weapon._attackSpeedBuffActive = true;
 
@@ -393,11 +596,10 @@ export default class ConsumableBar {
         });
     }
 
-    /*Invencivilidad Drop Cola del Zorro*/
     useFoxTailEffect(duck) {
         const radius = 250;
-        const duration = 8000; // 8 segundos
-        const interval = 100;  // cada 100ms limpia proyectiles
+        const duration = 8000;
+        const interval = 100;
 
         if (!duck?.scene) return;
 
@@ -407,7 +609,6 @@ export default class ConsumableBar {
             delay: interval,
             repeat: duration / interval,
             callback: () => {
-
                 if (!duck.active) return;
 
                 duck.scene.projectiles.getChildren().forEach(projectile => {
@@ -424,7 +625,6 @@ export default class ConsumableBar {
             }
         });
 
-        // OPCIONAL: efecto visual mientras dura
         const aura = duck.scene.add.circle(duck.x, duck.y, radius, 0xffffff, 0.1);
         aura.setDepth(9998);
 
@@ -440,7 +640,6 @@ export default class ConsumableBar {
             loop: true
         });
 
-        // destruir aura al acabar
         duck.scene.time.delayedCall(duration, () => {
             aura.destroy();
             followEvent.remove();
@@ -448,16 +647,39 @@ export default class ConsumableBar {
         });
     }
 
+    // ─────────────────────────────────────────
+    // DESTROY
+    // ─────────────────────────────────────────
 
-    /**
-     * Destruye la barra de consumibles
-     */
     destroy() {
+        this.topLine?.destroy();
+        this.bottomLine?.destroy();
+        this.leftLine?.destroy();
+        this.rightLine?.destroy();
+        this.divider?.destroy();
+        this.dividerGlow?.destroy();
+
+        this.cornerTL?.destroy();
+        this.cornerTR?.destroy();
+        this.cornerBL?.destroy();
+        this.cornerBR?.destroy();
+
+        this.resourcesTitle?.destroy();
+        this.featherIcon?.destroy();
+        this.featherText?.destroy();
+        this.breadIcon?.destroy();
+        this.breadText?.destroy();
+        this.useHintText?.destroy();
+        this.extraItemsText?.destroy();
+        this.controlsText?.destroy();
+
         this.slots.forEach(slot => {
             slot.background?.destroy();
-            slot.text?.destroy();
+            slot.inner?.destroy();
+            slot.numberText?.destroy();
             slot.itemSprite?.destroy();
         });
+
         this.slots = [];
     }
 }
