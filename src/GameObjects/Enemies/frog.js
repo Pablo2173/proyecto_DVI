@@ -17,7 +17,8 @@ export default class Frog extends Enemy {
         this._hp -= damage;
         this.flashRed();
         this._showHitVisual();
-        if (this._hp <= 0) this.die();
+        // La rana no puede morir, nunca llamar a die()
+        if (this._hp <= 0) this._hp = 1;
     }
 
 }
