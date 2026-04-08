@@ -594,6 +594,12 @@ export default class MainScene extends Phaser.Scene {
         this.estetica1Layer = this.map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
         this.estetica1Layer.setScale(SCALE);
 
+        this.puertaAbiertaLayer = this.map.createLayer('puerta', tilesets, 0, 0);
+        this.puertaAbiertaLayer.setScale(SCALE);
+
+        this.puertaCerradaLayer = this.map.createLayer('puertaCerrada', tilesets, 0, 0);
+        this.puertaCerradaLayer.setScale(SCALE);
+
         this.vallaLayer = this.map.createLayer('Valla', tilesets, 0, 0);
         this.vallaLayer.setScale(SCALE);
 
@@ -646,6 +652,7 @@ export default class MainScene extends Phaser.Scene {
         // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
         // Esto evita depender de propiedades "collides" en cada tile del tileset.
         this.colisionLayer.setCollisionByExclusion([-1], true);
+        this.puertaCerradaLayer.setCollisionByExclusion([-1], true);
         this.vallaLayer.setCollisionByExclusion([-1], true);
         this.desnivelLayer.setCollisionByExclusion([-1], true);
         this.zonasAcuaticasLayer.setCollisionByExclusion([-1], true);
@@ -974,6 +981,7 @@ export default class MainScene extends Phaser.Scene {
         // COLISIONES
         // ─────────────────────────────────────────
         this.physics.add.collider(this.duck, this.colisionLayer);
+        this.physics.add.collider(this.duck, this.puertaCerradaLayer);
         this.physics.add.collider(
             this.duck,
             this.desnivelLayer,
@@ -1002,6 +1010,11 @@ export default class MainScene extends Phaser.Scene {
 
         // proyectil -> capa de colisión del mapa
         this.physics.add.collider(this.projectiles, this.colisionLayer, (projectile) => {
+            if (!projectile || !projectile.active) return;
+            projectile.destroy();
+        });
+
+        this.physics.add.collider(this.projectiles, this.puertaCerradaLayer, (projectile) => {
             if (!projectile || !projectile.active) return;
             projectile.destroy();
         });
@@ -1289,6 +1302,7 @@ export default class MainScene extends Phaser.Scene {
 
         if (!enemy.ignoresObstacleHitbox) {
             this.physics.add.collider(enemy, this.colisionLayer);
+            this.physics.add.collider(enemy, this.puertaCerradaLayer);
             this.physics.add.collider(enemy, this.vallaLayer);
             this.physics.add.collider(enemy, this.zonasAcuaticasLayer);
         }
