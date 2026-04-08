@@ -1,5 +1,5 @@
 import ConsumableItem from './Drops/consumableDrop.js';
-import speedAttackPotionSprite from '../../../assets/sprites/consumables/bread_item.png'; // Placeholder, usar icono real si está disponible
+import speedAttackPotionSprite from '../../../assets/sprites/consumables/speed_attack_potion.png'; // Placeholder, usar icono real si está disponible
 
 export default class SpeedAttackPotion extends ConsumableItem {
 

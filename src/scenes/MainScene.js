@@ -250,7 +250,8 @@ export default class MainScene extends Phaser.Scene {
         Bala.preload(this);
         Escoba.preload(this);
 
-        // Preload de consumibles
+
+
         Bread.preload(this);
 
         AttackPotion.preload(this);
@@ -1300,12 +1301,9 @@ export default class MainScene extends Phaser.Scene {
         }
     }
 
-    /**
-     * Crea consumibles recorriendo la capa de objetos de Tiled "consumables".
-     * - Si el objeto tiene nombre/tipo válido, se crea ese consumible.
-     * - Si no, se crea uno aleatorio entre todos los tipos disponibles.
-     * @param {number} scale - Escala del mapa
-     */
+    /*
+        CREACCIÓN DE CONSUMIBLES USANDO LA CAPA DE CONSUMABLES DE TILED
+    */
     setupConsumablesFromLayer(scale) {
         const consumableLayer = this.map.getObjectLayer('consumables') || this.map.getObjectLayer('consummable') || this.map.getObjectLayer('consumable');
 
@@ -1331,7 +1329,8 @@ export default class MainScene extends Phaser.Scene {
 
     /**
      * Intenta resolver el tipo de consumible desde el objeto de Tiled.
-     * Prioridad: obj.name -> prop.name -> obj.type -> prop.type.
+     * Prioridad: obj.name -> property.name.
+     * Si no coincide con un tipo válido, el caller debe usar aleatorio.
      * @param {Phaser.Types.Tilemaps.TiledObject} obj
      * @param {string[]} validTypes
      * @returns {string|null}
@@ -1348,10 +1347,15 @@ export default class MainScene extends Phaser.Scene {
                 case 'dropfeather':
                 case 'drop_feather':
                     return 'feather';
+                case 'bread_item':
+                case 'dropbread':
+                case 'drop_bread':
+                    return 'bread';
                 case 'attackpotion':
                     return 'attack_potion';
                 case 'speedpotion':
                     return 'speed_potion';
+                case 'speed_attackpotion':
                 case 'speedattackpotion':
                     return 'speed_attack_potion';
                 default:
@@ -1359,30 +1363,17 @@ export default class MainScene extends Phaser.Scene {
             }
         };
 
-        const getPropValue = (propName) => {
-            if (!obj?.properties || !Array.isArray(obj.properties)) return '';
-            const prop = obj.properties.find(p => String(p.name || '').toLowerCase() === propName);
-            return prop?.value || '';
-        };
-
         const objectName = normalize(obj?.name);
         if (objectName && objectName !== 'consumable' && objectName !== 'consummable' && validTypes.includes(objectName)) {
             return objectName;
         }
 
-        const propertyName = normalize(getPropValue('name'));
-        if (propertyName && validTypes.includes(propertyName)) {
+        const propertyName = Array.isArray(obj?.properties)
+            ? normalize(obj.properties.find(p => String(p.name || '').toLowerCase() === 'name')?.value)
+            : '';
+
+        if (propertyName && propertyName !== 'consumable' && propertyName !== 'consummable' && validTypes.includes(propertyName)) {
             return propertyName;
-        }
-
-        const objectType = normalize(obj?.type);
-        if (objectType && objectType !== 'consumable' && objectType !== 'consummable' && validTypes.includes(objectType)) {
-            return objectType;
-        }
-
-        const propertyType = normalize(getPropValue('type'));
-        if (propertyType && validTypes.includes(propertyType)) {
-            return propertyType;
         }
 
         return null;
