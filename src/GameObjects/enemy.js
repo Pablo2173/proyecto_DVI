@@ -748,6 +748,7 @@ export default class Enemy extends BaseCharacter {
         }
         this._visionAlertFlashUntil = 0;
         if (this.tintTopLeft !== 0xFF0000) this.clearTint();
+
     }
 
     _resolveSpriteBaseKey(textureKey) {

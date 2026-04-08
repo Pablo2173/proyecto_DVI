@@ -899,18 +899,6 @@ export default class MainScene extends Phaser.Scene {
         this.enemies = this.physics.add.group();
         this.setupEnemiesFromRoutes(SCALE);
 
-        // Mapache extra cerca del spawn del pato
-        const spawnMapache = new Mapache(
-            this,
-            'Mapache_spawn',
-            this.playerSpawn.x + 180,
-            this.playerSpawn.y + 40,
-            'mapache_idle',
-            null,
-            Cuchillo,
-            null
-        );
-        this.enemies.add(spawnMapache);
 
         // ─────────────────────────────────────────
         // CONSUMIBLES DESDE TILED
@@ -1481,30 +1469,23 @@ export default class MainScene extends Phaser.Scene {
         const routesLayer = this.map.getObjectLayer('routes');
 
         if (!routesLayer || !routesLayer.objects) {
-            console.warn('⚠️ No se encontró la capa "routes" en el mapa');
+            console.warn(' No se encontró la capa "routes" en el mapa');
             return;
         }
 
-        console.log(`📍 Capa routes encontrada con ${routesLayer.objects.length} objeto(s)`);
+        console.log(` Capa routes encontrada con ${routesLayer.objects.length} objeto(s)`);
 
         let enemyCount = 0;
 
         routesLayer.objects.forEach((obj, index) => {
-            console.log(`\n🔍 Procesando objeto ${index}:`, obj);
-
-            // Validar que sea un polígono
-            if (!obj.polygon || !Array.isArray(obj.polygon) || obj.polygon.length < 2) {
-                console.warn(`⚠️ Objeto en routes ${index} no es un polígono válido (polygon: ${obj.polygon}), ignorando...`);
-                return;
-            }
-
-            console.log(`✓ Es polígono con ${obj.polygon.length} puntos`);
+            console.log(`\n Procesando objeto ${index}:`, obj);
 
             // Extraer propiedades - soporta varios formatos de Tiled
             let enemyType = 'mapache';
             let weaponType = 'cuchillo';
+            let ellipseSegments = 16;
 
-            console.log(`📦 Propiedades del objeto:`, obj.properties);
+            console.log(` Propiedades del objeto:`, obj.properties);
 
             // Formato 1: propiedades como array de objetos {name, value}
             if (obj.properties && Array.isArray(obj.properties)) {
@@ -1513,6 +1494,9 @@ export default class MainScene extends Phaser.Scene {
                     console.log(`    - ${prop.name}: ${prop.value}`);
                     if (prop.name === 'enemyType' && prop.value) enemyType = String(prop.value).toLowerCase();
                     if (prop.name === 'weaponType' && prop.value) weaponType = String(prop.value).toLowerCase();
+                    if ((prop.name === 'routeSegments' || prop.name === 'segments') && Number.isFinite(Number(prop.value))) {
+                        ellipseSegments = Number(prop.value);
+                    }
                 });
             }
             // Formato 2: propiedades como objeto directo
@@ -1520,17 +1504,79 @@ export default class MainScene extends Phaser.Scene {
                 console.log(`  Format: Objeto directo`);
                 if (obj.properties.enemyType) enemyType = String(obj.properties.enemyType).toLowerCase();
                 if (obj.properties.weaponType) weaponType = String(obj.properties.weaponType).toLowerCase();
+                if (Number.isFinite(Number(obj.properties.routeSegments))) {
+                    ellipseSegments = Number(obj.properties.routeSegments);
+                } else if (Number.isFinite(Number(obj.properties.segments))) {
+                    ellipseSegments = Number(obj.properties.segments);
+                }
             } else {
-                console.warn(`  ⚠️ Sin propiedades detectadas`);
+                console.warn(`   Sin propiedades detectadas`);
             }
 
             console.log(`  → enemyType: ${enemyType}, weaponType: ${weaponType}`);
 
-            // Convertir puntos del polígono a coordenadas del mundo
-            const routePoints = obj.polygon.map(point => ({
-                x: (obj.x + point.x) * scale,
-                y: (obj.y + point.y) * scale
-            }));
+            // Convertir forma de Tiled a puntos de ruta en coordenadas del mundo.
+            // Soportado: polygon, polyline, ellipse y punto fijo.
+            let routePoints = [];
+
+            if (Array.isArray(obj.polygon) && obj.polygon.length > 0) {
+                routePoints = obj.polygon.map(point => ({
+                    x: (obj.x + point.x) * scale,
+                    y: (obj.y + point.y) * scale
+                }));
+                console.log(`✓ Es polígono con ${routePoints.length} punto(s)`);
+            } else if (Array.isArray(obj.polyline) && obj.polyline.length > 0) {
+                routePoints = obj.polyline.map(point => ({
+                    x: (obj.x + point.x) * scale,
+                    y: (obj.y + point.y) * scale
+                }));
+                console.log(`✓ Es polyline con ${routePoints.length} punto(s)`);
+            } else if (!obj.ellipse && Number(obj.width) > 1 && Number(obj.height) > 1) {
+                // Rectángulo de Tiled: se convierte a 4 esquinas para patrulla en cuadrado.
+                const x = Number(obj.x) || 0;
+                const y = Number(obj.y) || 0;
+                const width = Number(obj.width) || 0;
+                const height = Number(obj.height) || 0;
+
+                routePoints = [
+                    { x: x * scale, y: y * scale },
+                    { x: (x + width) * scale, y: y * scale },
+                    { x: (x + width) * scale, y: (y + height) * scale },
+                    { x: x * scale, y: (y + height) * scale }
+                ];
+                console.log(`✓ Es rectángulo con patrulla cuadrada (${routePoints.length} punto(s))`);
+            } else if (obj.ellipse) {
+                const width = Number(obj.width) || 0;
+                const height = Number(obj.height) || 0;
+
+                if (width > 0 && height > 0) {
+                    const safeSegments = Math.max(3, Math.floor(ellipseSegments));
+                    const centerX = obj.x + width / 2;
+                    const centerY = obj.y + height / 2;
+                    const radiusX = width / 2;
+                    const radiusY = height / 2;
+
+                    for (let i = 0; i < safeSegments; i++) {
+                        const angle = (Math.PI * 2 * i) / safeSegments;
+                        routePoints.push({
+                            x: (centerX + Math.cos(angle) * radiusX) * scale,
+                            y: (centerY + Math.sin(angle) * radiusY) * scale
+                        });
+                    }
+                    console.log(`✓ Es elipse/círculo con ${safeSegments} segmento(s)`);
+                } else {
+                    routePoints = [{ x: obj.x * scale, y: obj.y * scale }];
+                    console.warn(`⚠️ Elipse sin tamaño válido en routes ${index}; se usará punto fijo`);
+                }
+            } else {
+                routePoints = [{ x: obj.x * scale, y: obj.y * scale }];
+                console.log(`✓ Objeto puntual en routes ${index}: enemigo estático`);
+            }
+
+            if (routePoints.length === 0) {
+                console.warn(`⚠️ Objeto en routes ${index} no tiene puntos de ruta válidos, ignorando...`);
+                return;
+            }
 
             const startX = routePoints[0].x;
             const startY = routePoints[0].y;
@@ -1569,12 +1615,12 @@ export default class MainScene extends Phaser.Scene {
             this.enemies.add(enemy);
             enemyCount++;
 
-            console.log(`✅ ${enemyName} (${enemyType} con ${weaponType}) creado en (${startX}, ${startY}) con ruta de ${routePoints.length} puntos`);
+            console.log(` ${enemyName} (${enemyType} con ${weaponType}) creado en (${startX}, ${startY}) con ruta de ${routePoints.length} puntos`);
         });
 
-        console.log(`\n📊 Total de enemigos creados: ${enemyCount}`);
+        console.log(`\n Total de enemigos creados: ${enemyCount}`);
         if (enemyCount === 0) {
-            console.warn(`\n⚠️ SIN ENEMIGOS CREADOS. Revisa:\n  1. La capa se llama "routes" en Tiled? (case-sensitive)\n  2. Los objetos tienen propiedades "enemyType" y "weaponType"?\n  3. Son polígonos (polygon), no otros tipos de objeto?`);
+            console.warn(`\n SIN ENEMIGOS CREADOS. Revisa:\n  1. La capa se llama "routes" en Tiled? (case-sensitive)\n  2. Los objetos tienen propiedades "enemyType" y "weaponType"?\n  3. Son polígonos (polygon), no otros tipos de objeto?`);
         }
     }
 
