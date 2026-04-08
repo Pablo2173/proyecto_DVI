@@ -34,11 +34,11 @@ export default class Duck extends BaseCharacter {
         };
 
         this._speed = 320;
-        this._maxSpeed = 600;
+        this._maxSpeed = 550;
         this._acceleration = 5;
         this._currentSpeed = this._speed;
         this.dashSpeed = 3600;
-        this.dashDuration = 200;
+        this.dashDuration = 100;
         this.dashCooldown = 1600;
         this.lastDashTime = 0;
         this.dashReadyFlashPlayed = true;

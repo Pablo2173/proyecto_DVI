@@ -240,7 +240,7 @@
                         {
                          "name":"weaponType",
                          "type":"string",
-                         "value":"mazo"
+                         "value":"arco"
                         }],
                  "rotation":0,
                  "type":"",

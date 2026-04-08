@@ -12,6 +12,8 @@ import Escoba from './Weapons/Melee/escoba.js';
 import DropWeapon from './Consumables/Drops/dropWeapon.js';
 import DropFeather from './Consumables/Drops/dropFeather.js';
 import DropBread from './Consumables/Drops/dropBread.js';
+import DropMask from './Consumables/Drops/dropMask.js';
+import DropTail from './Consumables/Drops/dropTail.js';
 
 const StatusEnemy = {
     IDLE: 0,
@@ -39,7 +41,7 @@ export default class Enemy extends BaseCharacter {
 
         this._nombre = name;
         this._hp = hp;
-        this._visionRadius = visionRadius * 5;
+        this._visionRadius = visionRadius;
         this._facingAngle = Math.PI; //Lo he puesto en Math.PI para que empiece mirando para la izquierda
         this._visionAngle = Math.PI / 2; //Esto es un cuarto de circulo para el cono de vision
         this._speed = speed;
@@ -49,7 +51,7 @@ export default class Enemy extends BaseCharacter {
         this._movementData = null; // para almacenar datos específicos del tipo de movimiento (ej. puntos de patrulla)
 
         this._knockbackUntil = 0;
-        this._showVision = true;
+        this._showVision = false;
         this._visionGraphics = scene.add.graphics();
         this._spriteBaseKey = this._resolveSpriteBaseKey(texture);
         this._isShowingHit = false;
@@ -58,6 +60,13 @@ export default class Enemy extends BaseCharacter {
 
         this.hasFeather = hasFeather;
 
+        // Tabla de loot de items de uso. Las subclases pueden sobreescribirla.
+        // Cada entrada: { id: string, probability: number }
+        this.lootTable = [];
+
+        // Item especial que suelta este enemigo al morir.
+        // Las subclases deben asignar el id correspondiente (ej. 'mask', 'tail').
+        this.specialDrop = null;
 
         this.weaponMap = {
             arco: Arco,
@@ -250,6 +259,24 @@ export default class Enemy extends BaseCharacter {
     detectAndAlert(player, time = this.scene?.time?.now ?? 0) {
         if (!player) return false;
 
+        const playerIsInvisible = typeof player.isInvisibleState === 'function' && player.isInvisibleState();
+
+        // Solo dejamos de detectar al jugador si está invisible.
+        if (playerIsInvisible) {
+            if (this._state === StatusEnemy.ALERTED) {
+                this._startSearch(time);
+            }
+
+            if (this._state === StatusEnemy.SEARCH && this._searchStartTime > 0) {
+                if (time >= this._searchStartTime + this._searchDuration) {
+                    this._state = StatusEnemy.IDLE;
+                    this._inRangeStartTime = 0;
+                }
+            }
+
+            return false;
+        }
+
         const seen = this.canSee(player);
         if (this._state === StatusEnemy.DEAD) return false;
 
@@ -262,7 +289,7 @@ export default class Enemy extends BaseCharacter {
         }
 
         if (this._state === StatusEnemy.ALERTED) {
-            this._startSearch(time);
+            //this._startSearch(time);
             return false;
         }
 
@@ -468,9 +495,95 @@ export default class Enemy extends BaseCharacter {
     }
 
     dropBread() {
-        const { dx, dy } = this._randomDropOffset();
-        new DropBread(this.scene, this.x + dx, this.y + dy);
+            // Cada enemigo suelta exactamente 3 panes al morir
+        for (let i = 0; i < 3; i++) {
+            const { dx, dy } = this._randomDropOffset();
+            new DropBread(this.scene, this.x + dx, this.y + dy);
+        }
+    }
 
+    /**
+     * Suelta el item especial de este enemigo según this.specialDrop.
+     * Añadir soporte para un nuevo drop especial es trivial:
+     * basta con añadir un nuevo case aquí y asignar this.specialDrop en la subclase.
+     */
+    dropSpecialItem() {
+        if (!this.specialDrop) return;
+
+        const { dx, dy } = this._randomDropOffset();
+          const spawnX = this.x + dx;
+        const spawnY = this.y + dy;
+
+        switch (this.specialDrop) {
+            case 'mask':
+                new DropMask(this.scene, spawnX, spawnY);
+                break;
+            case 'tail':
+                new DropTail(this.scene, spawnX, spawnY);
+                break;
+            // Añadir nuevos drops especiales aquí en el futuro
+        }
+    }
+
+    /**
+     * Ejecuta el algoritmo de probabilidad acumulada sobre this.lootTable
+     * y spawnea el item de uso correspondiente si hay drop.
+     *
+     * Algoritmo:
+     *   1. Calcula totalProbability = suma de todas las probabilidades.
+     *   2. maxRange = Math.max(100, totalProbability).
+     *   3. random = entero entre 1 y maxRange (incluidos).
+     *   4. Si random >= totalProbability → no hay drop.
+     *   5. Si random < totalProbability → recorre el array acumulando:
+     *        cumulative += item.probability
+     *        if (random < cumulative) → spawn ese item
+     *
+     * El item aparece a distancia fija (USE_ITEM_DROP_DISTANCE) del enemigo
+     * en una dirección aleatoria.
+     */
+    dropUseItem() {
+        if (!this.lootTable || this.lootTable.length === 0) return;
+
+        // 3.1 Calcular probabilidad acumulada
+        const totalProbability = this.lootTable.reduce((sum, entry) => sum + entry.probability, 0);
+
+        // 3.2 Generar número aleatorio en rango [1, max(100, totalProbability)]
+        const maxRange = Math.max(100, totalProbability);
+        const random = Phaser.Math.Between(1, maxRange);
+
+        // si random >= totalProbability -> no hay drop
+        if (random >= totalProbability) return;
+        new DropBread(this.scene, this.x + dx, this.y + dy);
+        // 3.3 Selección acumulativa del item
+        let cumulative = 0;
+        let selectedItem = null;
+
+        for (const entry of this.lootTable) {
+            cumulative += entry.probability;
+            // Comparación estricta: random < cumulative (NO <=)
+            if (random < cumulative) {
+                selectedItem = entry;
+                break;
+            }
+        }
+
+        if (!selectedItem) return;
+
+        // Distancia fija a la que aparece el item (no aleatoria)
+        const USE_ITEM_DROP_DISTANCE = 60;
+
+        // Dirección aleatoria
+        const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+        const spawnX = this.x + Math.cos(angle) * USE_ITEM_DROP_DISTANCE;
+        const spawnY = this.y + Math.sin(angle) * USE_ITEM_DROP_DISTANCE;
+
+        // Crear el drop correspondiente según el id del item
+        if (selectedItem.id === 'mask') {
+            new DropMask(this.scene, spawnX, spawnY);
+        } else if (selectedItem.id === 'tail') {
+            new DropTail(this.scene, spawnX, spawnY);
+        }
+        // Aquí se pueden añadir más casos para otros items de uso
     }
 
     die() {
@@ -484,6 +597,7 @@ export default class Enemy extends BaseCharacter {
         this.dropWeapon();
         this.dropFeather();
         this.dropBread();
+        this.dropSpecialItem();
 
         // Cambiar sprite al de muerto si existe
         const dedTexture = this._textureKeyFor('ded');
