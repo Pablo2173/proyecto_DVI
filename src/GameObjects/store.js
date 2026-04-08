@@ -59,7 +59,8 @@ export default class Store {
         // FIX: Store ya NO registra su propia tecla E para evitar conflicto con MainScene.
         // En su lugar, recibe eJustDown como parámetro en update().
 
-        this._spawnPotions();
+        // NOTA: _spawnPotions() ya no se llama aquí.
+        // Las posiciones provienen de la capa 'Store' del mapa (ver spawnAtPositions).
     }
 
     // ─────────────────────────────────────────
@@ -89,7 +90,7 @@ export default class Store {
 
             // ── Sprite estático de la poción ──
             const sprite = this.scene.add.image(slotX, slotY, catalogEntry.type);
-            sprite.setScale(3);
+            sprite.setScale(4);
             sprite.setDepth(100);
 
             // Efecto flotante suave para que se vea viva
@@ -115,29 +116,75 @@ export default class Store {
             priceLabel.setOrigin(0.5, 0);
             priceLabel.setDepth(101);
 
-            // ── Indicador de interacción (oculto por defecto) ──
-            // Se muestra cuando el jugador está en rango
-            const hint = this.scene.add.text(slotX, slotY - 28, '[E] Comprar', {
-                fontSize:        '20px',
-                fill:            '#FFFFFF',
-                stroke:          '#000000',
-                strokeThickness: 2,
-                align:           'center',
-            });
-            hint.setOrigin(0.5, 1);
-            hint.setDepth(102);
-            hint.setVisible(false);
-
             this.slots.push({
                 sprite,
                 priceLabel,
-                hint,
                 type:  catalogEntry.type,
                 price: catalogEntry.price,
                 slotX,
                 slotY,
             });
         }
+    }
+
+    /**
+     * Genera una poción aleatoria por cada posición recibida desde el mapa.
+     * Sustituye al spawn manual de _spawnPotions() cuando se usa la capa 'Store' de Tiled.
+     *
+     * Cada posición corresponde exactamente a un objeto de la capa 'Store':
+     *   { x: obj.x * SCALE, y: obj.y * SCALE }
+     *
+     * @param {Array<{x: number, y: number}>} positions - Posiciones escaladas de los objetos del mapa
+     */
+    spawnAtPositions(positions) {
+        if (!Array.isArray(positions) || positions.length === 0) {
+            console.warn('[Store] spawnAtPositions: no se recibieron posiciones válidas.');
+            return;
+        }
+
+        positions.forEach(({ x: slotX, y: slotY }) => {
+            // Selección aleatoria del catálogo (pueden repetirse entre slots)
+            const catalogEntry = Phaser.Utils.Array.GetRandom(Store.POTION_CATALOG);
+
+            // ── Sprite estático de la poción ──
+            const sprite = this.scene.add.image(slotX, slotY, catalogEntry.type);
+            sprite.setScale(4);
+            sprite.setDepth(100);
+
+            // Efecto flotante suave para que se vea viva
+            this.scene.tweens.add({
+                targets:  sprite,
+                y:        slotY - 5,
+                duration: 900,
+                ease:     'Sine.easeInOut',
+                yoyo:     true,
+                repeat:   -1
+            });
+
+            // ── Texto de precio debajo del icono ──
+            // Alineado con la poción
+            const priceLabel = this.scene.add.text(slotX, slotY + 22, `${catalogEntry.price}`, {
+                fontSize:        '20px',
+                fill:            '#FFD700',
+                fontStyle:       'bold',
+                stroke:          '#000000',
+                strokeThickness: 3,
+                align:           'center',
+            });
+            priceLabel.setOrigin(0.5, 0);
+            priceLabel.setDepth(101);
+
+            this.slots.push({
+                sprite,
+                priceLabel,
+                type:  catalogEntry.type,
+                price: catalogEntry.price,
+                slotX,
+                slotY,
+            });
+        });
+
+        console.log(`[Store] spawnAtPositions: ${this.slots.length} poción(es) generada(s) desde el mapa.`);
     }
 
     // ─────────────────────────────────────────
@@ -171,12 +218,6 @@ export default class Store {
                 nearestDist            = dist;
                 this._nearestSlotIndex = index;
             }
-        });
-
-        // ── Actualizar visibilidad del hint en todos los slots ──
-        this.slots.forEach((slot, index) => {
-            if (!slot) return;
-            slot.hint.setVisible(index === this._nearestSlotIndex);
         });
 
         // ── Gestionar compra al pulsar E ──
@@ -267,7 +308,6 @@ export default class Store {
 
         slot.sprite?.destroy();
         slot.priceLabel?.destroy();
-        slot.hint?.destroy();
 
         // Marcar como comprado/vacío
         this.slots[slotIndex] = null;

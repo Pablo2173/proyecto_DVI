@@ -8,7 +8,7 @@ export default class Ramita extends Weapon {
         super(scene, owner, {
             texture: 'ramita',
             isRanged: false,
-            damage: 1000,
+            damage: 10,
             attackSpeed: 700,
             range: 170,
             optimalDistance: 85,
