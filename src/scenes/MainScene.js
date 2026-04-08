@@ -46,6 +46,11 @@ import mapache_run from '../../assets/sprites/Mapache/mapache_run.png';
 import mapache_hit from '../../assets/sprites/Mapache/mapache_hit.png';
 import mapache_ded from '../../assets/sprites/Mapache/mapache_ded.png';
 
+import cuervo_idle from '../../assets/Sprites/Cuervo/cuervo_idle.png';
+import cuervo_run from '../../assets/Sprites/Cuervo/cuervo_run.png';
+import cuervo_hit from '../../assets/Sprites/Cuervo/cuervo_hit.png';
+import cuervo_ded from '../../assets/Sprites/Cuervo/cuervo_ded.png';
+
 //Sounds
 import cuackSound from '../../assets/sounds/cuack.mp3';
 import deathSound from '../../assets/sounds/YouDied.mp3';
@@ -60,6 +65,7 @@ import ConsumableBar from '../GameObjects/Consumables/ConsumableBar.js';
 // Enemigos
 import Zorro from '../GameObjects/Enemies/zorro.js';
 import Mapache from '../GameObjects/Enemies/mapache.js';
+import Cuervo from '../GameObjects/Enemies/cuervo.js';
 
 // Drops de enemigos
 import mask_icon from '../../assets/sprites/consumables/Mask.png';
@@ -218,6 +224,18 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('mapache_ded', mapache_ded);
         // Alias para el sprite muerto (usado en Enemy.die())
         this.load.image('mapache_idle_corpse', mapache_ded);
+
+        this.load.spritesheet('cuervo_idle', cuervo_idle, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.spritesheet('cuervo_run', cuervo_run, {
+            frameWidth: 32,
+            frameHeight: 32
+        });
+        this.load.image('cuervo_hit', cuervo_hit);
+        this.load.image('cuervo_ded', cuervo_ded);
+        this.load.image('cuervo_idle_corpse', cuervo_ded);
         
         this.load.audio('cuack', cuackSound);
         this.load.audio('death_sound', deathSound);
@@ -725,6 +743,24 @@ export default class MainScene extends Phaser.Scene {
             });
         }
 
+        if (!this.anims.exists('cuervo-idle') && this.textures.exists('cuervo_idle')) {
+            this.anims.create({
+                key: 'cuervo-idle',
+                frames: this.anims.generateFrameNumbers('cuervo_idle', { start: 0, end: 3 }),
+                frameRate: 8,
+                repeat: -1
+            });
+        }
+
+        if (!this.anims.exists('cuervo-run') && this.textures.exists('cuervo_run')) {
+            this.anims.create({
+                key: 'cuervo-run',
+                frames: this.anims.generateFrameNumbers('cuervo_run', { start: 0, end: 3 }),
+                frameRate: 12,
+                repeat: -1
+            });
+        }
+
         /* if (!this.anims.exists('duck-swimming') && this.textures.exists('duck-swimming')) {
              this.anims.create({
                  key: 'duck-swimming',
@@ -752,6 +788,12 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
 
         this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon);
+        this.crowSpawner = {
+            holdDurationMs: 5000,
+            holdStartTime: null,
+            lastWeaponKey: this._getCurrentDuckWeaponKey(),
+            spawnedForCurrentWeapon: false
+        };
 
         // ─────────────────────────────────────────
         // UI
@@ -962,24 +1004,7 @@ export default class MainScene extends Phaser.Scene {
 
         // Colisiones con todos los enemigos
         this.enemies.getChildren().forEach(enemy => {
-            this.physics.add.collider(
-                this.duck,
-                enemy,
-                null,
-                (duck) => duck?.state !== DUCK_STATE.DASHING, // si estas haciendo dash no tienes colision con los enemigos
-                this
-            );
-            this.physics.add.collider(enemy, this.colisionLayer);
-            this.physics.add.collider(enemy, this.vallaLayer);
-            this.physics.add.overlap(this.projectiles, enemy, (projectile, en) => {
-                if (this.isPlayerDead) return;
-                this._onProjectileHitEnemy(projectile, en);
-            });
-            this.physics.add.overlap(this.duck, enemy, (duck, en) => {
-                if (this.isPlayerDead) return;
-                this._onEnemyHitDuck(duck, en);
-            });
-            this.physics.add.collider(enemy, this.zonasAcuaticasLayer);
+            this._wireEnemyCollisions(enemy);
         });
 
         this.physics.add.overlap(this.projectiles, this.duck, (projectile, duck) => {
@@ -1134,6 +1159,8 @@ export default class MainScene extends Phaser.Scene {
             this.duck.weapon.attack();
         }
 
+        this._updateCrowSpawnTimer(time);
+
         // ─────────────────────────────────────────
         // IA / VISIÓN DEL ENEMIGO
         // ─────────────────────────────────────────
@@ -1168,6 +1195,125 @@ export default class MainScene extends Phaser.Scene {
         if (this.duck.state === DUCK_STATE.SWIMMING) {
             this.duck.setState(DUCK_STATE.IDLE);
         }
+    }
+
+    _getCurrentDuckWeaponKey() {
+        return this.duck?.weapon?.texture?.key ?? null;
+    }
+
+    _isHoldingNonBranchWeapon() {
+        const weaponKey = this._getCurrentDuckWeaponKey();
+        return !!weaponKey && weaponKey !== 'ramita';
+    }
+
+    _updateCrowSpawnTimer(time) {
+        if (!this.crowSpawner || !this.duck || !this.duck.active) return;
+
+        const currentWeaponKey = this._getCurrentDuckWeaponKey();
+        if (currentWeaponKey !== this.crowSpawner.lastWeaponKey) {
+            this.crowSpawner.lastWeaponKey = currentWeaponKey;
+            this.crowSpawner.spawnedForCurrentWeapon = false;
+            this.crowSpawner.holdStartTime = this._isHoldingNonBranchWeapon() ? time : null;
+            return;
+        }
+
+        if (!this._isHoldingNonBranchWeapon()) {
+            this.crowSpawner.holdStartTime = null;
+            this.crowSpawner.spawnedForCurrentWeapon = false;
+            return;
+        }
+
+        if (this.crowSpawner.spawnedForCurrentWeapon) {
+            return;
+        }
+
+        if (this.crowSpawner.holdStartTime === null) {
+            this.crowSpawner.holdStartTime = time;
+            return;
+        }
+
+        const holdElapsed = time - this.crowSpawner.holdStartTime;
+        if (holdElapsed >= this.crowSpawner.holdDurationMs) {
+            this._spawnCrowOutsidePlayerVision(time);
+            this.crowSpawner.spawnedForCurrentWeapon = true;
+        }
+    }
+
+    _spawnCrowOutsidePlayerVision(time) {
+        const spawnPoint = this._getRandomPointOutsideCameraView();
+        if (!spawnPoint) return;
+
+        const enemyName = `Cuervo_${Math.floor(time)}`;
+        const enemy = new Cuervo(this, enemyName, spawnPoint.x, spawnPoint.y, 'cuervo_idle', null, null, null);
+        this.enemies.add(enemy);
+        this._wireEnemyCollisions(enemy);
+    }
+
+    _getRandomPointOutsideCameraView() {
+        const cameraView = this.cameras?.main?.worldView;
+        if (!cameraView) return null;
+
+        const worldBounds = this.physics?.world?.bounds;
+        if (!worldBounds) return null;
+
+        const margin = 120;
+
+        for (let i = 0; i < 8; i++) {
+            const edge = Phaser.Math.Between(0, 3);
+            let x = this.duck?.x ?? cameraView.centerX;
+            let y = this.duck?.y ?? cameraView.centerY;
+
+            if (edge === 0) {
+                x = cameraView.left - margin;
+                y = Phaser.Math.Between(Math.floor(cameraView.top), Math.floor(cameraView.bottom));
+            } else if (edge === 1) {
+                x = cameraView.right + margin;
+                y = Phaser.Math.Between(Math.floor(cameraView.top), Math.floor(cameraView.bottom));
+            } else if (edge === 2) {
+                x = Phaser.Math.Between(Math.floor(cameraView.left), Math.floor(cameraView.right));
+                y = cameraView.top - margin;
+            } else {
+                x = Phaser.Math.Between(Math.floor(cameraView.left), Math.floor(cameraView.right));
+                y = cameraView.bottom + margin;
+            }
+
+            x = Phaser.Math.Clamp(x, worldBounds.left + 32, worldBounds.right - 32);
+            y = Phaser.Math.Clamp(y, worldBounds.top + 32, worldBounds.bottom - 32);
+
+            if (!cameraView.contains(x, y)) {
+                return { x, y };
+            }
+        }
+
+        return null;
+    }
+
+    _wireEnemyCollisions(enemy) {
+        if (!enemy) return;
+
+        this.physics.add.collider(
+            this.duck,
+            enemy,
+            null,
+            (duck) => duck?.state !== DUCK_STATE.DASHING,
+            this
+        );
+
+        if (!enemy.ignoresObstacleHitbox) {
+            this.physics.add.collider(enemy, this.colisionLayer);
+            this.physics.add.collider(enemy, this.vallaLayer);
+            this.physics.add.collider(enemy, this.zonasAcuaticasLayer);
+        }
+
+        this.physics.add.overlap(this.projectiles, enemy, (projectile, en) => {
+            if (this.isPlayerDead) return;
+            this._onProjectileHitEnemy(projectile, en);
+        });
+
+        this.physics.add.overlap(this.duck, enemy, (duck, en) => {
+            if (this.isPlayerDead) return;
+            this._onEnemyHitDuck(duck, en);
+        });
     }
 
     showDeathScreen() {
