@@ -715,7 +715,7 @@ export default class Enemy extends BaseCharacter {
      * El enemigo patrulla entre los puntos en orden
      */
     movementFollowRoute() {
-        if (!this._movementData || !this._movementData.routePoints || this._movementData.routePoints.length < 2) {
+        if (!this._movementData || !this._movementData.routePoints || this._movementData.routePoints.length < 1) {
             return;
         }
 
@@ -723,6 +723,20 @@ export default class Enemy extends BaseCharacter {
 
         const data = this._movementData;
         const points = data.routePoints;
+
+        // Ruta de 1 punto: enemigo estático (si lo empujan, vuelve a su punto).
+        if (points.length === 1) {
+            const fixedPoint = points[0];
+            const distToFixed = Phaser.Math.Distance.Between(this.x, this.y, fixedPoint.x, fixedPoint.y);
+
+            if (distToFixed > 10) {
+                this.moveTowards(fixedPoint);
+            } else {
+                this.stop();
+            }
+            return;
+        }
+
         const currentTarget = points[data.currentPointIndex];
 
         // Distancia al punto objetivo
