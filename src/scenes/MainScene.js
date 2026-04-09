@@ -240,7 +240,7 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('cuervo_hit', cuervo_hit);
         this.load.image('cuervo_ded', cuervo_ded);
         this.load.image('cuervo_idle_corpse', cuervo_ded);
-        
+
         this.load.spritesheet('rana_idle', rana_idle, {
             frameWidth: 32,
             frameHeight: 32
@@ -299,6 +299,8 @@ export default class MainScene extends Phaser.Scene {
         this.playerSpawn = null;
         this.playerWeapon = 'cuchillo';
         this.positionText = null;
+        this.puddles = [];
+        this.currentPuddle = null;
 
         // Limpia listeners anteriores por seguridad al reiniciar la escena
         this.input.removeAllListeners();
@@ -391,6 +393,8 @@ export default class MainScene extends Phaser.Scene {
             y: duckObj.y * SCALE
         };
 
+        this._applyStoredCheckpointSpawn();
+
         if (duckObj.properties) {
             const duckProps = {};
             duckObj.properties.forEach(p => duckProps[p.name] = p.value);
@@ -409,6 +413,8 @@ export default class MainScene extends Phaser.Scene {
                 }
             }
         }
+
+        this._applyStoredRespawnWeapon();
 
         // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
         // Esto evita depender de propiedades "collides" en cada tile del tileset.
@@ -646,7 +652,7 @@ export default class MainScene extends Phaser.Scene {
 
         // Tecla E: usada exclusivamente para recoger items de tipo 'interact' (DropMask)
         this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-        
+
         // ─────────────────────────────────────────
         // ENEMIGOS DESDE RUTAS
         // ─────────────────────────────────────────
@@ -670,6 +676,13 @@ export default class MainScene extends Phaser.Scene {
         // La posición de la rana proviene de la capa 'Rana' del mapa.
         // ─────────────────────────────────────────
         this.setupFrogFromLayer(SCALE);
+
+
+        // ─────────────────────────────────────────
+        // CHARCOS DESDE TILED
+        // La capa 'charquito' define polígonos que actúan como zonas de SWIMMING.
+        // ─────────────────────────────────────────
+        this.setupPuddlesFromLayer(SCALE);
 
 
         // Eventos de audio para todos los enemigos
@@ -798,6 +811,12 @@ export default class MainScene extends Phaser.Scene {
         this._updateDuckSwimmingState();
 
         // ─────────────────────────────────────────
+        // CHARQUITOS DESDE TILED
+        // Se mantiene separado de la lógica de agua para futuras extensiones.
+        // ─────────────────────────────────────────
+        this._updateCharquitoState();
+
+        // ─────────────────────────────────────────
         // RECOGIDA DE CONSUMIBLES
         // Usa isNear() (igual que el duck con las plumas) para detectar rango.
         // - pickupType 'auto'     → interact() se llama inmediatamente (DropBread)
@@ -902,8 +921,112 @@ export default class MainScene extends Phaser.Scene {
         }
     }
 
+    _updateCharquitoState() {
+        if (!this.duck || !this.duck.active || !Array.isArray(this.puddles) || this.puddles.length === 0) return;
+
+        const puddle = this.puddles.find(charco => charco?.containsDuck?.(this.duck)) || null;
+
+        if (!puddle) {
+            this.currentPuddle = null;
+            return;
+        }
+
+        if (this.currentPuddle !== puddle) {
+            this.currentPuddle = puddle;
+            this._setCheckpointFromPuddle(puddle);
+        }
+
+        if (this.duck.state !== DUCK_STATE.SWIMMING && this.duck.state !== DUCK_STATE.DASHING) {
+            this.duck.setState(DUCK_STATE.SWIMMING);
+        }
+    }
+
+    _applyStoredCheckpointSpawn() {
+        const checkpoint = this.registry?.get('duckCheckpointSpawn');
+        if (!checkpoint) return;
+
+        const checkpointX = Number(checkpoint.x);
+        const checkpointY = Number(checkpoint.y);
+        if (!Number.isFinite(checkpointX) || !Number.isFinite(checkpointY)) return;
+
+        this.playerSpawn = {
+            x: checkpointX,
+            y: checkpointY
+        };
+    }
+
+    _applyStoredRespawnWeapon() {
+        const storedWeapon = this.registry?.get('duckRespawnWeapon');
+        if (typeof storedWeapon !== 'string') return;
+
+        const normalizedWeapon = storedWeapon.trim().toLowerCase();
+        if (!normalizedWeapon) return;
+
+        const allowedWeapons = new Set(['arco', 'mcuaktro', 'cuchillo', 'mazo', 'ramita', 'escoba']);
+        if (!allowedWeapons.has(normalizedWeapon)) return;
+
+        this.playerWeapon = normalizedWeapon;
+    }
+
+    _setCheckpointFromPuddle(puddle) {
+        const spawnPoint = puddle?.getSpawnPoint?.();
+        if (!spawnPoint) return;
+
+        const spawnX = Number(spawnPoint.x);
+        const spawnY = Number(spawnPoint.y);
+        if (!Number.isFinite(spawnX) || !Number.isFinite(spawnY)) return;
+
+        this.playerSpawn = {
+            x: spawnX,
+            y: spawnY
+        };
+
+        this.registry?.set('duckCheckpointSpawn', {
+            x: spawnX,
+            y: spawnY,
+            puddleName: puddle?.name || ''
+        });
+
+        if (this.duck?.setCheckpoint) {
+            this.duck.setCheckpoint({
+                x: spawnX,
+                y: spawnY,
+                puddleName: puddle?.name || ''
+            });
+        }
+    }
+
     _getCurrentDuckWeaponKey() {
         return this.duck?.weapon?.texture?.key ?? null;
+    }
+
+    _resolveRespawnWeaponKey() {
+        const weapon = this.duck?.weapon;
+        if (!weapon) return 'ramita';
+
+        const byConstructorName = {
+            arco: 'arco',
+            mcuaktro: 'mcuaktro',
+            cuchillo: 'cuchillo',
+            mazo: 'mazo',
+            ramita: 'ramita',
+            escoba: 'escoba'
+        };
+
+        const constructorName = String(weapon.constructor?.name || '').trim().toLowerCase();
+        if (byConstructorName[constructorName]) {
+            return byConstructorName[constructorName];
+        }
+
+        const textureKey = String(weapon.texture?.key || '').trim().toLowerCase();
+        if (textureKey.includes('arco')) return 'arco';
+        if (textureKey.includes('mcuaktro')) return 'mcuaktro';
+        if (textureKey.includes('cuchillo')) return 'cuchillo';
+        if (textureKey.includes('mazo')) return 'mazo';
+        if (textureKey.includes('escoba')) return 'escoba';
+        if (textureKey.includes('ramita')) return 'ramita';
+
+        return 'ramita';
     }
 
     _isHoldingNonBranchWeapon() {
@@ -1041,6 +1164,9 @@ export default class MainScene extends Phaser.Scene {
 
         this.isPlayerDead = true;
 
+        const respawnWeaponKey = this._resolveRespawnWeaponKey();
+        this.registry?.set('duckRespawnWeapon', respawnWeaponKey);
+
         if (this.duck?.body) {
             this.duck.body.setVelocity(0, 0);
             this.duck.body.enable = false;
@@ -1076,10 +1202,11 @@ export default class MainScene extends Phaser.Scene {
             this._onResize = null;
         }
 
-        if (this.puddleDebug) {
-            this.puddleDebug.destroy();
-            this.puddleDebug = null;
+        if (Array.isArray(this.puddles)) {
+            this.puddles.forEach(puddle => puddle?.destroy?.());
+            this.puddles = [];
         }
+        this.currentPuddle = null;
 
         if (this.deathOverlay) {
             this.deathOverlay.destroy();
@@ -1538,6 +1665,45 @@ export default class MainScene extends Phaser.Scene {
         this.frog = new Frog(this, 'rana', frogX, frogY, 'rana_idle', null);
 
         console.log(`[MainScene] Frog spawneada en (${frogX}, ${frogY}) desde la capa "Rana".`);
+    }
+
+    // ─────────────────────────────────────────
+    // CHARCOS DESDE TILED
+    // ─────────────────────────────────────────
+
+    /**
+     * Lee la capa 'charquito' del mapa y crea una instancia de Puddle por cada polígono.
+     *
+     * Cada objeto debe tener el campo `polygon` de Tiled. Las coordenadas se escalan igual
+     * que el resto del mapa (× SCALE).
+     *
+     * @param {number} scale - Escala del mapa
+     */
+    setupPuddlesFromLayer(scale) {
+        const puddleLayer = this.map.getObjectLayer('charquito');
+
+        this.puddles = [];
+
+        if (!puddleLayer || !Array.isArray(puddleLayer.objects) || puddleLayer.objects.length === 0) {
+            console.log('[MainScene] No se encontró la capa "charquito" o está vacía.');
+            return;
+        }
+
+        puddleLayer.objects.forEach((obj, index) => {
+            if (!Array.isArray(obj.polygon) || obj.polygon.length < 3) {
+                return;
+            }
+
+            const points = obj.polygon.map(point => ({
+                x: (obj.x + point.x) * scale,
+                y: (obj.y + point.y) * scale
+            }));
+
+            const puddle = new Puddle(this, points, obj.name || `charco_${index + 1}`);
+            this.puddles.push(puddle);
+        });
+
+        console.log(`[MainScene] Capa charquito encontrada con ${this.puddles.length} charco(s).`);
     }
 
 }

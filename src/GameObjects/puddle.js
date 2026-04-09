@@ -1,81 +1,72 @@
 import Phaser from 'phaser';
-import { DUCK_STATE } from './duck.js';
 
-export default class Puddle extends Phaser.GameObjects.Sprite {
+export default class Puddle {
     // ─────────────────────────────────────────
     // PUDDLE
-    // Charco circular invisible que detecta si el pato está dentro
-    // y cambia su estado a SWIMMING.
+    // Charco definido como polígono invisible.
     // ─────────────────────────────────────────
 
-    constructor(scene, x, y, radius = 50) {
-        super(scene, x, y);
+    constructor(scene, points = [], name = '') {
+        this.scene = scene;
+        this.name = name;
 
-        this.radius = radius;
-        this._duckInside = false;
+        const validPoints = Array.isArray(points)
+            ? points.filter(point => Number.isFinite(point?.x) && Number.isFinite(point?.y))
+            : [];
 
-        scene.add.existing(this);
-
-        this.setOrigin(0.5);
-        this.setVisible(false);
-        this.setActive(true);
-
-        // Escucha el update de la escena con el contexto correcto
-        scene.events.on('update', this._checkDuck, this);
-
-        // Limpieza segura al reiniciar / destruir escena
-        scene.events.once('shutdown', this._cleanup, this);
-        scene.events.once('destroy', this._cleanup, this);
+        this.points = validPoints;
+        this.polygon = validPoints.length >= 3 ? new Phaser.Geom.Polygon(validPoints) : null;
+        this.bounds = this.polygon ? this._createBounds(validPoints) : null;
+        this.spawnPoint = this.bounds
+            ? { x: this.bounds.centerX, y: this.bounds.centerY }
+            : null;
     }
 
-    // Devuelve true si el jugador está dentro del radio del charco
-    isPlayerInPuddle(player) {
-        if (!player || !player.active) return false;
+    containsPoint(x, y) {
+        if (!this.polygon || !this.bounds) return false;
+        if (!this.bounds.contains(x, y)) return false;
 
-        const dist = Phaser.Math.Distance.Between(
-            this.x,
-            this.y,
-            player.x,
-            player.y
-        );
-
-        return dist <= this.radius;
+        return this.polygon.contains(x, y);
     }
 
-    _checkDuck() {
-        // Blindajes para evitar errores al reiniciar escena
-        if (!this.active) return;
-        if (!this.scene) return;
-        if (this.scene.isPlayerDead) return;
+    containsDuck(duck) {
+        if (!duck || !duck.active) return false;
 
-        const duck = this.scene.duck;
-        if (!duck || !duck.active) return;
-
-        const inside = this.isPlayerInPuddle(duck);
-
-        if (inside && !this._duckInside) {
-            this._duckInside = true;
-
-            if (duck.state !== DUCK_STATE.SWIMMING) {
-                duck.setState(DUCK_STATE.SWIMMING);
-            }
-        } else if (!inside && this._duckInside) {
-            this._duckInside = false;
-
-            if (duck.state === DUCK_STATE.SWIMMING) {
-                duck.setState(DUCK_STATE.IDLE);
-            }
-        }
+        return this.containsPoint(duck.x, duck.y);
     }
 
-    _cleanup() {
-        if (this.scene && this.scene.events) {
-            this.scene.events.off('update', this._checkDuck, this);
-        }
+    getSpawnPoint() {
+        if (!this.spawnPoint) return null;
+
+        return {
+            x: this.spawnPoint.x,
+            y: this.spawnPoint.y
+        };
     }
 
     destroy(fromScene) {
-        this._cleanup();
-        super.destroy(fromScene);
+        this.scene = null;
+        this.points = null;
+        this.polygon = null;
+        this.bounds = null;
+        this.spawnPoint = null;
+        return fromScene;
+    }
+
+    _createBounds(points) {
+        let minX = points[0].x;
+        let minY = points[0].y;
+        let maxX = points[0].x;
+        let maxY = points[0].y;
+
+        for (let index = 1; index < points.length; index++) {
+            const point = points[index];
+            if (point.x < minX) minX = point.x;
+            if (point.y < minY) minY = point.y;
+            if (point.x > maxX) maxX = point.x;
+            if (point.y > maxY) maxY = point.y;
+        }
+
+        return new Phaser.Geom.Rectangle(minX, minY, maxX - minX, maxY - minY);
     }
 }
