@@ -72,62 +72,6 @@ export default class Store {
     // ─────────────────────────────────────────
 
     /**
-     * Genera 5 pociones aleatorias del catálogo y las posiciona en el suelo.
-     * Cada poción tiene un sprite estático (NO usa DropItem).
-     * @private
-     */
-    _spawnPotions() {
-        // Definir 5 slots con posición horizontal equidistante
-        const totalSlots = 5;
-        const halfSpan   = ((totalSlots - 1) / 2) * Store.SLOT_SPACING;
-
-        for (let i = 0; i < totalSlots; i++) {
-            // Selección aleatoria del catálogo (pueden repetirse)
-            const catalogEntry = Phaser.Utils.Array.GetRandom(Store.POTION_CATALOG);
-
-            const slotX = this.x - halfSpan + i * Store.SLOT_SPACING;
-            const slotY = this.y;
-
-            // ── Sprite estático de la poción ──
-            const sprite = this.scene.add.image(slotX, slotY, catalogEntry.type);
-            sprite.setScale(4);
-            sprite.setDepth(100);
-
-            // Efecto flotante suave para que se vea viva
-            this.scene.tweens.add({
-                targets:  sprite,
-                y:        slotY - 5,
-                duration: 900,
-                ease:     'Sine.easeInOut',
-                yoyo:     true,
-                repeat:   -1
-            });
-
-            // ── Texto de precio debajo del icono ──
-            // Alineado con la poción
-            const priceLabel = this.scene.add.text(slotX, slotY + 22, `${catalogEntry.price}`, {
-                fontSize:        '20px',
-                fill:            '#FFD700',
-                fontStyle:       'bold',
-                stroke:          '#000000',
-                strokeThickness: 3,
-                align:           'center',
-            });
-            priceLabel.setOrigin(0.5, 0);
-            priceLabel.setDepth(101);
-
-            this.slots.push({
-                sprite,
-                priceLabel,
-                type:  catalogEntry.type,
-                price: catalogEntry.price,
-                slotX,
-                slotY,
-            });
-        }
-    }
-
-    /**
      * Genera una poción aleatoria por cada posición recibida desde el mapa.
      * Sustituye al spawn manual de _spawnPotions() cuando se usa la capa 'Store' de Tiled.
      *
@@ -163,8 +107,8 @@ export default class Store {
 
             // ── Texto de precio debajo del icono ──
             // Alineado con la poción
-            const priceLabel = this.scene.add.text(slotX, slotY + 22, `${catalogEntry.price}`, {
-                fontSize:        '20px',
+            const priceLabel = this.scene.add.text(slotX, slotY + 36, `${catalogEntry.price}`, {
+                fontSize:        '22px',
                 fill:            '#FFD700',
                 fontStyle:       'bold',
                 stroke:          '#000000',
