@@ -280,7 +280,8 @@ export default class ConsumableBar {
         this.breadIcon.setOrigin(0, 0.5);
         this.breadIcon.setScrollFactor(0);
         this.breadIcon.setDepth(9102);
-        this.breadIcon.setScale(4);
+        this.breadIconBaseScale = 4;
+        this.breadIcon.setScale(this.breadIconBaseScale);
 
         this.breadText = this.scene.add.text(
             this.resourcesStartX + 460,
@@ -446,6 +447,7 @@ export default class ConsumableBar {
 
         this.featherText.setText(`${feathers} / ${maxFeathers}`);
         this.breadText.setText(`x ${breadCount}`);
+        this.breadIcon?.setScale(this.breadIconBaseScale ?? 4);
     }
 
     // ─────────────────────────────────────────
@@ -524,7 +526,7 @@ export default class ConsumableBar {
 
     pulseBread() {
         this.scene.tweens.add({
-            targets: [this.breadIcon, this.breadText],
+            targets: this.breadText,
             scaleX: 1.12,
             scaleY: 1.12,
             duration: 100,
