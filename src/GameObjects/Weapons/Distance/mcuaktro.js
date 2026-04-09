@@ -16,7 +16,7 @@ export default class Mcuaktro extends Weapon {
             optimalDistance: 350,
             scale:           1,
             spriteAngleOffset: 0,
-            debug:           true,
+            debug:           false,
             accuracy:        0,
         });
         this._attackSpeedBase = this.attackSpeed,

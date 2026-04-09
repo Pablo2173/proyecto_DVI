@@ -21,7 +21,7 @@ super(scene, owner, {
     swingAngle: 70,
     swingDuration: 180,
     scale: 1.5,
-    debug: true,
+    debug: false,
     bar: bar
 });
 

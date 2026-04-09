@@ -31,7 +31,8 @@ export default class Ramita extends Weapon {
 
     on_equip() {
         // Mostrar rango de test al jugador por defecto.
-        this.setTestRangeVisible(!this.isEnemy);
+        //this.setTestRangeVisible(!this.isEnemy);
+        this.setTestRangeVisible(false);
     }
 
     update() {

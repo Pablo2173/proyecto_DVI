@@ -22,7 +22,7 @@ export default class Arco extends Weapon {
             optimalDistance: 280,
             scale:           1.5,
             spriteAngleOffset: 0,
-            debug:           true,
+            debug:           false,
             bar:             bar
         });
 

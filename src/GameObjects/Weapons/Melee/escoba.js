@@ -22,7 +22,7 @@ export default class Escoba extends Weapon {
             swingAngle:      80,
             swingDuration:   100,
             scale:           1,
-            debug:           true,
+            debug:           false,
             bar:             bar
         });
 

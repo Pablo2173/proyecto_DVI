@@ -223,7 +223,6 @@
                  "height":0,
                  "id":91,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -264,7 +263,6 @@
                  "height":16,
                  "id":5,
                  "name":"Marca para saltar",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -287,7 +285,6 @@
                  "height":0,
                  "id":36,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -324,7 +321,6 @@
                  "height":24,
                  "id":38,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"enemyType",
@@ -347,7 +343,6 @@
                  "height":403.333333333333,
                  "id":39,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"enemyType",
@@ -370,7 +365,6 @@
                  "height":372,
                  "id":44,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"enemyType",
@@ -393,7 +387,6 @@
                  "height":0,
                  "id":47,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -433,7 +426,6 @@
                  "height":0,
                  "id":50,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -468,7 +460,6 @@
                  "height":0,
                  "id":54,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -504,7 +495,6 @@
                  "height":0,
                  "id":55,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -540,7 +530,6 @@
                  "height":0,
                  "id":57,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -576,7 +565,6 @@
                  "height":0,
                  "id":58,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -600,7 +588,6 @@
                  "height":0,
                  "id":62,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -624,7 +611,6 @@
                  "height":0,
                  "id":63,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -648,7 +634,6 @@
                  "height":0,
                  "id":64,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -672,7 +657,6 @@
                  "height":0,
                  "id":66,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -696,7 +680,6 @@
                  "height":0,
                  "id":67,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -720,7 +703,6 @@
                  "height":0,
                  "id":68,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -744,7 +726,6 @@
                  "height":0,
                  "id":69,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -768,7 +749,6 @@
                  "height":0,
                  "id":70,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -792,7 +772,6 @@
                  "height":0,
                  "id":71,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -816,7 +795,6 @@
                  "height":0,
                  "id":74,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -840,7 +818,6 @@
                  "height":0,
                  "id":75,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -864,7 +841,6 @@
                  "height":0,
                  "id":76,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -906,7 +882,6 @@
                  "height":16,
                  "id":31,
                  "name":"duck",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"name",
@@ -916,7 +891,7 @@
                         {
                          "name":"weapon",
                          "type":"string",
-                         "value":"escoba"
+                         "value":"null"
                         }],
                  "rotation":0,
                  "type":"",
@@ -941,7 +916,6 @@
                  "height":16,
                  "id":88,
                  "name":"rana",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -965,65 +939,60 @@
                  "height":16,
                  "id":83,
                  "name":"objeto",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":16,
-                 "x":1344.5,
-                 "y":1008
+                 "x":1351.16666666667,
+                 "y":1000
                 }, 
                 {
                  "gid":1753,
                  "height":16,
                  "id":84,
                  "name":"objeto",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":16,
-                 "x":1409,
-                 "y":976
+                 "x":1413.66666666667,
+                 "y":969
                 }, 
                 {
                  "gid":1753,
                  "height":16,
                  "id":85,
                  "name":"objeto",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":16,
-                 "x":1472.5,
-                 "y":1008
+                 "x":1479.16666666667,
+                 "y":1000.66666666667
                 }, 
                 {
                  "gid":1753,
                  "height":16,
                  "id":86,
                  "name":"objeto",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":16,
-                 "x":1537.5,
-                 "y":976.5
+                 "x":1544.16666666667,
+                 "y":968.166666666667
                 }, 
                 {
                  "gid":1753,
                  "height":16,
                  "id":87,
                  "name":"objeto",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
                  "width":16,
-                 "x":1600,
-                 "y":1007
+                 "x":1604.66666666667,
+                 "y":1002
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -1040,7 +1009,6 @@
                  "height":0,
                  "id":82,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -1059,7 +1027,6 @@
                  "height":0,
                  "id":83,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -1090,7 +1057,7 @@
  "nextobjectid":92,
  "orientation":"orthogonal",
  "renderorder":"right-down",
- "tiledversion":"1.12.0",
+ "tiledversion":"1.11.2",
  "tileheight":16,
  "tilesets":[
         {
