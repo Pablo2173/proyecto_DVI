@@ -208,6 +208,27 @@ export default class Duck extends BaseCharacter {
         }
     }
 
+    hasFeathers(amount = 1) {
+        const required = Math.max(0, Number(amount) || 0);
+        return this.feathers >= required;
+    }
+
+    spendFeathers(amount = 1) {
+        const required = Math.max(0, Math.floor(Number(amount) || 0));
+        if (required <= 0) return true;
+        if (!this.hasFeathers(required)) return false;
+
+        this.setFeathers(this.feathers - required);
+        return true;
+    }
+
+    applyMovementSpeedBonus(percent = 0.1) {
+        const safePercent = Number(percent);
+        if (!Number.isFinite(safePercent) || safePercent <= 0) return;
+
+        this.speedMultiplier *= 1 + safePercent;
+    }
+
     canTakeDamage() {
         return super.canTakeDamage() && !this.isInvulnerable && !this.scene?.isPlayerDead;
     }

@@ -65,6 +65,7 @@ import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png
 import up_bar from '../../assets/sprites/UI/up_bar.png';
 import dash_charge_sprite from '../../assets/Sprites/UI/dash_charge.png';
 import Puddle from '../GameObjects/puddle.js';
+import PuddleUpgradePanel from '../GameObjects/Puddles/PuddleUpgradePanel.js';
 import ConsumableBar from '../GameObjects/Consumables/ConsumableBar.js';
 
 // Enemigos
@@ -301,6 +302,8 @@ export default class MainScene extends Phaser.Scene {
         this.positionText = null;
         this.puddles = [];
         this.currentPuddle = null;
+        this.previousCheckpointBeforePuddle = null;
+        this.puddleUpgradePanel = null;
 
         // Limpia listeners anteriores por seguridad al reiniciar la escena
         this.input.removeAllListeners();
@@ -684,6 +687,10 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         this.setupPuddlesFromLayer(SCALE);
 
+        this.puddleUpgradePanel = new PuddleUpgradePanel(this, (puddle, upgradeId) => {
+            this._onPuddleUpgradePurchase(puddle, upgradeId);
+        });
+
 
         // Eventos de audio para todos los enemigos
         this.events.on('audio:event', (audioEvent) => {
@@ -856,17 +863,58 @@ export default class MainScene extends Phaser.Scene {
 
         // ─────────────────────────────────────────
         // CÁMARA ENTRE PATO Y RATÓN
-        // 70% hacia el pato, 30% hacia el ratón
+        // Si el cursor está en la deadzone central (50%),
+        // cámara fija al pato. Fuera: 70% pato, 30% ratón.
+        // El centro se interpola para evitar saltos bruscos.
+        // Si el pato está en un charco activo: cámara bloqueada
+        // y desplazada un 30% a la derecha.
         // ─────────────────────────────────────────
         if (this.duck && this.duck.active) {
-            this.input.activePointer.updateWorldPoint(this.cameras.main);
-            const mouseX = this.input.activePointer.worldX;
-            const mouseY = this.input.activePointer.worldY;
+            const pointer = this.input.activePointer;
+            const camera = this.cameras.main;
+            const screenW = this.scale.width;
+            const screenH = this.scale.height;
 
-            const camX = this.duck.x * 0.7 + mouseX * 0.3;
-            const camY = this.duck.y * 0.7 + mouseY * 0.3;
+            // 50% central: margen del 25% en cada lado.
+            const deadzoneLeft = screenW * 0.25;
+            const deadzoneRight = screenW * 0.75;
+            const deadzoneTop = screenH * 0.25;
+            const deadzoneBottom = screenH * 0.75;
 
-            this.cameras.main.centerOn(camX, camY);
+            const isPointerInsideDeadzone =
+                pointer.x >= deadzoneLeft &&
+                pointer.x <= deadzoneRight &&
+                pointer.y >= deadzoneTop &&
+                pointer.y <= deadzoneBottom;
+
+            const isPuddleCameraLocked = !!(
+                this.currentPuddle &&
+                !this.currentPuddle.isRemoved &&
+                this.currentPuddle.getPrimaryUpgrade?.()
+            );
+
+            let targetCamX = this.duck.x;
+            let targetCamY = this.duck.y;
+
+            if (isPuddleCameraLocked) {
+                targetCamX = this.duck.x + camera.width * 0.3;
+            } else if (!isPointerInsideDeadzone) {
+                pointer.updateWorldPoint(this.cameras.main);
+                const mouseX = pointer.worldX;
+                const mouseY = pointer.worldY;
+
+                targetCamX = this.duck.x * 0.7 + mouseX * 0.3;
+                targetCamY = this.duck.y * 0.7 + mouseY * 0.3;
+            }
+
+            const currentCenterX = camera.scrollX + camera.width * 0.5;
+            const currentCenterY = camera.scrollY + camera.height * 0.5;
+            const cameraLerp = 0.15;
+
+            const smoothCamX = Phaser.Math.Linear(currentCenterX, targetCamX, cameraLerp);
+            const smoothCamY = Phaser.Math.Linear(currentCenterY, targetCamY, cameraLerp);
+
+            camera.centerOn(smoothCamX, smoothCamY);
         }
 
         // ─────────────────────────────────────────
@@ -928,16 +976,113 @@ export default class MainScene extends Phaser.Scene {
 
         if (!puddle) {
             this.currentPuddle = null;
+            this.puddleUpgradePanel?.hide();
             return;
         }
 
         if (this.currentPuddle !== puddle) {
+            if (!puddle.getCheckpointBackup?.()) {
+                puddle.setCheckpointBackup?.(this._getCurrentCheckpointData());
+            }
+
+            this.previousCheckpointBeforePuddle = puddle.getCheckpointBackup?.() || null;
             this.currentPuddle = puddle;
             this._setCheckpointFromPuddle(puddle);
+            this.puddleUpgradePanel?.show(puddle, this.duck);
+        } else {
+            this.puddleUpgradePanel?.update(this.duck);
         }
 
         if (this.duck.state !== DUCK_STATE.SWIMMING && this.duck.state !== DUCK_STATE.DASHING) {
             this.duck.setState(DUCK_STATE.SWIMMING);
+        }
+    }
+
+    _onPuddleUpgradePurchase(puddle, upgradeId) {
+        if (!puddle || !this.duck) return;
+
+        const purchase = puddle.purchaseUpgrade?.(upgradeId, this.duck);
+        const success = !!purchase?.success;
+        let purchaseMessage = purchase?.message || '';
+        if (success) {
+            const spentFeathers = Number(purchase?.spentFeathers) || 0;
+            const remainingFeathers = Number(purchase?.remainingFeathers);
+            if (Number.isFinite(remainingFeathers)) {
+                purchaseMessage = `${purchaseMessage} (-${spentFeathers} feather, left: ${remainingFeathers})`;
+            }
+        }
+
+        this.puddleUpgradePanel?.showPurchaseResult(success, purchaseMessage);
+        if (!success) return;
+
+        const checkpointToRestore = puddle.getCheckpointBackup?.() || this.previousCheckpointBeforePuddle;
+        this._restoreCheckpoint(checkpointToRestore);
+
+        this._removePuddle(puddle);
+
+        this.previousCheckpointBeforePuddle = null;
+        if (this.currentPuddle === puddle) {
+            this.currentPuddle = null;
+        }
+
+        this.puddleUpgradePanel?.hide();
+    }
+
+    _removePuddle(puddle) {
+        if (!puddle || !Array.isArray(this.puddles)) return;
+
+        this.puddles = this.puddles.filter(item => item !== puddle);
+        puddle.destroy?.();
+    }
+
+    _getCurrentCheckpointData() {
+        const checkpoint = this.registry?.get('duckCheckpointSpawn');
+        const checkpointX = Number(checkpoint?.x);
+        const checkpointY = Number(checkpoint?.y);
+
+        if (Number.isFinite(checkpointX) && Number.isFinite(checkpointY)) {
+            return {
+                x: checkpointX,
+                y: checkpointY,
+                puddleName: checkpoint?.puddleName || ''
+            };
+        }
+
+        const spawnX = Number(this.playerSpawn?.x);
+        const spawnY = Number(this.playerSpawn?.y);
+        if (!Number.isFinite(spawnX) || !Number.isFinite(spawnY)) return null;
+
+        return {
+            x: spawnX,
+            y: spawnY,
+            puddleName: ''
+        };
+    }
+
+    _restoreCheckpoint(checkpointData) {
+        if (!checkpointData) return;
+
+        const checkpointX = Number(checkpointData.x);
+        const checkpointY = Number(checkpointData.y);
+        if (!Number.isFinite(checkpointX) || !Number.isFinite(checkpointY)) return;
+
+        this.playerSpawn = {
+            x: checkpointX,
+            y: checkpointY
+        };
+
+        this.registry?.set('duckCheckpointSpawn', {
+            x: checkpointX,
+            y: checkpointY,
+            puddleName: checkpointData.puddleName || ''
+        });
+
+        if (this.duck?.setCheckpoint) {
+            this.duck.setCheckpoint({
+                x: checkpointX,
+                y: checkpointY,
+                puddleName: checkpointData.puddleName || ''
+            });
         }
     }
 
@@ -1207,6 +1352,12 @@ export default class MainScene extends Phaser.Scene {
             this.puddles = [];
         }
         this.currentPuddle = null;
+        this.previousCheckpointBeforePuddle = null;
+
+        if (this.puddleUpgradePanel) {
+            this.puddleUpgradePanel.destroy();
+            this.puddleUpgradePanel = null;
+        }
 
         if (this.deathOverlay) {
             this.deathOverlay.destroy();

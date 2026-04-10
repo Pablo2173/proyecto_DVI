@@ -1,4 +1,8 @@
 import Phaser from 'phaser';
+import {
+    applyPuddleUpgradeToDuck,
+    createDefaultPuddleUpgrades
+} from './Puddles/PuddleUpgradeRegistry.js';
 
 export default class Puddle {
     // ─────────────────────────────────────────
@@ -20,6 +24,11 @@ export default class Puddle {
         this.spawnPoint = this.bounds
             ? { x: this.bounds.centerX, y: this.bounds.centerY }
             : null;
+
+        this.isRemoved = false;
+        this.checkpointBackup = null;
+        this.hasPurchasedUpgrade = false;
+        this.upgrades = createDefaultPuddleUpgrades();
     }
 
     containsPoint(x, y) {
@@ -30,9 +39,103 @@ export default class Puddle {
     }
 
     containsDuck(duck) {
+        if (this.isRemoved) return false;
         if (!duck || !duck.active) return false;
 
         return this.containsPoint(duck.x, duck.y);
+    }
+
+    getPrimaryUpgrade() {
+        if (this.isRemoved || !Array.isArray(this.upgrades)) return null;
+
+        const upgrade = this.upgrades.find(item => item && item.purchased !== true);
+        return upgrade || null;
+    }
+
+    setCheckpointBackup(checkpointData) {
+        if (!checkpointData) {
+            this.checkpointBackup = null;
+            return;
+        }
+
+        const backupX = Number(checkpointData.x);
+        const backupY = Number(checkpointData.y);
+        if (!Number.isFinite(backupX) || !Number.isFinite(backupY)) {
+            this.checkpointBackup = null;
+            return;
+        }
+
+        this.checkpointBackup = {
+            x: backupX,
+            y: backupY,
+            puddleName: checkpointData.puddleName || ''
+        };
+    }
+
+    getCheckpointBackup() {
+        if (!this.checkpointBackup) return null;
+
+        return {
+            x: this.checkpointBackup.x,
+            y: this.checkpointBackup.y,
+            puddleName: this.checkpointBackup.puddleName || ''
+        };
+    }
+
+    purchaseUpgrade(upgradeId, duck) {
+        if (this.isRemoved) {
+            return { success: false, reason: 'removed', message: 'Puddle no longer available.' };
+        }
+        if (this.hasPurchasedUpgrade) {
+            return { success: false, reason: 'already_purchased', message: 'Only one upgrade can be purchased.' };
+        }
+        if (!duck || !duck.active) {
+            return { success: false, reason: 'invalid_duck', message: 'Duck is not available.' };
+        }
+
+        const upgrade = (this.upgrades || []).find(item => item?.id === upgradeId && item.purchased !== true);
+        if (!upgrade) {
+            return { success: false, reason: 'not_found', message: 'Upgrade not found.' };
+        }
+
+        const cost = Math.max(0, Number(upgrade.costFeathers) || 0);
+        if (!duck.hasFeathers?.(cost)) {
+            return { success: false, reason: 'not_enough_feathers', message: 'Not enough feathers.' };
+        }
+
+        const feathersBeforePurchase = Number(duck.feathers) || 0;
+        const spent = duck.spendFeathers?.(cost);
+        if (!spent) {
+            return { success: false, reason: 'payment_failed', message: 'Could not spend feathers.' };
+        }
+
+        const applyResult = applyPuddleUpgradeToDuck(upgrade, duck);
+        if (!applyResult?.success) {
+            duck.setFeathers?.(feathersBeforePurchase);
+            return {
+                success: false,
+                reason: applyResult?.reason || 'apply_failed',
+                message: applyResult?.message || 'Upgrade could not be applied.'
+            };
+        }
+
+        upgrade.purchased = true;
+        this.hasPurchasedUpgrade = true;
+        this.isRemoved = true;
+        this.upgrades.forEach(item => {
+            if (item?.id !== upgrade.id) {
+                item.purchased = true;
+            }
+        });
+
+        return {
+            success: true,
+            reason: 'ok',
+            message: applyResult?.message || 'Upgrade purchased.',
+            removePuddle: true,
+            spentFeathers: cost,
+            remainingFeathers: duck.feathers
+        };
     }
 
     getSpawnPoint() {
@@ -45,11 +148,15 @@ export default class Puddle {
     }
 
     destroy(fromScene) {
+        this.isRemoved = true;
         this.scene = null;
         this.points = null;
         this.polygon = null;
         this.bounds = null;
         this.spawnPoint = null;
+        this.upgrades = null;
+        this.checkpointBackup = null;
+        this.hasPurchasedUpgrade = null;
         return fromScene;
     }
 
