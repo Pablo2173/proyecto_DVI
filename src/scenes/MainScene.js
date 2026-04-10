@@ -689,6 +689,8 @@ export default class MainScene extends Phaser.Scene {
 
         this.puddleUpgradePanel = new PuddleUpgradePanel(this, (puddle, upgradeId) => {
             this._onPuddleUpgradePurchase(puddle, upgradeId);
+        }, (puddle) => {
+            this._onPuddleClaimReward(puddle);
         });
 
 
@@ -1014,6 +1016,13 @@ export default class MainScene extends Phaser.Scene {
 
         this.puddleUpgradePanel?.showPurchaseResult(success, purchaseMessage);
         if (!success) return;
+    }
+
+    _onPuddleClaimReward(puddle) {
+        if (!puddle || !this.duck) return;
+
+        const rewardFeathers = 3;
+        this.duck.addFeather?.(rewardFeathers);
 
         const checkpointToRestore = puddle.getCheckpointBackup?.() || this.previousCheckpointBeforePuddle;
         this._restoreCheckpoint(checkpointToRestore);
@@ -1026,6 +1035,7 @@ export default class MainScene extends Phaser.Scene {
         }
 
         this.puddleUpgradePanel?.hide();
+        this.puddleUpgradePanel?.showPurchaseResult(true, `Reward claimed! (+${rewardFeathers} feathers)`);
     }
 
     _removePuddle(puddle) {

@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 
 export default class PuddleUpgradePanel {
-    constructor(scene, onPurchaseUpgrade) {
+    constructor(scene, onPurchaseUpgrade, onClaimReward) {
         this.scene = scene;
         this.onPurchaseUpgrade = onPurchaseUpgrade;
+        this.onClaimReward = onClaimReward;
         this.currentPuddle = null;
         this.currentUpgrade = null;
         this.isVisible = false;
@@ -53,7 +54,19 @@ export default class PuddleUpgradePanel {
         this.buttonBg.setOrigin(0, 0);
         this.buttonBg.setStrokeStyle(2, 0xbcd8ff, 1);
 
+        this.claimButtonBg = this.scene.add.rectangle(x + 16, y + 200, width - 32, 44, 0x2f8b4f, 0.95);
+        this.claimButtonBg.setOrigin(0, 0);
+        this.claimButtonBg.setStrokeStyle(2, 0x8eff8e, 1);
+
         this.buttonText = this.scene.add.text(x + width / 2, y + 172, 'BUY UPGRADE', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '18px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5);
+
+        this.claimButtonText = this.scene.add.text(x + width / 2, y + 222, 'CLAIM REWARD (+3)', {
             fontFamily: 'ReturnOfTheBoss',
             fontSize: '18px',
             color: '#ffffff',
@@ -76,6 +89,8 @@ export default class PuddleUpgradePanel {
             this.costText,
             this.buttonBg,
             this.buttonText,
+            this.claimButtonBg,
+            this.claimButtonText,
             this.messageText
         ]);
     }
@@ -149,6 +164,9 @@ export default class PuddleUpgradePanel {
             }
 
             if (!Phaser.Geom.Rectangle.Contains(this._getButtonBounds(), pointer.x, pointer.y)) {
+                if (Phaser.Geom.Rectangle.Contains(this._getClaimButtonBounds(), pointer.x, pointer.y) && typeof this.onClaimReward === 'function') {
+                    this.onClaimReward(this.currentPuddle);
+                }
                 return;
             }
 
@@ -167,6 +185,15 @@ export default class PuddleUpgradePanel {
         );
     }
 
+    _getClaimButtonBounds() {
+        return new Phaser.Geom.Rectangle(
+            this.claimButtonBg.x,
+            this.claimButtonBg.y,
+            this.claimButtonBg.width,
+            this.claimButtonBg.height
+        );
+    }
+
     destroy() {
         if (this.scene?.input && this._onPointerUp) {
             this.scene.input.off('pointerup', this._onPointerUp);
@@ -175,6 +202,10 @@ export default class PuddleUpgradePanel {
 
         if (this.buttonBg) {
             this.buttonBg.removeAllListeners();
+        }
+
+        if (this.claimButtonBg) {
+            this.claimButtonBg.removeAllListeners();
         }
 
         if (this.container) {
@@ -186,5 +217,6 @@ export default class PuddleUpgradePanel {
         this.currentUpgrade = null;
         this.scene = null;
         this.onPurchaseUpgrade = null;
+        this.onClaimReward = null;
     }
 }
