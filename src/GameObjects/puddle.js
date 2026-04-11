@@ -52,6 +52,11 @@ export default class Puddle {
         return upgrade || null;
     }
 
+    getAvailableUpgrades() {
+        if (this.isRemoved || !Array.isArray(this.upgrades)) return [];
+        return this.upgrades.filter(item => item && item.purchased !== true);
+    }
+
     setCheckpointBackup(checkpointData) {
         if (!checkpointData) {
             this.checkpointBackup = null;

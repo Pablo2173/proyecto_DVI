@@ -54,6 +54,8 @@ export default class Duck extends BaseCharacter {
         // Multiplicadores para consumibles
         this.damageMultiplier = 1;
         this.speedMultiplier = 1;
+        this.baseAttackBonusPercent = 0;
+        this.weaponDurationBonusPercent = 0;
 
         // Inventario de consumibles
         this.consumables = [];
@@ -227,6 +229,21 @@ export default class Duck extends BaseCharacter {
         if (!Number.isFinite(safePercent) || safePercent <= 0) return;
 
         this.speedMultiplier *= 1 + safePercent;
+    }
+
+    applyBaseAttackBonus(percent = 0.1) {
+        const safePercent = Number(percent);
+        if (!Number.isFinite(safePercent) || safePercent <= 0) return;
+
+        this.baseAttackBonusPercent += safePercent;
+    }
+
+    applyWeaponDurationBonus(percent = 0.5) {
+        const safePercent = Number(percent);
+        if (!Number.isFinite(safePercent) || safePercent <= 0) return;
+
+        this.weaponDurationBonusPercent += safePercent;
+        this.weapon?.applyOwnerDurationBonus?.();
     }
 
     canTakeDamage() {

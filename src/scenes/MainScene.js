@@ -877,17 +877,20 @@ export default class MainScene extends Phaser.Scene {
             const screenW = this.scale.width;
             const screenH = this.scale.height;
 
-            // 50% central: margen del 25% en cada lado.
-            const deadzoneLeft = screenW * 0.25;
-            const deadzoneRight = screenW * 0.75;
-            const deadzoneTop = screenH * 0.25;
-            const deadzoneBottom = screenH * 0.75;
+            // Zona muerta circular centrada en la pantalla.
+            // Mantiene un área similar a la antigua caja del 50% central,
+            // pero con transición radial alrededor del pato.
+            const deadzoneCenterX = screenW * 0.5;
+            const deadzoneCenterY = screenH * 0.5;
+            const deadzoneRadius = Math.min(screenW, screenH) * 0.25;
+            const pointerDistanceFromCenter = Phaser.Math.Distance.Between(
+                pointer.x,
+                pointer.y,
+                deadzoneCenterX,
+                deadzoneCenterY
+            );
 
-            const isPointerInsideDeadzone =
-                pointer.x >= deadzoneLeft &&
-                pointer.x <= deadzoneRight &&
-                pointer.y >= deadzoneTop &&
-                pointer.y <= deadzoneBottom;
+            const isPointerInsideDeadzone = pointerDistanceFromCenter <= deadzoneRadius;
 
             const isPuddleCameraLocked = !!(
                 this.currentPuddle &&
@@ -1021,7 +1024,7 @@ export default class MainScene extends Phaser.Scene {
     _onPuddleClaimReward(puddle) {
         if (!puddle || !this.duck) return;
 
-        const rewardFeathers = 3;
+        const rewardFeathers = 2;
         this.duck.addFeather?.(rewardFeathers);
 
         const checkpointToRestore = puddle.getCheckpointBackup?.() || this.previousCheckpointBeforePuddle;
