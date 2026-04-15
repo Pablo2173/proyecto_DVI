@@ -43,9 +43,30 @@ export default class Escoba extends Weapon {
 
     attack() {
         if (this.isCharging) return;
-        if (this.isEnemy) { super.attack(); return; }
         if (!this._canAttack()) return;
 
+        if (this.isEnemy) {
+            // Enemigos disparan directo sin carga
+            this.lastAttackTime = this.scene.time.now;
+            this.on_shoot();
+            
+            new EscobaSwing(this.scene, this.owner.x, this.owner.y, {
+                owner: this.owner,
+                team: this.owner?.team ?? 'neutral',
+                damage: this.getDamage() * 2,
+                range: this.range,
+                attackArcDeg: this.attackArcDeg,
+                weaponRotation: this.rotation,
+                duration: this.swingDuration,
+                swingAngle: Phaser.Math.DegToRad(this.swingAngle),
+                knockbackAbilitySpeed: 1000,
+                knockbackSpeed: 1000,
+                knockbackDuration: 300
+            });
+            return;
+        }
+
+        // Jugador: inicia carga
         this.isCharging = true;
         this.isAttacking = true;
         this.chargeStartTime = this.scene.time.now;
@@ -108,6 +129,7 @@ export default class Escoba extends Weapon {
             weaponRotation: this.rotation,
             duration: this.swingDuration,
             swingAngle: Phaser.Math.DegToRad(this.swingAngle),
+            knockbackAbilitySpeed: 250 + (this.chargeLevel * 500),
             knockbackSpeed: 250 + (this.chargeLevel * 500),
             knockbackDuration: 150 + (this.chargeLevel * 300)
         });
