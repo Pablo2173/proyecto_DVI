@@ -1,10 +1,10 @@
 import DropItem from '../dropItem.js';
-import key_item from '../../../assets/sprites/consumables/key_item.png';
+import key_item_sprite from '../../../assets/sprites/consumables/key_item.png';
 
 export default class Key extends DropItem {
     
     static preload(scene) {
-        scene.load.image('key_item', key_item);
+        scene.load.image('key_item', key_item_sprite);
     }
 
     constructor(scene, x, y) {
