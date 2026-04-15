@@ -33,7 +33,7 @@ import Frog from '../GameObjects/Enemies/frog.js';
 import { DUCK_STATE } from '../GameObjects/duck.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
 import sprint_sprite from '../../assets/sprites/duck/sprint_duck.png';
-import dash_duck_sprite from '../../assets/Sprites/duck/dash_duck.png';
+import dash_duck_sprite from '../../assets/sprites/duck/dash_duck.png';
 import cuack_sprite from '../../assets/sprites/duck/Cuack_duck.png';
 import duck_swimming_sprite from '../../assets/sprites/duck/swimming_duck.png';
 import enemy_sprite from '../../assets/sprites/player.png';
@@ -49,10 +49,10 @@ import mapache_run from '../../assets/sprites/Mapache/mapache_run.png';
 import mapache_hit from '../../assets/sprites/Mapache/mapache_hit.png';
 import mapache_ded from '../../assets/sprites/Mapache/mapache_ded.png';
 
-import cuervo_idle from '../../assets/Sprites/Cuervo/cuervo_idle.png';
-import cuervo_run from '../../assets/Sprites/Cuervo/cuervo_run.png';
-import cuervo_hit from '../../assets/Sprites/Cuervo/cuervo_hit.png';
-import cuervo_ded from '../../assets/Sprites/Cuervo/cuervo_ded.png';
+import cuervo_idle from '../../assets/sprites/Cuervo/cuervo_idle.png';
+import cuervo_run from '../../assets/sprites/Cuervo/cuervo_run.png';
+import cuervo_hit from '../../assets/sprites/Cuervo/cuervo_hit.png';
+import cuervo_ded from '../../assets/sprites/Cuervo/cuervo_ded.png';
 
 import rana_idle from '../../assets/sprites/Rana/rana_idle.png';
 
@@ -63,7 +63,7 @@ import deathSound from '../../assets/sounds/YouDied.mp3';
 import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
 import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
 import up_bar from '../../assets/sprites/UI/up_bar.png';
-import dash_charge_sprite from '../../assets/Sprites/UI/dash_charge.png';
+import dash_charge_sprite from '../../assets/sprites/UI/dash_charge.png';
 import Puddle from '../GameObjects/puddle.js';
 import PuddleUpgradePanel from '../GameObjects/Puddles/PuddleUpgradePanel.js';
 import ConsumableBar from '../GameObjects/Consumables/ConsumableBar.js';
