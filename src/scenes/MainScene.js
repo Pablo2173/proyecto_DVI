@@ -1448,7 +1448,7 @@ export default class MainScene extends Phaser.Scene {
         }
         if (duck.isInvulnerable) return;
 
-        const damage = projectile.damage ?? 1;
+        const damage = 50; // Una pluma completa por impacto
         duck.takeDamage(damage);
         projectile.owner?.weapon?.onHitTarget?.(duck);
 

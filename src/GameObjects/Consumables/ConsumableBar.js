@@ -442,10 +442,9 @@ export default class ConsumableBar {
 
     refreshResources() {
         const feathers = this.duck.feathers ?? 0;
-        const maxFeathers = this.duck.maxFeathers ?? 0;
         const breadCount = this.scene.breadCount ?? 0;
 
-        this.featherText.setText(`${feathers} / ${maxFeathers}`);
+        this.featherText.setText(`${feathers}`);
         this.breadText.setText(`x ${breadCount}`);
         this.breadIcon?.setScale(this.breadIconBaseScale ?? 4);
     }

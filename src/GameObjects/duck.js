@@ -64,12 +64,9 @@ export default class Duck extends BaseCharacter {
         this.isInvisible = false;
 
         // GESTIÓN PLUMAS / VIDA
-        this.maxFeathers = 5; // Máximo de plumas visibles en pantalla
         this.healthPerFeather = 50;
 
-        this.maxHealth = this.maxFeathers * this.healthPerFeather;
-
-        // empieza con 5 plumas
+        // empieza con 5 plumas (sin máximo)
         this.feathers = 5;
         this.health = this.feathers * this.healthPerFeather;
         this.lastPuddle = null;      // checkpoint actual
@@ -177,12 +174,8 @@ export default class Duck extends BaseCharacter {
     //  GESTIÓN DE PlUMAS
     // ─────────────────────────────────────────
     addFeather(amount = 1) {
-        // Si ya tiene el máximo de plumas, no suma más
-        if (this.feathers >= this.maxFeathers) {
-            return;
-        }
         const heal = amount * this.healthPerFeather;
-        this.health = Phaser.Math.Clamp(this.health + heal, 0, this.maxHealth);
+        this.health += heal;
         this.updateFeathersFromHealth();
     }
 
@@ -194,12 +187,8 @@ export default class Duck extends BaseCharacter {
     }
 
     setFeathers(amount) {
-        this.feathers = Phaser.Math.Clamp(amount, 0, this.maxFeathers);
+        this.feathers = Math.max(0, amount);
         this.health = this.feathers * this.healthPerFeather;
-
-        if (this.health > this.maxHealth) {
-            this.health = this.maxHealth;
-        }
 
         if (this.scene?.featherUI) {
             this.scene.featherUI.refresh();
@@ -252,6 +241,10 @@ export default class Duck extends BaseCharacter {
 
     beforeTakeDamage() {
         this.isInvulnerable = true;
+    }
+
+    takeDamage(amount = 1) {
+        super.takeDamage(50);
     }
 
     afterTakeDamage(amount, previousHealth, newHealth) {
