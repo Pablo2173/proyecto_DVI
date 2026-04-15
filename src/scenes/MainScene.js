@@ -21,7 +21,7 @@ import AttackPotion from '../GameObjects/Consumables/attackPotion.js';
 
 import SpeedPotion from '../GameObjects/Consumables/SpeedPotion.js';
 import SpeedAttackPotion from '../GameObjects/Consumables/SpeedAttackPotion.js';
-
+import Key from '../GameObjects/Consumables/key.js';
 
 import DropBread from '../GameObjects/Consumables/Drops/dropBread.js';
 import DropFeather from '../GameObjects/Consumables/Drops/dropFeather.js';
@@ -267,6 +267,7 @@ export default class MainScene extends Phaser.Scene {
         AttackPotion.preload(this);
         SpeedPotion.preload(this);
         SpeedAttackPotion.preload(this);
+        Key.preload(this);
 
         DropBread.preload(this);
 
@@ -1635,7 +1636,7 @@ export default class MainScene extends Phaser.Scene {
             return;
         }
 
-        const allConsumableTypes = ['bread', 'attack_potion', 'speed_potion', 'speed_attack_potion', 'feather'];
+        const allConsumableTypes = ['bread', 'attack_potion', 'speed_potion', 'speed_attack_potion', 'feather', 'key'];
 
         consumableLayer.objects.forEach((obj) => {
             const resolvedType = this.resolveConsumableTypeFromObject(obj, allConsumableTypes);
@@ -1681,6 +1682,10 @@ export default class MainScene extends Phaser.Scene {
                 case 'speed_attackpotion':
                 case 'speedattackpotion':
                     return 'speed_attack_potion';
+                case 'key':
+                case 'key_item':
+                case 'llave':
+                    return 'key';
                 default:
                     return normalized;
             }
@@ -1725,6 +1730,9 @@ export default class MainScene extends Phaser.Scene {
             case 'feather':
                 new DropFeather(this, x, y);
                 break;
+            case 'key':
+                new Key(this, x, y);
+                break;
             default:
                 console.warn(`Tipo de consumible desconocido: ${type}`);
         }
@@ -1746,6 +1754,48 @@ export default class MainScene extends Phaser.Scene {
             this.consumableBar.update();
             this.consumableBar.pulseBread?.();
         }
+    }
+
+    tryOpenNearbyClosedDoor(player, consumeKey = true) {
+        if (!player || !this.puertaCerradaLayer) {
+            return false;
+        }
+
+        const SCALE = 4;
+        const TILE_SIZE = 16;
+        const range = 80;
+
+        const playerTileX = Math.floor(player.x / SCALE / TILE_SIZE);
+        const playerTileY = Math.floor(player.y / SCALE / TILE_SIZE);
+        const rangeTiles = Math.ceil(range / SCALE / TILE_SIZE);
+
+        const doorTiles = this.puertaCerradaLayer.getTilesWithin(
+            playerTileX - rangeTiles,
+            playerTileY - rangeTiles,
+            rangeTiles * 2,
+            rangeTiles * 2
+        ).filter(tile => tile && tile.index !== -1);
+
+        if (doorTiles.length === 0) {
+            return false;
+        }
+
+        if (consumeKey) {
+            const keyIndex = (player.consumables || []).findIndex(item => item?.type === 'key');
+            if (keyIndex === -1) {
+                return false;
+            }
+
+            player.consumables.splice(keyIndex, 1);
+        }
+
+        doorTiles.forEach(tile => {
+            this.puertaCerradaLayer.removeTileAt(tile.x, tile.y);
+        });
+
+        this.consumableBar?.update?.();
+        console.log('Puerta cerrada abierta con llave');
+        return true;
     }
 
     /**

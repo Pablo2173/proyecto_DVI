@@ -458,33 +458,38 @@ export default class ConsumableBar {
         if (!this.duck.consumables || slotIndex >= this.duck.consumables.length) return;
 
         const consumable = this.duck.consumables[slotIndex];
-        this.useConsumable(consumable);
-        this.duck.consumables.splice(slotIndex, 1);
+        const wasConsumed = this.useConsumable(consumable);
+        if (wasConsumed) {
+            this.duck.consumables.splice(slotIndex, 1);
+        }
 
         this.pulseSlot(slotIndex);
         this.update();
     }
 
     useConsumable(consumable) {
-        this.executeUseEffect(consumable.type, this.duck);
+        return this.executeUseEffect(consumable.type, this.duck);
     }
 
     executeUseEffect(type, duck) {
         switch (type) {
             case 'attack_potion':
                 this.useAttackPotionEffect(duck);
-                break;
+                return true;
             case 'speed_potion':
                 this.useSpeedPotionEffect(duck);
-                break;
+                return true;
             case 'speed_attack_potion':
                 this.useSpeedAttackPotionEffect(duck);
-                break;
+                return true;
+            case 'key':
+                return this.useKeyEffect(duck);
             case 'fox_tail':
                 this.useFoxTailEffect(duck);
-                break;
+                return true;
             default:
                 console.log(`Efecto de uso no definido para: ${type}`);
+                return true;
         }
     }
 
@@ -494,7 +499,8 @@ export default class ConsumableBar {
             speed_potion: 'speed_potion',
             speed_attack_potion: 'speed_attack_potion',
             fox_tail: 'fox_tail',
-            mask: 'mask_icon'
+            mask: 'mask_icon',
+            key: 'key_item'
         };
         return spriteMap[type] || null;
     }
@@ -505,7 +511,8 @@ export default class ConsumableBar {
             speed_potion: 3.2,
             speed_attack_potion: 3.2,
             mask: 3.1,
-            fox_tail: 0.1
+            fox_tail: 0.1,
+            key: 3
         };
         return scaleMap[type] ?? 3;
     }
@@ -647,6 +654,20 @@ export default class ConsumableBar {
             followEvent.remove();
             event.remove();
         });
+    }
+
+    useKeyEffect(duck) {
+        if (!duck?.scene?.tryOpenNearbyClosedDoor) {
+            return false;
+        }
+
+        const opened = duck.scene.tryOpenNearbyClosedDoor(duck, false);
+        if (!opened) {
+            console.log('No hay puerta cerrada cerca para usar la llave');
+            return false;
+        }
+
+        return true;
     }
 
     // ─────────────────────────────────────────
