@@ -1,5 +1,5 @@
 import DropItem from '../dropItem.js';
-import key_item from '../../../assets/sprites/Consumables/key_item.png';
+import key_item from '../../../assets/sprites/consumables/key_item.png';
 
 export default class Key extends DropItem {
     
