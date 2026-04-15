@@ -124,12 +124,12 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         const wrapped = Phaser.Math.Angle.WrapDegrees(angleDeg);
         this.setFlipY(wrapped > 90 || wrapped < -90);
 
-        // 4. Para enemigos, disparar automáticamente si el jugador está en rango y el enemigo está alertado
+        // 4. Para enemigos, disparar automáticamente solo si el jugador está fuera del radio interior
         if (this.owner._facingAngle !== undefined && this.owner._state === 1 && this.isRanged) {
             const player = this.scene.duck;
             if (player) {
                 const dist = Phaser.Math.Distance.Between(this.owner.x, this.owner.y, player.x, player.y);
-                if (dist <= this.range && this._canAttack()) {
+                if (dist > this.optimalDistance && dist <= this.range && this._canAttack()) {
                     this.attack();
                 }
             }

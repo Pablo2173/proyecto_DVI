@@ -1,7 +1,7 @@
 import Enemy, { StatusEnemy } from '../enemy.js';
 
 export default class Cuervo extends Enemy {
-    constructor(scene, name, x, y, texture, frame, weapon, movementType, visionRadius = 900, hp = 60, speed = 110, hasFeather = false, routeFacing = []) {
+    constructor(scene, name, x, y, texture, frame, weapon, movementType, visionRadius = 900, hp = 60, speed = 150, hasFeather = false, routeFacing = []) {
         super(scene, name, x, y, texture, frame, visionRadius, hp, speed, weapon, movementType, hasFeather, routeFacing);
         this.setScale(4);
 

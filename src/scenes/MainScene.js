@@ -576,8 +576,10 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
 
         this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon);
+
+        //spawner del cuervo
         this.crowSpawner = {
-            holdDurationMs: 5000,
+            holdDurationMs: 40000,
             holdStartTime: null,
             lastWeaponKey: this._getCurrentDuckWeaponKey(),
             spawnedForCurrentWeapon: false

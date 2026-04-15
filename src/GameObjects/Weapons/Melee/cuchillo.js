@@ -13,7 +13,7 @@ export default class Cuchillo extends Weapon {
             isRanged:        false,
             damage:          isEnemy ? 20 : 25,
             attackSpeed:     1000,
-            durability:      12,
+            durability:      6,
             range:           isEnemy ? 150 : 200,
             optimalDistance: isEnemy ? 30 : 55,
             swingAngle:      80,

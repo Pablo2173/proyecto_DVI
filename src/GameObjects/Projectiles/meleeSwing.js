@@ -25,8 +25,8 @@ export default class MeleeSwing extends Projectile {
         this.hitRange = config.range ?? 200;
         this.startTime = scene.time.now;
 
-        this.knockbackAbilitySpeed = config.knockbackAbilitySpeed ?? 180;
-        this.knockbackSpeed = config.knockbackSpeed ?? 180;
+        this.knockbackAbilitySpeed = config.knockbackAbilitySpeed ?? 360;
+        this.knockbackSpeed = config.knockbackSpeed ?? 360;
         this.knockbackDuration = config.knockbackDuration ?? 180;
         this.notifyWeaponOnHit = config.notifyWeaponOnHit ?? true;
 

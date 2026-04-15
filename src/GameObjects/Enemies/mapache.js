@@ -2,7 +2,7 @@ import Enemy, { StatusEnemy } from "../enemy";
 
 export default class Mapache extends Enemy {
 
-    constructor(scene, name, x, y, texture, frame, weapon, movementType, visionRadius = 750, hp = 100, speed = 90, hasFeather, routeFacing = []) {
+    constructor(scene, name, x, y, texture, frame, weapon, movementType, visionRadius = 750, hp = 65, speed = 100, hasFeather, routeFacing = []) {
         super(scene, name, x, y, texture, frame, visionRadius, hp, speed, weapon, movementType, hasFeather, routeFacing);
         this.setScale(4);
 
