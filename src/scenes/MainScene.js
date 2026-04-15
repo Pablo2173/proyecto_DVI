@@ -120,6 +120,13 @@ import carGreenBack from '../../assets/tilesets/car-green-back.png';
 import carBlueBack from '../../assets/tilesets/car-blue-back.png';
 import truckRedFront from '../../assets/tilesets/truck-red-front.png';
 
+// Hints
+import actionSign from '../../assets/hints/action_sign.png';
+import itemSign from '../../assets/hints/item_sign.png';
+import jumpSign from '../../assets/hints/jump_sign.png';
+import mouseSign from '../../assets/hints/mouse_sign.png';
+import movementSign from '../../assets/hints/movement_sign.png';
+
 //Plumas
 import feather_icon from '../../assets/sprites/UI/pluma.png';
 
@@ -284,6 +291,13 @@ export default class MainScene extends Phaser.Scene {
         // Preload de drops de enemigos
         this.load.image('mask_icon', mask_icon);
         this.load.image('fox_tail', fox_tail);
+
+        // Preload de HINTS
+        this.load.image('action_sign', actionSign);
+        this.load.image('item_sign', itemSign);
+        this.load.image('jump_sign', jumpSign);
+        this.load.image('mouse_sign', mouseSign);
+        this.load.image('movement_sign', movementSign);
     }
 
     create() {
@@ -381,6 +395,28 @@ export default class MainScene extends Phaser.Scene {
         this.techo1Layer = this.map.createLayer('Techo1', tilesets, 0, 0);
         this.techo1Layer.setScale(SCALE);
         this.techo1Layer.setDepth(202);
+
+        // CAPA DE HINTS (PISTAS VISUALES)
+        const hintsLayer = this.map.getObjectLayer('hints');
+        if (hintsLayer && hintsLayer.objects) {
+            hintsLayer.objects.forEach(obj => {
+                if (obj.visible !== false) {
+                    // Leer atributo personalizado 'texture'
+                    let textureName = null;
+                    if (obj.properties) {
+                        const textureProp = obj.properties.find(p => p.name === 'texture');
+                        if (textureProp) textureName = textureProp.value;
+                    }
+
+                    if (textureName && this.textures.exists(textureName)) {
+                        const hint = this.add.image(obj.x * SCALE, (obj.y - obj.height) * SCALE, textureName);
+                        hint.setOrigin(0, 0);
+                        hint.setDisplaySize(obj.width * SCALE, obj.height * SCALE);
+                        hint.setDepth(100);
+                    }
+                }
+            });
+        }
 
         const duckLayer = this.map.getObjectLayer('duck');
         if (!duckLayer || duckLayer.objects.length === 0) {
