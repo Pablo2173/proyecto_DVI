@@ -229,7 +229,7 @@ export default class Arco extends Weapon {
 
         // Descontar la distancia de spawn para que la flecha desaparezca al borde del rango
         const effectiveRange = this.maxRange * effectiveCharge - length;
-        const chargedDamage = this.getDamage() * visualChargeRatio;
+        const chargedDamage = this.getDamage() * chargeRatio;
 
         new this.projectileClass(this.scene, spawnX, spawnY, {
             direction,

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import Weapon from '../weapon.js';
+import { TEAM } from '../../team.js';
 import escobaSprite from '../../../../assets/sprites/Weapons/mazo.png';
 import EscobaSwing from '../../Projectiles/escobaSwing.js';
 import WeaponBar from '../weaponBar.js';
@@ -9,12 +10,12 @@ export default class Escoba extends Weapon {
 
     constructor(scene, owner, bar = null) {
         // Detectar si el propietario es un enemigo para ajustar parámetros
-        const isEnemy = owner?.constructor?.name === 'Enemy';
+        const isEnemy = owner?.team === TEAM.ENEMY;
         
         super(scene, owner, {
             texture:         'escoba',
             isRanged:        false,
-            damage:          13,
+            damage:          10,
             attackSpeed:     700,
             durability:      12,
             range:           isEnemy ? 150 : 200,
@@ -96,7 +97,7 @@ export default class Escoba extends Weapon {
             rate: Phaser.Math.FloatBetween(0.92, 1.08)
         });
         // Daño base + multiplicador según carga (1x hasta 1.5x)
-        const damageMult = 1 + (this.chargeLevel * 0.5);
+        const damageMult = 2;
         
         new EscobaSwing(this.scene, this.owner.x, this.owner.y, {
             owner: this.owner,

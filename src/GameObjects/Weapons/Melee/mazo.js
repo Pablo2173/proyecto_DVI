@@ -13,9 +13,9 @@ constructor(scene, owner, bar = null) {
 super(scene, owner, {
     texture: 'mazo',
     isRanged: false,
-    damage: 55,
+    damage: 20,
     attackSpeed: 500,
-    durability: 10,
+    durability: 5,
     range: 90,
     optimalDistance: 65,
     swingAngle: 70,
