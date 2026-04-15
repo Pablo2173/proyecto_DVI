@@ -31,7 +31,7 @@ export default class Enemy extends BaseCharacter {
     // ─────────────────────────────────────────
     //  CONSTRUCTOR
     // ─────────────────────────────────────────
-    constructor(scene, name, x, y, texture, frame = null, visionRadius, hp, speed, weapon, movementType, hasFeather) {
+    constructor(scene, name, x, y, texture, frame = null, visionRadius, hp, speed, weapon, movementType, hasFeather, routeFacing = []) {
         super(scene, x, y, texture, frame, TEAM.ENEMY);
 
         // ── Física ──
@@ -53,14 +53,21 @@ export default class Enemy extends BaseCharacter {
         this._weapon        = weapon;
         this._movementType  = movementType;
         this._movementData  = null;
+        this._routeFacing   = this._sanitizeRouteFacing(routeFacing);
         this.hasFeather     = hasFeather;
 
         // ── Visión ──
         this._visionRadius   = visionRadius;
         this._visionAngle    = Math.PI / 2;
         this._facingAngle    = Math.PI;
-        this._showVision     = false;
+        this._showVision     = true;
         this._visionGraphics = scene.add.graphics();
+
+        if (this._routeFacing[0]) {
+            this.setFacingDirection(this._routeFacing[0]);
+        } else {
+            this.setFacingDirection('left');
+        }
 
         // ── Máquina de estados ──
         this._state = StatusEnemy.IDLE;
@@ -602,6 +609,7 @@ export default class Enemy extends BaseCharacter {
         const dist          = Phaser.Math.Distance.Between(this.x, this.y, currentTarget.x, currentTarget.y);
 
         if (dist < 10) {
+            this._applyRouteFacingForPoint(data.currentPointIndex);
             data.currentPointIndex = (data.currentPointIndex + 1) % points.length;
             data.pauseTimer        = 0;
             return;
@@ -611,6 +619,99 @@ export default class Enemy extends BaseCharacter {
         if (data.pauseTimer < 1000) { this.stop(); return; }
 
         this.moveTowards(currentTarget);
+    }
+
+    _directionToAngle(direction) {
+        const normalized = this._normalizeFacingDirection(direction);
+        switch (normalized) {
+            case 'right': return 0;
+            case 'down':  return Math.PI / 2;
+            case 'left':  return Math.PI;
+            case 'up':    return -Math.PI / 2;
+            default:      return null;
+        }
+    }
+
+    setFacingDirection(direction) {
+        const normalized = this._normalizeFacingDirection(direction);
+        const angle = this._directionToAngle(normalized);
+        if (angle == null) return false;
+
+        this._facingAngle = angle;
+        if (normalized === 'right') this.setFlipX(true);
+        if (normalized === 'left') this.setFlipX(false);
+        return true;
+    }
+
+    setRouteFacing(routeFacing) {
+        this._routeFacing = this._sanitizeRouteFacing(routeFacing);
+        if (this._routeFacing[0]) {
+            this.setFacingDirection(this._routeFacing[0]);
+        } else {
+            this.setFacingDirection('left');
+        }
+    }
+
+    _applyRouteFacingForPoint(pointIndex) {
+        const facingList = (this._routeFacing?.length ? this._routeFacing : this._movementData?.routeFacing);
+        if (!Array.isArray(facingList) || facingList.length === 0) return;
+        const direction = facingList[pointIndex];
+        if (!direction) return;
+        this.setFacingDirection(direction);
+    }
+
+    _normalizeFacingDirection(direction) {
+        const raw = String(direction ?? '').trim().toLowerCase();
+        if (!raw) return null;
+
+        const aliases = {
+            izquierda: 'left',
+            izq: 'left',
+            left: 'left',
+            l: 'left',
+            derecha: 'right',
+            der: 'right',
+            right: 'right',
+            r: 'right',
+            arriba: 'up',
+            up: 'up',
+            u: 'up',
+            abajo: 'down',
+            down: 'down',
+            d: 'down'
+        };
+
+        return aliases[raw] ?? null;
+    }
+
+    _sanitizeRouteFacing(routeFacing) {
+        let entries = [];
+
+        if (Array.isArray(routeFacing)) {
+            entries = routeFacing;
+        } else if (typeof routeFacing === 'string') {
+            const raw = routeFacing.trim();
+            if (!raw) return [];
+
+            if (raw.startsWith('[') && raw.endsWith(']')) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) entries = parsed;
+                } catch {
+                    // Si no es JSON válido, se procesa como lista separada por delimitadores.
+                }
+            }
+
+            if (entries.length === 0) {
+                entries = raw.split(/[,;|]/);
+            }
+        } else if (routeFacing != null) {
+            entries = [routeFacing];
+        }
+
+        return entries
+            .map((entry) => this._normalizeFacingDirection(entry))
+            .filter(Boolean);
     }
 
     // ─────────────────────────────────────────

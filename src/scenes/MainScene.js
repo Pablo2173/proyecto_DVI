@@ -1463,6 +1463,8 @@ export default class MainScene extends Phaser.Scene {
      * Cada polígono DEBE tener las siguientes propiedades personalizadas en Tiled:
      * - enemyType (string): "mapache" o "zorro"
      * - weaponType (string): "cuchillo", "arco", "mazo", "ramita", "escoba", "mcuaktro"
+    * - routeFacing (string|array, opcional): direcciones por punto de ruta.
+    *   Ejemplo string: "derecha,abajo,izquierda,arriba"
      * 
      * @param {number} scale - Escala del mapa
      */
@@ -1485,6 +1487,7 @@ export default class MainScene extends Phaser.Scene {
             let enemyType = 'mapache';
             let weaponType = 'cuchillo';
             let ellipseSegments = 16;
+            let routeFacing = null;
 
             console.log(` Propiedades del objeto:`, obj.properties);
 
@@ -1498,6 +1501,9 @@ export default class MainScene extends Phaser.Scene {
                     if ((prop.name === 'routeSegments' || prop.name === 'segments') && Number.isFinite(Number(prop.value))) {
                         ellipseSegments = Number(prop.value);
                     }
+                    if ((prop.name === 'routeFacing' || prop.name === 'routeFacings') && prop.value != null) {
+                        routeFacing = prop.value;
+                    }
                 });
             }
             // Formato 2: propiedades como objeto directo
@@ -1510,11 +1516,14 @@ export default class MainScene extends Phaser.Scene {
                 } else if (Number.isFinite(Number(obj.properties.segments))) {
                     ellipseSegments = Number(obj.properties.segments);
                 }
+                if (obj.properties.routeFacing != null || obj.properties.routeFacings != null) {
+                    routeFacing = obj.properties.routeFacing ?? obj.properties.routeFacings;
+                }
             } else {
                 console.warn(`   Sin propiedades detectadas`);
             }
 
-            console.log(`  → enemyType: ${enemyType}, weaponType: ${weaponType}`);
+            console.log(`  → enemyType: ${enemyType}, weaponType: ${weaponType}, routeFacing: ${routeFacing != null ? 'definido' : 'no definido'}`);
 
             // Convertir forma de Tiled a puntos de ruta en coordenadas del mundo.
             // Soportado: polygon, polyline, ellipse y punto fijo.
@@ -1600,10 +1609,10 @@ export default class MainScene extends Phaser.Scene {
             let texture;
             if (enemyType === 'zorro') {
                 texture = 'zorro_idle';
-                enemy = new Zorro(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute');
+                enemy = new Zorro(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute', 750, 80, 110, undefined, routeFacing);
             } else {
                 texture = 'mapache_idle';
-                enemy = new Mapache(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute');
+                enemy = new Mapache(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute', 750, 100, 90, undefined, routeFacing);
             }
 
             // Asignar la ruta al enemigo

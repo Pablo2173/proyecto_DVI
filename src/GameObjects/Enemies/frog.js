@@ -2,9 +2,9 @@ import Enemy, { StatusEnemy } from "../enemy";
 
 export default class Frog extends Enemy {
 
-    constructor(scene, name, x, y, texture, frame, weapon = null, movementType, visionRadius = 0, hp = 80, speed = 110, hasFeather = false) {
+    constructor(scene, name, x, y, texture, frame, weapon = null, movementType, visionRadius = 0, hp = 80, speed = 110, hasFeather = false, routeFacing = []) {
         // Pasamos null como weapon para que Enemy no intente equipar nada en super()
-        super(scene, name, x, y, texture, frame, visionRadius, hp, speed, null, movementType, hasFeather);
+        super(scene, name, x, y, texture, frame, visionRadius, hp, speed, null, movementType, hasFeather, routeFacing);
         this.setScale(4);
     }
 
