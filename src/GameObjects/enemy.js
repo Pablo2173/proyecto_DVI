@@ -60,7 +60,7 @@ export default class Enemy extends BaseCharacter {
         this._visionRadius   = visionRadius;
         this._visionAngle    = Math.PI / 2;
         this._facingAngle    = Math.PI;
-        this._showVision     = true;
+        this._showVision     = false;
         this._visionGraphics = scene.add.graphics();
 
         if (this._routeFacing[0]) {
