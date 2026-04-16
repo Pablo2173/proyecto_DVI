@@ -1326,42 +1326,6 @@
          "name":"consumables",
          "objects":[
                 {
-                 "height":0,
-                 "id":82,
-                 "name":"",
-                 "point":true,
-                 "properties":[
-                        {
-                         "name":"name",
-                         "type":"string",
-                         "value":"speed_potion"
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":0,
-                 "x":572,
-                 "y":1908
-                }, 
-                {
-                 "height":0,
-                 "id":83,
-                 "name":"",
-                 "point":true,
-                 "properties":[
-                        {
-                         "name":"name",
-                         "type":"string",
-                         "value":"speed_attack_potion"
-                        }],
-                 "rotation":0,
-                 "type":"",
-                 "visible":true,
-                 "width":0,
-                 "x":648,
-                 "y":1904
-                }, 
-                {
                  "gid":1863,
                  "height":16,
                  "id":93,
@@ -1442,8 +1406,8 @@
                  "type":"",
                  "visible":true,
                  "width":16,
-                 "x":3503.81818181818,
-                 "y":1488.18181818182
+                 "x":3509.27272727273,
+                 "y":1483.27272727273
                 }],
          "opacity":1,
          "properties":[
