@@ -1,8 +1,15 @@
 import Enemy, { StatusEnemy } from '../enemy.js';
 
 export default class Cuervo extends Enemy {
-    constructor(scene, name, x, y, texture, frame, weapon, movementType, visionRadius = 900, hp = 60, speed = 150, hasFeather = false, routeFacing = []) {
-        super(scene, name, x, y, texture, frame, visionRadius, hp, speed, weapon, movementType, hasFeather, routeFacing);
+    static BASE_STATS = {
+        visionRadius: 900,
+        hp: 60,
+        speed: 150
+    };
+
+    constructor(scene, name, x, y, texture, frame, weapon, movementType, hasFeather = false, routeFacing = []) {
+        const stats = Cuervo.BASE_STATS;
+        super(scene, name, x, y, texture, frame, stats.visionRadius, stats.hp, stats.speed, weapon, movementType, hasFeather, routeFacing);
         this.setScale(4);
 
         // El cuervo puede volar sobre obstáculos del mapa (árboles, vallas, etc.).

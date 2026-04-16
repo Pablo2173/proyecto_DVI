@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import Weapon from '../weapon.js';
 import { TEAM } from '../../team.js';
-import escobaSprite from '../../../../assets/sprites/Weapons/mazo.png';
+import escobaSprite from '../../../../assets/sprites/Weapons/escoba.png';
 import EscobaSwing from '../../Projectiles/escobaSwing.js';
 import WeaponBar from '../weaponBar.js';
 
@@ -112,15 +112,20 @@ export default class Escoba extends Weapon {
     _releaseCharge() {
         if (!this.isCharging) return;
         this.isCharging = false;
+        const scene = this.scene ?? this.owner?.scene;
+        if (!scene?.time) {
+            this._cancelCharge();
+            return;
+        }
         
-        this.scene.sound.play('escoba_sound', {
+        scene.sound.play('escoba_sound', {
             volume: 0.8,
             rate: Phaser.Math.FloatBetween(0.92, 1.08)
         });
         // Daño base + multiplicador según carga (1x hasta 1.5x)
         const damageMult = 2;
         
-        new EscobaSwing(this.scene, this.owner.x, this.owner.y, {
+        new EscobaSwing(scene, this.owner.x, this.owner.y, {
             owner: this.owner,
             team: this.owner?.team ?? 'neutral',
             damage: this.getDamage() * damageMult,
@@ -134,11 +139,13 @@ export default class Escoba extends Weapon {
             knockbackDuration: 150 + (this.chargeLevel * 300)
         });
 
-        this.lastAttackTime = this.scene.time.now;
+        if (!this.scene || !this.owner || !this.active) return;
+
+        this.lastAttackTime = scene.time.now;
         this.chargeLevel = 0;
         if (this.bar) this.bar.setEmpty();
 
-        this._quarterSwingAnimation();
+        this._quarterSwingAnimation(scene);
 
         this.on_shoot();
     }
@@ -150,13 +157,18 @@ export default class Escoba extends Weapon {
         if (this.bar) this.bar.setEmpty();
     }
 
-    _quarterSwingAnimation() {
+    _quarterSwingAnimation(scene = this.scene ?? this.owner?.scene) {
         this.isAttacking = true;
+
+        if (!scene?.tweens) {
+            this.isAttacking = false;
+            return;
+        }
 
         const baseAngle = this.angle;
         const halfSwing = this.swingAngle / 2;
 
-        this.scene.tweens.add({
+        scene.tweens.add({
             targets: this,
             angle: baseAngle + halfSwing,
             duration: this.swingDuration,

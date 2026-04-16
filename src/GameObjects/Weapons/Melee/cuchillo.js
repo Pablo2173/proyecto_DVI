@@ -32,14 +32,17 @@ export default class Cuchillo extends Weapon {
 
     attack() {
         if (!this._canAttack()) return;
-        this.lastAttackTime = this.scene.time.now;
+        const scene = this.scene ?? this.owner?.scene;
+        if (!scene?.time) return;
 
-        this.scene.sound.play('cuchillo_sound', {
+        this.lastAttackTime = scene.time.now;
+
+        scene.sound.play('cuchillo_sound', {
             volume: 0.5,
             rate: Phaser.Math.FloatBetween(0.96, 1.04)
         });
 
-        new CuchilloSwing(this.scene, this.owner.x, this.owner.y, {
+        new CuchilloSwing(scene, this.owner.x, this.owner.y, {
             owner: this.owner,
             team: this.owner?.team ?? 'neutral',
             damage: this.getDamage(),
@@ -50,9 +53,11 @@ export default class Cuchillo extends Weapon {
             swingAngle: Phaser.Math.DegToRad(this.swingAngle)
         });
 
-        this._quarterSwingAnimation();
-
         this.on_shoot();
+
+        if (!this.scene || !this.owner || !this.active) return;
+
+        this._quarterSwingAnimation(scene);
     }
 
     onDash() {
@@ -70,13 +75,18 @@ export default class Cuchillo extends Weapon {
         enemies.forEach(enemy => enemy?.resetAlertState?.());
     }
 
-    _quarterSwingAnimation() {
+    _quarterSwingAnimation(scene = this.scene ?? this.owner?.scene) {
         this.isAttacking = true;
+
+        if (!scene?.tweens) {
+            this.isAttacking = false;
+            return;
+        }
 
         const baseAngle = this.angle;
         const halfSwing = this.swingAngle / 2;
 
-        this.scene.tweens.add({
+        scene.tweens.add({
             targets: this,
             angle: baseAngle + halfSwing,
             duration: this.swingDuration,

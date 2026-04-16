@@ -412,7 +412,7 @@ export default class MainScene extends Phaser.Scene {
                         const hint = this.add.image(obj.x * SCALE, (obj.y - obj.height) * SCALE, textureName);
                         hint.setOrigin(0, 0);
                         hint.setDisplaySize(obj.width * SCALE, obj.height * SCALE);
-                        hint.setDepth(100);
+                        //hint.setDepth(100);
                     }
                 }
             });
@@ -1647,10 +1647,10 @@ export default class MainScene extends Phaser.Scene {
             let texture;
             if (enemyType === 'zorro') {
                 texture = 'zorro_idle';
-                enemy = new Zorro(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute', 750, 80, 110, undefined, routeFacing);
+                enemy = new Zorro(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute', undefined, routeFacing);
             } else {
                 texture = 'mapache_idle';
-                enemy = new Mapache(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute', 750, 100, 90, undefined, routeFacing);
+                enemy = new Mapache(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute', undefined, routeFacing);
             }
 
             // Asignar la ruta al enemigo
