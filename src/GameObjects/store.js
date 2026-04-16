@@ -4,6 +4,7 @@ import SpeedPotion from './Consumables/SpeedPotion.js';
 import SpeedAttackPotion from './Consumables/SpeedAttackPotion.js';
 import Mcuaktro from './Weapons/Distance/mcuaktro.js';
 import Mazo from './Weapons/Melee/mazo.js';
+import Feather from './Consumables/Drops/dropFeather.js';
 // Imports necesarios para usar los Drop como representación visual de items en tienda
 import DropWeapon from './Consumables/Drops/dropWeapon.js';
 import DropFeather from './Consumables/Drops/dropFeather.js';
@@ -11,7 +12,8 @@ import DropFeather from './Consumables/Drops/dropFeather.js';
 /**
  * Store
  * Sistema de tienda en el mapa.
- * El jugador puede comprar items con panes (moneda) pulsando E.
+ * Genera 3 pociones en el suelo con precio visible.
+ * El jugador puede comprarlas con panes (moneda) pulsando E.
  *
  * RESPONSABILIDADES:
  *  - Generar las pociones en el suelo
@@ -24,12 +26,17 @@ export default class Store {
 
     /**
      * Configuración de tipos disponibles con sus precios fijos.
+     * AttackPotion → 1
+     * SpeedPotion → 2
+     * SpeedAttackPotion → 3
+     * Mcuaktro → 10
+
      */
     static POTION_CATALOG = [
         { type: 'attack_potion',       PotionClass: AttackPotion,       price: 1 },
         { type: 'speed_potion',        PotionClass: SpeedPotion,        price: 2 },
         { type: 'speed_attack_potion', PotionClass: SpeedAttackPotion,  price: 3 },
-        { type: 'feather',             FeatherClass: DropFeather,           price: 5 },
+        { type: 'feather',             FeatherClass: Feather,           price: 5 },
         { type: 'mcuaktro',            WeaponClass: Mcuaktro,           price: 10 },
         { type: 'mazo',                WeaponClass: Mazo,               price: 8 },
     ];
@@ -91,7 +98,7 @@ export default class Store {
     // ─────────────────────────────────────────
 
     /**
-     * Genera un item aleatorio por cada posición recibida desde el mapa.
+     * Genera una poción aleatoria por cada posición recibida desde el mapa.
      * Sustituye al spawn manual de _spawnPotions() cuando se usa la capa 'Store' de Tiled.
      *
      * Cada posición corresponde exactamente a un objeto de la capa 'Store':
@@ -114,7 +121,7 @@ export default class Store {
         // Crear el slot de reroll a la izquierda del primer slot
         this._spawnRerollSlot(positions);
 
-        console.log(`[Store] spawnAtPositions: ${this.slots.length} item(s) generado(s) desde el mapa.`);
+        console.log(`[Store] spawnAtPositions: ${this.slots.length} poción(es) generada(s) desde el mapa.`);
     }
 
     /**
@@ -252,9 +259,9 @@ export default class Store {
         const rerollX = basePos.x - 120;
         const rerollY = basePos.y;
 
-        // Sprite de pan como representación del reroll
-        const sprite = this.scene.add.image(rerollX, rerollY, 'bread_item');
-        sprite.setScale(4);
+        // Sprite de reroll como representación del slot de reroll
+        const sprite = this.scene.add.image(rerollX, rerollY, 'reroll_icon');
+        sprite.setScale(2);
         sprite.setDepth(100);
 
         // Efecto flotante igual que los demás items
@@ -279,22 +286,9 @@ export default class Store {
         priceLabel.setOrigin(0.5, 0);
         priceLabel.setDepth(101);
 
-        // Etiqueta identificativa encima del icono
-        const rerollLabel = this.scene.add.text(rerollX, rerollY - 40, 'RE-ROLL', {
-            fontSize:        '18px',
-            fill:            '#FFFFFF',
-            fontStyle:       'bold',
-            stroke:          '#000000',
-            strokeThickness: 3,
-            align:           'center',
-        });
-        rerollLabel.setOrigin(0.5, 1);
-        rerollLabel.setDepth(101);
-
         this._rerollSlot = {
             sprite,
             priceLabel,
-            rerollLabel,
             slotX: rerollX,
             slotY: rerollY,
         };
@@ -563,7 +557,6 @@ export default class Store {
         if (this._rerollSlot) {
             this._rerollSlot.sprite?.destroy();
             this._rerollSlot.priceLabel?.destroy();
-            this._rerollSlot.rerollLabel?.destroy();
             this._rerollSlot = null;
         }
     }

@@ -64,6 +64,7 @@ import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
 import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
 import up_bar from '../../assets/sprites/UI/up_bar.png';
 import dash_charge_sprite from '../../assets/sprites/UI/dash_charge.png';
+import rerollIcon from '../../assets/sprites/UI/reroll.png';
 import Puddle from '../GameObjects/puddle.js';
 import PuddleUpgradePanel from '../GameObjects/Puddles/PuddleUpgradePanel.js';
 import ConsumableBar from '../GameObjects/Consumables/ConsumableBar.js';
@@ -267,8 +268,6 @@ export default class MainScene extends Phaser.Scene {
         Bala.preload(this);
         Escoba.preload(this);
 
-
-
         Bread.preload(this);
 
         AttackPotion.preload(this);
@@ -277,7 +276,6 @@ export default class MainScene extends Phaser.Scene {
         Key.preload(this);
 
         DropBread.preload(this);
-
 
         // Preload de la barra de arma del jugador
         this.load.image('weapon_bar_border', bar);
@@ -298,6 +296,9 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('jump_sign', jumpSign);
         this.load.image('mouse_sign', mouseSign);
         this.load.image('movement_sign', movementSign);
+
+        // Preload de reroll icon
+        this.load.image('reroll_icon', rerollIcon);
     }
 
     create() {
