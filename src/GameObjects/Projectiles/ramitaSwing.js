@@ -15,9 +15,9 @@ export default class RamitaSwing extends MeleeSwing {
             range: config.range ?? 170,
             duration: config.duration ?? 90,
             swingAngle: config.swingAngle ?? Math.PI * 0.55,
-            knockbackAbilitySpeed: config.knockbackAbilitySpeed ?? 120,
-            knockbackSpeed: config.knockbackSpeed ?? 180,
-            knockbackDuration: config.knockbackDuration ?? 120,
+            //knockbackAbilitySpeed: config.knockbackAbilitySpeed ?? 120,
+            //knockbackSpeed: config.knockbackSpeed ?? 180,
+            //knockbackDuration: config.knockbackDuration ?? 120,
             notifyWeaponOnHit: config.notifyWeaponOnHit ?? false
         });
     }

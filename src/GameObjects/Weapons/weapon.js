@@ -41,11 +41,18 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         this.attackSpeed = config.attackSpeed ?? 500;
         this.lastAttackTime = 0;
         this.isAttacking = false;
-        this.maxDurability = this.isEnemy ? null : (config.durability ?? null);
+        this.baseDurability = this.isEnemy
+            ? null
+            : (Number.isFinite(Number(config.durability)) ? Math.max(1, Math.floor(Number(config.durability))) : null);
+        this.maxDurability = this._getScaledDurability(this.baseDurability);
         this.durability = this.maxDurability;
 
         // ── Método para obtener daño con multiplicadores ──
-        this.getDamage = () => this.damage * (this.owner.damageMultiplier || 1);
+        this.getDamage = () => {
+            const temporaryDamageMult = this.owner?.damageMultiplier || 1;
+            const baseAttackBonus = Math.max(0, Number(this.owner?.baseAttackBonusPercent) || 0);
+            return this.damage * temporaryDamageMult * (1 + baseAttackBonus);
+        };
         this.range = config.range ?? 800;
         this.optimalDistance = config.optimalDistance ?? this.range * 0.7;
         this.accuracy = Phaser.Math.Clamp(config.accuracy ?? 0, 0, 180);
@@ -117,12 +124,12 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
         const wrapped = Phaser.Math.Angle.WrapDegrees(angleDeg);
         this.setFlipY(wrapped > 90 || wrapped < -90);
 
-        // 4. Para enemigos, disparar automáticamente si el jugador está en rango y el enemigo está alertado
+        // 4. Para enemigos, disparar automáticamente solo si el jugador está fuera del radio interior
         if (this.owner._facingAngle !== undefined && this.owner._state === 1 && this.isRanged) {
             const player = this.scene.duck;
             if (player) {
                 const dist = Phaser.Math.Distance.Between(this.owner.x, this.owner.y, player.x, player.y);
-                if (dist <= this.range && this._canAttack()) {
+                if (dist > this.optimalDistance && dist <= this.range && this._canAttack()) {
                     this.attack();
                 }
             }
@@ -300,6 +307,30 @@ export default class Weapon extends Phaser.GameObjects.Sprite {
 
     onHitTarget(_target) {
         return this.consumeDurability(1);
+    }
+
+    _getScaledDurability(baseDurability) {
+        if (typeof baseDurability !== 'number') return null;
+
+        const durationBonus = Math.max(0, Number(this.owner?.weaponDurationBonusPercent) || 0);
+        return Math.max(1, Math.ceil(baseDurability * (1 + durationBonus)));
+    }
+
+    applyOwnerDurationBonus() {
+        if (typeof this.baseDurability !== 'number') return;
+
+        const previousMaxDurability = this.maxDurability;
+        const previousDurability = this.durability;
+
+        this.maxDurability = this._getScaledDurability(this.baseDurability);
+
+        if (typeof previousDurability === 'number' && typeof previousMaxDurability === 'number' && previousMaxDurability > 0) {
+            const ratio = Phaser.Math.Clamp(previousDurability / previousMaxDurability, 0, 1);
+            this.durability = Math.max(1, Math.ceil(this.maxDurability * ratio));
+            return;
+        }
+
+        this.durability = this.maxDurability;
     }
 
     // ─────────────────────────────────────────

@@ -1,5 +1,5 @@
 import ConsumableItem from './Drops/consumableDrop.js';
-import speedAttackPotionSprite from '../../../assets/sprites/consumables/bread_item.png'; // Placeholder, usar icono real si está disponible
+import speedAttackPotionSprite from '../../../assets/sprites/consumables/speed_attack_potion.png'; // Placeholder, usar icono real si está disponible
 
 export default class SpeedAttackPotion extends ConsumableItem {
 
@@ -17,10 +17,8 @@ export default class SpeedAttackPotion extends ConsumableItem {
     }
 
     use_effect(player) {
-        console.log('Usando poción de velocidad de ataque: duplicando cadencia de ataque por 20 segundos');
 
         if (!player.weapon) {
-            console.warn('No hay arma equipada para aplicar el efecto de velocidad de ataque');
             return;
         }
 
@@ -37,7 +35,6 @@ export default class SpeedAttackPotion extends ConsumableItem {
             if (player.weapon && player.weapon._attackSpeedBuffActive) {
                 player.weapon.attackSpeed = player.weapon._attackSpeedBase;
                 player.weapon._attackSpeedBuffActive = false;
-                console.log('Efecto de poción de velocidad de ataque terminado: velocidad de ataque restaurada');
             }
         });
     }

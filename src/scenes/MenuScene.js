@@ -39,7 +39,6 @@ export default class MenuScene extends Phaser.Scene {
         loop: true,
         volume: settings.menuVolume ?? 1
       });
-      music.play();
     } else if (music) {
       // actualiza volumen si ya existe
       music.setVolume(settings.menuVolume ?? 1);
@@ -48,6 +47,22 @@ export default class MenuScene extends Phaser.Scene {
         music.setVolume(0);
       }
     }
+
+    this.input.once("pointerdown", () => {
+      this.sound.context.resume();
+
+      if (music && !music.isPlaying && (settings.menuMusicEnabled ?? true)) {
+        music.play();
+      }
+    });
+
+    this.input.keyboard.once("keydown", () => {
+      this.sound.context.resume();
+
+      if (music && !music.isPlaying && (settings.menuMusicEnabled ?? true)) {
+        music.play();
+      }
+    });
 
     this.setupKeyboard();
   }

@@ -2,8 +2,15 @@ import Enemy, { StatusEnemy } from "../enemy";
 
 export default class Mapache extends Enemy {
 
-    constructor(scene, name, x, y, texture, frame, weapon, movementType, visionRadius = 750, hp = 100, speed = 90, hasFeather) {
-        super(scene, name, x, y, texture, frame, visionRadius, hp, speed, weapon, movementType, hasFeather);
+    static BASE_STATS = {
+        visionRadius: 750,
+        hp: 65,
+        speed: 100
+    };
+
+    constructor(scene, name, x, y, texture, frame, weapon, movementType, hasFeather, routeFacing = []) {
+        const stats = Mapache.BASE_STATS;
+        super(scene, name, x, y, texture, frame, stats.visionRadius, stats.hp, stats.speed, weapon, movementType, hasFeather, routeFacing);
         this.setScale(4);
 
         // El mapache tiene probabilidad de soltar una máscara al morir
@@ -17,8 +24,8 @@ export default class Mapache extends Enemy {
         // guardamos las estadisticas originales para poder restaurarlas al resucitar
         this._resurrected = false;
         this._originalTexture = texture;
-        this._originalVisionRadius = visionRadius;
-        this._maxHP = hp;
+        this._originalVisionRadius = stats.visionRadius;
+        this._maxHP = stats.hp;
         this._originalWeapon = weapon;
         this.hasFeather          = true;
     }

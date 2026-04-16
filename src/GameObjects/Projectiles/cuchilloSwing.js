@@ -16,9 +16,9 @@ export default class CuchilloSwing extends MeleeSwing {
             range: config.range ?? 200,
             duration: config.duration ?? 120,
             swingAngle: config.swingAngle ?? Math.PI * 0.6,
-            knockbackAbilitySpeed: config.knockbackAbilitySpeed ?? 180,
-            knockbackSpeed: config.knockbackSpeed ?? 180,
-            knockbackDuration: config.knockbackDuration ?? 180,
+            //knockbackAbilitySpeed: config.knockbackAbilitySpeed ?? 180,
+            //knockbackSpeed: config.knockbackSpeed ?? 180,
+            //knockbackDuration: config.knockbackDuration ?? 180,
             notifyWeaponOnHit: config.notifyWeaponOnHit ?? true
         });
     }

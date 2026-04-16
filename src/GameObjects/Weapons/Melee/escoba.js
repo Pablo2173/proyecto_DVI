@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import Weapon from '../weapon.js';
-import escobaSprite from '../../../../assets/sprites/Weapons/mazo.png';
+import { TEAM } from '../../team.js';
+import escobaSprite from '../../../../assets/sprites/Weapons/escoba.png';
 import EscobaSwing from '../../Projectiles/escobaSwing.js';
 import WeaponBar from '../weaponBar.js';
 
@@ -9,12 +10,12 @@ export default class Escoba extends Weapon {
 
     constructor(scene, owner, bar = null) {
         // Detectar si el propietario es un enemigo para ajustar parámetros
-        const isEnemy = owner?.constructor?.name === 'Enemy';
+        const isEnemy = owner?.team === TEAM.ENEMY;
         
         super(scene, owner, {
             texture:         'escoba',
             isRanged:        false,
-            damage:          13,
+            damage:          10,
             attackSpeed:     700,
             durability:      12,
             range:           isEnemy ? 150 : 200,
@@ -22,7 +23,7 @@ export default class Escoba extends Weapon {
             swingAngle:      80,
             swingDuration:   100,
             scale:           1,
-            debug:           true,
+            debug:           false,
             bar:             bar
         });
 
@@ -42,9 +43,30 @@ export default class Escoba extends Weapon {
 
     attack() {
         if (this.isCharging) return;
-        if (this.isEnemy) { super.attack(); return; }
         if (!this._canAttack()) return;
 
+        if (this.isEnemy) {
+            // Enemigos disparan directo sin carga
+            this.lastAttackTime = this.scene.time.now;
+            this.on_shoot();
+            
+            new EscobaSwing(this.scene, this.owner.x, this.owner.y, {
+                owner: this.owner,
+                team: this.owner?.team ?? 'neutral',
+                damage: this.getDamage() * 2,
+                range: this.range,
+                attackArcDeg: this.attackArcDeg,
+                weaponRotation: this.rotation,
+                duration: this.swingDuration,
+                swingAngle: Phaser.Math.DegToRad(this.swingAngle),
+                knockbackAbilitySpeed: 1000,
+                knockbackSpeed: 1000,
+                knockbackDuration: 300
+            });
+            return;
+        }
+
+        // Jugador: inicia carga
         this.isCharging = true;
         this.isAttacking = true;
         this.chargeStartTime = this.scene.time.now;
@@ -90,11 +112,20 @@ export default class Escoba extends Weapon {
     _releaseCharge() {
         if (!this.isCharging) return;
         this.isCharging = false;
-
-        // Daño base + multiplicador según carga (1x hasta 1.5x)
-        const damageMult = 1 + (this.chargeLevel * 0.5);
+        const scene = this.scene ?? this.owner?.scene;
+        if (!scene?.time) {
+            this._cancelCharge();
+            return;
+        }
         
-        new EscobaSwing(this.scene, this.owner.x, this.owner.y, {
+        scene.sound.play('escoba_sound', {
+            volume: 0.8,
+            rate: Phaser.Math.FloatBetween(0.92, 1.08)
+        });
+        // Daño base + multiplicador según carga (1x hasta 1.5x)
+        const damageMult = 2;
+        
+        new EscobaSwing(scene, this.owner.x, this.owner.y, {
             owner: this.owner,
             team: this.owner?.team ?? 'neutral',
             damage: this.getDamage() * damageMult,
@@ -103,15 +134,18 @@ export default class Escoba extends Weapon {
             weaponRotation: this.rotation,
             duration: this.swingDuration,
             swingAngle: Phaser.Math.DegToRad(this.swingAngle),
+            knockbackAbilitySpeed: 250 + (this.chargeLevel * 500),
             knockbackSpeed: 250 + (this.chargeLevel * 500),
             knockbackDuration: 150 + (this.chargeLevel * 300)
         });
 
-        this.lastAttackTime = this.scene.time.now;
+        if (!this.scene || !this.owner || !this.active) return;
+
+        this.lastAttackTime = scene.time.now;
         this.chargeLevel = 0;
         if (this.bar) this.bar.setEmpty();
 
-        this._quarterSwingAnimation();
+        this._quarterSwingAnimation(scene);
 
         this.on_shoot();
     }
@@ -123,13 +157,18 @@ export default class Escoba extends Weapon {
         if (this.bar) this.bar.setEmpty();
     }
 
-    _quarterSwingAnimation() {
+    _quarterSwingAnimation(scene = this.scene ?? this.owner?.scene) {
         this.isAttacking = true;
+
+        if (!scene?.tweens) {
+            this.isAttacking = false;
+            return;
+        }
 
         const baseAngle = this.angle;
         const halfSwing = this.swingAngle / 2;
 
-        this.scene.tweens.add({
+        scene.tweens.add({
             targets: this,
             angle: baseAngle + halfSwing,
             duration: this.swingDuration,

@@ -54,6 +54,8 @@ export default class Duck extends BaseCharacter {
         // Multiplicadores para consumibles
         this.damageMultiplier = 1;
         this.speedMultiplier = 1;
+        this.baseAttackBonusPercent = 0;
+        this.weaponDurationBonusPercent = 0;
 
         // Inventario de consumibles
         this.consumables = [];
@@ -62,12 +64,9 @@ export default class Duck extends BaseCharacter {
         this.isInvisible = false;
 
         // GESTIÓN PLUMAS / VIDA
-        this.maxFeathers = 10;
         this.healthPerFeather = 50;
 
-        this.maxHealth = this.maxFeathers * this.healthPerFeather;
-
-        // empieza con 5 plumas
+        // empieza con 5 plumas (sin máximo)
         this.feathers = 5;
         this.health = this.feathers * this.healthPerFeather;
         this.lastPuddle = null;      // checkpoint actual
@@ -176,7 +175,7 @@ export default class Duck extends BaseCharacter {
     // ─────────────────────────────────────────
     addFeather(amount = 1) {
         const heal = amount * this.healthPerFeather;
-        this.health = Phaser.Math.Clamp(this.health + heal, 0, this.maxHealth);
+        this.health += heal;
         this.updateFeathersFromHealth();
     }
 
@@ -188,12 +187,8 @@ export default class Duck extends BaseCharacter {
     }
 
     setFeathers(amount) {
-        this.feathers = Phaser.Math.Clamp(amount, 0, this.maxFeathers);
+        this.feathers = Math.max(0, amount);
         this.health = this.feathers * this.healthPerFeather;
-
-        if (this.health > this.maxHealth) {
-            this.health = this.maxHealth;
-        }
 
         if (this.scene?.featherUI) {
             this.scene.featherUI.refresh();
@@ -204,6 +199,42 @@ export default class Duck extends BaseCharacter {
         }
     }
 
+    hasFeathers(amount = 1) {
+        const required = Math.max(0, Number(amount) || 0);
+        return this.feathers >= required;
+    }
+
+    spendFeathers(amount = 1) {
+        const required = Math.max(0, Math.floor(Number(amount) || 0));
+        if (required <= 0) return true;
+        if (!this.hasFeathers(required)) return false;
+
+        this.setFeathers(this.feathers - required);
+        return true;
+    }
+
+    applyMovementSpeedBonus(percent = 0.1) {
+        const safePercent = Number(percent);
+        if (!Number.isFinite(safePercent) || safePercent <= 0) return;
+
+        this.speedMultiplier *= 1 + safePercent;
+    }
+
+    applyBaseAttackBonus(percent = 0.1) {
+        const safePercent = Number(percent);
+        if (!Number.isFinite(safePercent) || safePercent <= 0) return;
+
+        this.baseAttackBonusPercent += safePercent;
+    }
+
+    applyWeaponDurationBonus(percent = 0.5) {
+        const safePercent = Number(percent);
+        if (!Number.isFinite(safePercent) || safePercent <= 0) return;
+
+        this.weaponDurationBonusPercent += safePercent;
+        this.weapon?.applyOwnerDurationBonus?.();
+    }
+
     canTakeDamage() {
         return super.canTakeDamage() && !this.isInvulnerable && !this.scene?.isPlayerDead;
     }
@@ -212,8 +243,20 @@ export default class Duck extends BaseCharacter {
         this.isInvulnerable = true;
     }
 
+    takeDamage(amount = 1) {
+        super.takeDamage(50);
+    }
+
     afterTakeDamage(amount, previousHealth, newHealth) {
         console.log(`Vida ahora: ${newHealth}`);
+
+        if (!this._lastDamageSound || this.scene.time.now > this._lastDamageSound + 120) {
+            this.scene.sound.play('damage_hit', {
+                volume: 0.6,
+                rate: Phaser.Math.FloatBetween(0.95, 1.05)
+            });
+            this._lastDamageSound = this.scene.time.now;
+        }
 
         this.updateFeathersFromHealth();
 
@@ -311,14 +354,15 @@ export default class Duck extends BaseCharacter {
         this.scene.time.delayedCall(this.dashDuration, () => {
             if (this.state === DUCK_STATE.DASHING) {
                 this.weapon?.onDash?.();
+
+                this.isDashInvisible = false;
+
+                // Restaurar alpha solo si no hay otra fuente de invisibilidad activa.
+                if (!this.isInvisible && this.state !== DUCK_STATE.INVISIBLE && this.invisibleUntil <= this.scene.time.now) {
+                    this.setAlpha(1);
+                }
+
                 if (this.state === DUCK_STATE.DASHING) {
-                    this.isDashInvisible = false;
-
-                    // Restaurar alpha solo si no hay otra fuente de invisibilidad activa.
-                    if (!this.isInvisible && this.state !== DUCK_STATE.INVISIBLE && this.invisibleUntil <= this.scene.time.now) {
-                        this.setAlpha(1);
-                    }
-
                     this.setState(DUCK_STATE.IDLE);
                 }
             }

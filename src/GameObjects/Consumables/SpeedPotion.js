@@ -1,8 +1,8 @@
 import ConsumableItem from './Drops/consumableDrop.js';
-import speedPotionSprite from '../../../assets/sprites/consumables/bread_item.png'; // Placeholder, usar bread_item por ahora
+import speedPotionSprite from '../../../assets/sprites/consumables/speed_potion.png'; // Placeholder, usar bread_item por ahora
 
 export default class SpeedPotion extends ConsumableItem {
-    
+
     static preload(scene) {
         scene.load.image('speed_potion', speedPotionSprite);
     }
@@ -27,7 +27,7 @@ export default class SpeedPotion extends ConsumableItem {
      */
     use_effect(player) {
         console.log('Usando poción de velocidad: duplicando velocidad por 15 segundos');
-        
+
         // Duplicar el multiplicador de velocidad
         if (!player.speedMultiplier) {
             player.speedMultiplier = 1;

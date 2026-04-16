@@ -14,15 +14,15 @@ export default class Arco extends Weapon {
             projectileClass: Flecha,
 
             projectileSpeed: 400,
-            damage:          20,
+            damage:          30,
             attackSpeed:     500,    // para jugador, la carga controla el ritmo
-            durability:      3,
+            durability:      4,
             range:           800,
 
             optimalDistance: 280,
             scale:           1.5,
             spriteAngleOffset: 0,
-            debug:           true,
+            debug:           false,
             bar:             bar
         });
 
@@ -93,6 +93,11 @@ export default class Arco extends Weapon {
         if (!this.isCharging) return;
         this.isCharging = false;
         this.maxChargeReachedAt = null;
+
+        this.scene.sound.play('disparo_arco', {
+            volume: 0.5,
+            rate: Phaser.Math.FloatBetween(0.92, 1.08)
+        });
 
         // Siempre dispara al soltar, el rango escala con la carga
         const chargeRatio = this.chargePercent / 100;
@@ -224,7 +229,7 @@ export default class Arco extends Weapon {
 
         // Descontar la distancia de spawn para que la flecha desaparezca al borde del rango
         const effectiveRange = this.maxRange * effectiveCharge - length;
-        const chargedDamage = this.getDamage() * visualChargeRatio;
+        const chargedDamage = this.getDamage() * chargeRatio;
 
         new this.projectileClass(this.scene, spawnX, spawnY, {
             direction,
@@ -241,6 +246,9 @@ export default class Arco extends Weapon {
     // No recargar automáticamente
     on_wait() { }
     on_shoot() {
+        if (this.isEnemy) {
+            this.scene.sound.play("disparo_arco", { volume: 1.5 });
+        }
         this.consumeDurability(1);
         this._syncWearBar();
     }

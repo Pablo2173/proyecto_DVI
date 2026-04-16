@@ -16,6 +16,17 @@ import configTreesUrl from "../../assets/config/5_trees.png?url";
 
 // ───────── AUDIO ─────────
 import menuMusicUrl from "../../assets/sounds/musica_menu.mp3?url";
+import arcoSfxUrl from "../../assets/sounds/disparo_arco.mp3?url";
+import damageRecibidoUrl from "../../assets/sounds/daño_recibido.mp3?url";
+import cuchilloUrl from "../../assets/sounds/cuchillo.mp3?url";
+import ramitaUrl from "../../assets/sounds/ramita.mp3?url";
+import mazoUrl from "../../assets/sounds/mazo.mp3?url";
+import escobaUrl from "../../assets/sounds/escoba.mp3?url";
+import armaUrl from "../../assets/sounds/m4.mp3?url";
+import deathUrl from "../../assets/sounds/death.mp3?url";
+
+
+
 
 export default class Boot extends Phaser.Scene {
   constructor() {
@@ -30,26 +41,49 @@ export default class Boot extends Phaser.Scene {
     const W = this.cameras.main.width;
     const H = this.cameras.main.height;
 
-    const box = this.add.rectangle(W / 2, H / 2, 320, 24, 0x000000, 0.35)
-      .setStrokeStyle(2, 0xffffff, 0.25);
+    // 🖤 Fondo negro
+    this.add.rectangle(0, 0, W, H, 0x000000).setOrigin(0);
 
-    const bar = this.add.rectangle(W / 2 - 160, H / 2, 0, 16, 0xffffff, 0.6)
-      .setOrigin(0, 0.5);
+    // 📝 Texto LOADING
+    const loadingText = this.add.text(W / 2, H / 2, "LOADING", {
+      fontFamily: "ReturnOfTheBoss",
+      fontSize: "72px",
+      color: "#ff0000",
+      stroke: "#000000",
+      strokeThickness: 6
+    }).setOrigin(0.5);
 
-    this.load.on("progress", (p) => (bar.width = 320 * p));
-    this.load.on("complete", () => {
-      box.destroy();
-      bar.destroy();
+    // ✨ Animación de puntos
+    let dots = 0;
+
+    this.time.addEvent({
+      delay: 400,
+      loop: true,
+      callback: () => {
+        dots = (dots + 1) % 4; // 0,1,2,3
+        loadingText.setText("LOADING" + ".".repeat(dots));
+      }
     });
 
+    // ───────── AUDIO ─────────
     this.load.audio("menu_music", menuMusicUrl);
+    this.load.audio("disparo_arco", arcoSfxUrl);
+    this.load.audio('damage_hit', damageRecibidoUrl);
+    this.load.audio('cuchillo_sound', cuchilloUrl);
+    this.load.audio('ramita_sound', ramitaUrl);
+    this.load.audio('mazo_sound', mazoUrl);
+    this.load.audio('escoba_sound', escobaUrl);
+    this.load.audio('arma_sound', armaUrl);
+    this.load.audio('death_sound', deathUrl);
 
+    // ───────── MENU ─────────
     this.load.image("sky", skyUrl);
     this.load.image("clouds", cloudsUrl);
     this.load.image("backfield", backfieldUrl);
     this.load.image("trees", treesUrl);
     this.load.image("ground", groundUrl);
 
+    // ───────── CONFIG ─────────
     this.load.image("config_sky", configSkyUrl);
     this.load.image("config_clouds", configCloudsUrl);
     this.load.image("config_backfield", configBackfieldUrl);

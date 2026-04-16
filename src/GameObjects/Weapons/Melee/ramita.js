@@ -8,7 +8,7 @@ export default class Ramita extends Weapon {
         super(scene, owner, {
             texture: 'ramita',
             isRanged: false,
-            damage: 10,
+            damage: 15,
             attackSpeed: 700,
             range: 170,
             optimalDistance: 85,
@@ -31,7 +31,8 @@ export default class Ramita extends Weapon {
 
     on_equip() {
         // Mostrar rango de test al jugador por defecto.
-        this.setTestRangeVisible(!this.isEnemy);
+        //this.setTestRangeVisible(!this.isEnemy);
+        this.setTestRangeVisible(false);
     }
 
     update() {
@@ -67,7 +68,11 @@ export default class Ramita extends Weapon {
     attack() {
         if (!this._canAttack()) return;
         this.lastAttackTime = this.scene.time.now;
-
+        
+        this.scene.sound.play('ramita_sound', {
+            volume: 0.5,
+            rate: Phaser.Math.FloatBetween(0.95, 1.05)
+        });
         new RamitaSwing(this.scene, this.owner.x, this.owner.y, {
             owner: this.owner,
             team: this.owner?.team ?? 'neutral',
