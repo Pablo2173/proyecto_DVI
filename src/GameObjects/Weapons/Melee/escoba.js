@@ -27,7 +27,7 @@ export default class Escoba extends Weapon {
             bar:             bar
         });
 
-        this.attackArcDeg = 60;
+        this.attackArcDeg = 180;
         this.isCharging = false;
         this.chargeStartTime = 0;
         this.chargeLevel = 0;

@@ -413,6 +413,7 @@ export default class MainScene extends Phaser.Scene {
                         const hint = this.add.image(obj.x * SCALE, (obj.y - obj.height) * SCALE, textureName);
                         hint.setOrigin(0, 0);
                         hint.setDisplaySize(obj.width * SCALE, obj.height * SCALE);
+                        hint.setAlpha(0.7);
                         //hint.setDepth(100);
                     }
                 }
@@ -891,6 +892,11 @@ export default class MainScene extends Phaser.Scene {
             // Pasar eJustDown a la tienda para que gestione la compra con E
             if (this.store) {
                 this.store.update(eJustDown);
+            }
+
+            // Si hay llave en inventario, abrir puerta cercana automáticamente.
+            if ((this.duck.consumables || []).some(item => item?.type === 'key')) {
+                this.tryOpenNearbyClosedDoor(this.duck, true);
             }
         }
 
@@ -1837,7 +1843,14 @@ export default class MainScene extends Phaser.Scene {
             player.consumables.splice(keyIndex, 1);
         }
 
-        doorTiles.forEach(tile => {
+        const allDoorTiles = this.puertaCerradaLayer.getTilesWithin(
+            0,
+            0,
+            this.puertaCerradaLayer.layer.width,
+            this.puertaCerradaLayer.layer.height
+        ).filter(tile => tile && tile.index !== -1);
+
+        allDoorTiles.forEach(tile => {
             this.puertaCerradaLayer.removeTileAt(tile.x, tile.y);
         });
 
@@ -1878,17 +1891,50 @@ export default class MainScene extends Phaser.Scene {
 
         console.log(`[MainScene] Capa Store encontrada con ${storeLayer.objects.length} objeto(s).`);
 
-        // Extraer posiciones escaladas directamente de los objetos del mapa
-        const positions = storeLayer.objects.map(obj => ({
+        const getStoreObjectName = (obj) => {
+            const objectName = String(obj?.name || '').trim().toLowerCase();
+            if (objectName) return objectName;
+
+            const propertyName = Array.isArray(obj?.properties)
+                ? String(obj.properties.find(p => String(p.name || '').toLowerCase() === 'name')?.value || '').trim().toLowerCase()
+                : '';
+
+            return propertyName;
+        };
+
+        const rerollObjects = storeLayer.objects.filter(
+            obj => getStoreObjectName(obj) === 'reroll'
+        );
+
+        const rerollObject = rerollObjects[0] || null;
+
+        // Todo objeto que NO sea reroll se interpreta como slot normal de tienda.
+        const itemObjects = storeLayer.objects.filter(
+            obj => getStoreObjectName(obj) !== 'reroll'
+        );
+
+        // Extraer posiciones escaladas de slots normales
+        const positions = itemObjects.map(obj => ({
             x: obj.x * scale,
             y: obj.y * scale,
         }));
 
+        const rerollPosition = rerollObject
+            ? {
+                x: rerollObject.x * scale,
+                y: rerollObject.y * scale,
+            }
+            : null;
+
+        if (rerollObjects.length > 1) {
+            console.warn(`[MainScene] Se encontraron ${rerollObjects.length} objetos "reroll" en la capa "store". Se usará el primero.`);
+        }
+
         // Instanciar la tienda sin posición central fija; los slots vienen del mapa
         this.store = new Store(this, 0, 0, this.duck, this.consumableBar);
 
-        // Generar una poción aleatoria en cada posición del mapa
-        this.store.spawnAtPositions(positions);
+        // Generar items en posiciones del mapa y colocar reroll solo si existe objeto 'reroll'
+        this.store.spawnAtPositions(positions, rerollPosition);
     }
 
     // ─────────────────────────────────────────

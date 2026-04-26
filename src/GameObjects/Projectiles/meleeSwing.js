@@ -18,8 +18,8 @@ export default class MeleeSwing extends Projectile {
         this.owner = config.owner;
         this.team = config.team ?? (this.owner ? this.owner.team : 'neutral');
         this.duration = Math.max(config.duration ?? 120, config.minDuration ?? 500);
-        this.swingAmplitude = config.swingAngle ?? Math.PI * 0.6;
-        this.radius = config.radius ?? Math.floor((config.range ?? 200) / 1.25);
+        this.swingAmplitude = config.swingAngle ?? Math.PI;
+        this.radius = config.radius ?? Math.floor((config.range ?? 200) / 1.5);
         this.baseRotation = config.weaponRotation ?? 0;
         this.attackArcDeg = config.attackArcDeg ?? 60;
         this.hitRange = config.range ?? 200;
@@ -45,10 +45,10 @@ export default class MeleeSwing extends Projectile {
             this.body.setEnable(false);
         }
 
-        this._applyQuarterCircleDamage();
+        this._applyAmplitudDamage();
     }
 
-    _applyQuarterCircleDamage() {
+    _applyAmplitudDamage() {
         const ownerX = this.owner?.x ?? this.x;
         const ownerY = this.owner?.y ?? this.y;
         const forwardAngle = this.baseRotation;

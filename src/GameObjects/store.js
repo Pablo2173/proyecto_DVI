@@ -104,24 +104,31 @@ export default class Store {
      * Cada posición corresponde exactamente a un objeto de la capa 'Store':
      *   { x: obj.x * SCALE, y: obj.y * SCALE }
      *
-     * @param {Array<{x: number, y: number}>} positions - Posiciones escaladas de los objetos del mapa
+     * @param {Array<{x: number, y: number}>} positions - Posiciones escaladas de los objetos de slots del mapa
+     * @param {{x: number, y: number}|null} rerollPosition - Posición del objeto 'reroll' en el mapa
      */
-    spawnAtPositions(positions) {
-        if (!Array.isArray(positions) || positions.length === 0) {
+    spawnAtPositions(positions, rerollPosition = null) {
+        const safePositions = Array.isArray(positions) ? positions : [];
+
+        if (safePositions.length === 0 && !rerollPosition) {
             console.warn('[Store] spawnAtPositions: no se recibieron posiciones válidas.');
             return;
         }
 
         // Guardar posiciones para poder hacer reroll más adelante
-        this._spawnPositions = positions;
+        this._spawnPositions = safePositions;
 
         // Generar los items en cada posición
-        this._spawnItemsAtPositions(positions);
+        this._spawnItemsAtPositions(safePositions);
 
-        // Crear el slot de reroll a la izquierda del primer slot
-        this._spawnRerollSlot(positions);
+        // Crear el slot de reroll solo si viene definido en la capa del mapa.
+        if (rerollPosition) {
+            this._spawnRerollSlot(rerollPosition);
+        } else {
+            this._destroyRerollSlot();
+        }
 
-        console.log(`[Store] spawnAtPositions: ${this.slots.length} poción(es) generada(s) desde el mapa.`);
+        console.log(`[Store] spawnAtPositions: ${this.slots.length} item(s) de tienda generado(s) desde el mapa.`);
     }
 
     /**
@@ -248,16 +255,15 @@ export default class Store {
     }
 
     /**
-     * Crea el slot de reroll con sprite de pan a la izquierda del primer slot del mapa.
-     * Si no hay posiciones disponibles, usa la posición central de la tienda como fallback.
-     * @param {Array<{x: number, y: number}>} positions
+     * Crea el slot de reroll en la posición definida por el objeto 'reroll' del mapa.
+     * @param {{x: number, y: number}} position
      * @private
      */
-    _spawnRerollSlot(positions) {
-        // Posición base: a la izquierda del primer slot con un offset de 30px
-        const basePos = positions.length > 0 ? positions[0] : { x: this.x, y: this.y };
-        const rerollX = basePos.x - 120;
-        const rerollY = basePos.y;
+    _spawnRerollSlot(position) {
+        this._destroyRerollSlot();
+
+        const rerollX = position.x;
+        const rerollY = position.y;
 
         // Sprite de reroll como representación del slot de reroll
         const sprite = this.scene.add.image(rerollX, rerollY, 'reroll_icon');
@@ -292,6 +298,14 @@ export default class Store {
             slotX: rerollX,
             slotY: rerollY,
         };
+    }
+
+    _destroyRerollSlot() {
+        if (!this._rerollSlot) return;
+
+        this._rerollSlot.sprite?.destroy();
+        this._rerollSlot.priceLabel?.destroy();
+        this._rerollSlot = null;
     }
 
     // ─────────────────────────────────────────
@@ -554,10 +568,6 @@ export default class Store {
         this._signText?.destroy();
 
         // Destruir slot de reroll
-        if (this._rerollSlot) {
-            this._rerollSlot.sprite?.destroy();
-            this._rerollSlot.priceLabel?.destroy();
-            this._rerollSlot = null;
-        }
+        this._destroyRerollSlot();
     }
 }

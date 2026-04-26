@@ -19,7 +19,7 @@ export default class Ramita extends Weapon {
             bar
         });
 
-        this.attackArcDeg = 60;
+        this.attackArcDeg = 180;
         this.testRangeVisible = false;
         this.testRangeGraphics = scene.add.graphics();
         this.testRangeGraphics.setDepth(9998);

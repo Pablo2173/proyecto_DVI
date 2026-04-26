@@ -23,7 +23,7 @@ export default class Cuchillo extends Weapon {
             bar:             bar
         });
 
-        this.attackArcDeg = 60;
+        this.attackArcDeg = 180;
     }
 
     static preload(scene) {
