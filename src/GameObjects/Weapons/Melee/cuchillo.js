@@ -64,7 +64,7 @@ export default class Cuchillo extends Weapon {
         if (!this.owner?.startInvisibleState) return;
         if (!this.owner.canStartInvisible?.()) return;
 
-        this.owner.startInvisibleState(4000);
+        this.owner.startInvisibleState(3000);
         //if (!this.owner) return;
 
         const enemiesContainer = this.owner.scene?.enemies;

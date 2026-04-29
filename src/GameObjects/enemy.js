@@ -122,11 +122,12 @@ export default class Enemy extends BaseCharacter {
         this._spriteBaseKey  = this._resolveSpriteBaseKey(texture);
         this._isShowingHit   = false;
         this._hitUntil       = 0;
-        this._hitDuration    = 120;
+        this._hitDuration    = 220;
 
         // ── Loot ──
         this.lootTable   = [];
         this.specialDrop = null;
+        this.breadDropCount = 3;
 
         this.weaponMap = { arco: Arco, mcuaktro: Mcuaktro, cuchillo: Cuchillo, mazo: Mazo, ramita: Ramita, escoba: Escoba };
 
@@ -827,39 +828,90 @@ export default class Enemy extends BaseCharacter {
     //  DROPS
     // ─────────────────────────────────────────
 
-    _randomDropOffset(minRadius = 10, maxRadius = 50) {
+    _randomDropOffset(minRadius = 50, maxRadius = 120) {
         const angle  = Phaser.Math.FloatBetween(0, Math.PI * 2);
         const radius = Phaser.Math.FloatBetween(minRadius, maxRadius);
         return { dx: Math.cos(angle) * radius, dy: Math.sin(angle) * radius };
     }
 
+    _findValidDropPosition(minRadius = 50, maxRadius = 120, attempts = 24) {
+        const layers = [
+            this.scene?.colisionLayer,
+            this.scene?.vallaLayer,
+            this.scene?.desnivelLayer,
+            this.scene?.puertaCerradaLayer,
+            this.scene?.zonasAcuaticasLayer
+        ].filter(Boolean);
+
+        for (let i = 0; i < attempts; i++) {
+            const angle  = Phaser.Math.FloatBetween(0, Math.PI * 2);
+            const radius = Phaser.Math.FloatBetween(minRadius, maxRadius);
+            const x = this.x + Math.cos(angle) * radius;
+            const y = this.y + Math.sin(angle) * radius;
+
+            const dropArea = new Phaser.Geom.Rectangle(x - 14, y - 14, 28, 28);
+            let blocked = false;
+
+            for (const layer of layers) {
+                const tiles = layer.getTilesWithinShape(dropArea, { isNotEmpty: true });
+                if (!tiles.length) continue;
+
+                const line = new Phaser.Geom.Line(this.x, this.y, x, y);
+                for (const tile of tiles) {
+                    if (!tile) continue;
+                    const tileWidth  = layer.tilemap.tileWidth  * layer.scaleX;
+                    const tileHeight = layer.tilemap.tileHeight * layer.scaleY;
+                    const tileRect   = new Phaser.Geom.Rectangle(
+                        tile.pixelX * layer.scaleX,
+                        tile.pixelY * layer.scaleY,
+                        tileWidth,
+                        tileHeight
+                    );
+                    if (Phaser.Geom.Intersects.LineToRectangle(line, tileRect)) {
+                        blocked = true;
+                        break;
+                    }
+                }
+
+                if (blocked) break;
+            }
+
+            if (blocked) continue;
+
+            return { x, y };
+        }
+
+        return { x: this.x, y: this.y };
+    }
+
     dropWeapon() {
         if (!this.weapon) return;
-        const { dx, dy } = this._randomDropOffset();
-        new DropWeapon(this.scene, this.x + dx, this.y + dy, this.weapon.constructor, this.weapon.texture.key);
+        const spawnPoint = this._findValidDropPosition();
+        new DropWeapon(this.scene, spawnPoint.x, spawnPoint.y, this.weapon.constructor, this.weapon.texture.key);
         this.weapon.destroy();
         this.weapon = null;
     }
 
     dropFeather() {
         if (!this.hasFeather) return;
-        const { dx, dy } = this._randomDropOffset();
-        new DropFeather(this.scene, this.x + dx, this.y + dy);
+        const spawnPoint = this._findValidDropPosition();
+        new DropFeather(this.scene, spawnPoint.x, spawnPoint.y);
     }
 
     dropBread() {
-        for (let i = 0; i < 3; i++) {
-            const { dx, dy } = this._randomDropOffset();
-            new DropBread(this.scene, this.x + dx, this.y + dy);
+        const breadCount = Math.max(0, Math.floor(this.breadDropCount ?? 3));
+        for (let i = 0; i < breadCount; i++) {
+            const spawnPoint = this._findValidDropPosition();
+            new DropBread(this.scene, spawnPoint.x, spawnPoint.y);
         }
     }
 
     dropSpecialItem() {
         if (!this.specialDrop) return;
-        const { dx, dy } = this._randomDropOffset();
+        const spawnPoint = this._findValidDropPosition();
         switch (this.specialDrop) {
-            case 'mask': new DropMask(this.scene, this.x + dx, this.y + dy); break;
-            case 'tail': new DropTail(this.scene, this.x + dx, this.y + dy); break;
+            case 'mask': new DropMask(this.scene, spawnPoint.x, spawnPoint.y); break;
+            case 'tail': new DropTail(this.scene, spawnPoint.x, spawnPoint.y); break;
         }
     }
 
@@ -879,12 +931,10 @@ export default class Enemy extends BaseCharacter {
         }
         if (!selectedItem) return;
 
-        const angle  = Phaser.Math.FloatBetween(0, Math.PI * 2);
-        const spawnX = this.x + Math.cos(angle) * 60;
-        const spawnY = this.y + Math.sin(angle) * 60;
+        const spawnPoint = this._findValidDropPosition(60, 90, 30);
 
-        if      (selectedItem.id === 'mask') new DropMask(this.scene, spawnX, spawnY);
-        else if (selectedItem.id === 'tail') new DropTail(this.scene, spawnX, spawnY);
+        if      (selectedItem.id === 'mask') new DropMask(this.scene, spawnPoint.x, spawnPoint.y);
+        else if (selectedItem.id === 'tail') new DropTail(this.scene, spawnPoint.x, spawnPoint.y);
     }
 
     // ─────────────────────────────────────────
@@ -917,7 +967,7 @@ export default class Enemy extends BaseCharacter {
         }
     }
 
-    flashRed(duration = 100) {
+    flashRed(duration = 220) {
         if (!this.scene) return;
         this.setTint(0xff0000);
         this.scene.time.delayedCall(duration, () => {

@@ -12,6 +12,7 @@ export default class Mapache extends Enemy {
         const stats = Mapache.BASE_STATS;
         super(scene, name, x, y, texture, frame, stats.visionRadius, stats.hp, stats.speed, weapon, movementType, hasFeather, routeFacing);
         this.setScale(4);
+        this.breadDropCount = 3;
 
         // El mapache tiene probabilidad de soltar una máscara al morir
         this.lootTable = [

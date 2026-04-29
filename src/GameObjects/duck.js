@@ -258,6 +258,8 @@ export default class Duck extends BaseCharacter {
             this._lastDamageSound = this.scene.time.now;
         }
 
+        this.scene?.cameras?.main?.shake?.(120, 0.005);
+
         this.updateFeathersFromHealth();
 
         if (newHealth <= 0 || this.scene?.isPlayerDead || !this.scene?.time) {
@@ -383,22 +385,29 @@ export default class Duck extends BaseCharacter {
     }
 
     updateInvisibleState(time = this.scene?.time?.now ?? 0) {
-        if (this.state !== DUCK_STATE.INVISIBLE) return;
+        const knifeInvisibleActive = time < this.invisibleUntil;
 
-        if (time < this.invisibleUntil) {
+        if (knifeInvisibleActive) {
             this.setAlpha(this.invisibleAlpha);
             return;
         }
 
+        if (this.invisibleUntil <= 0) return;
+
         this.invisibleUntil = 0;
-        this.setAlpha(1);
         this.invisibleCooldownUntil = time + 10000;
-        this.setState(DUCK_STATE.IDLE);
+        if (!this.isInvisible && !this.isDashInvisible) {
+            this.setAlpha(1);
+        }
+        if (this.state === DUCK_STATE.INVISIBLE) {
+            this.setState(DUCK_STATE.IDLE);
+        }
         this.weaponBar?.startRecharge(10000);
     }
 
     isInvisibleState() {
-        return this.state === DUCK_STATE.INVISIBLE || this.isInvisible === true || this.isDashInvisible === true;
+        const now = this.scene?.time?.now ?? 0;
+        return now < this.invisibleUntil || this.state === DUCK_STATE.INVISIBLE || this.isInvisible === true || this.isDashInvisible === true;
     }
 
     canStartInvisible(time = this.scene?.time?.now ?? 0) {
@@ -555,8 +564,8 @@ export default class Duck extends BaseCharacter {
     }
 
     /**
-     * Comprueba si hay drops o consumables cerca y el jugador pulsa E.
-     * Usa checkDown con cooldown de 250ms para evitar recogidas múltiples.
+     * Comprueba si hay drops cercanos.
+     * Las armas se recogen con E; los consumibles se recogen automáticamente al acercarse.
      */
     _checkDropPickup() {
         // Revisar drops de armas
@@ -581,17 +590,10 @@ export default class Duck extends BaseCharacter {
                 const consumable = consumables[i];
                 if (!consumable.active) continue;
 
-                // Si es una pluma, recoger automáticamente al pasar cerca
-                if (consumable.constructor.name === 'DropFeather' && consumable.isNear(this, 40)) {
+                // Los consumibles se recogen automáticamente al pasar cerca
+                if (consumable.isNear(this, 40)) {
                     consumable.interact(this);
                     return;
-                }
-
-                // Otros consumibles requieren pulsar E
-                if (consumable.isNear(this, 40) &&
-                    this.scene.input.keyboard.checkDown(this.keyE, 250)) {
-                    consumable.interact(this);
-                    return; // solo un item por pulsación
                 }
             }
         }

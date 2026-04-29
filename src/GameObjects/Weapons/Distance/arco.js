@@ -13,7 +13,7 @@ export default class Arco extends Weapon {
             isRanged:        true,
             projectileClass: Flecha,
 
-            projectileSpeed: 400,
+            projectileSpeed: 700,
             damage:          30,
             attackSpeed:     500,    // para jugador, la carga controla el ritmo
             durability:      8,

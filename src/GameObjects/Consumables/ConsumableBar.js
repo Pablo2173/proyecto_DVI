@@ -303,7 +303,7 @@ export default class ConsumableBar {
         this.controlsText = this.scene.add.text(
             this.panelX + 20,
             this.panelY + this.panelHeight - 18,
-            'WASD MOVER · ESPACIO DASH · E INTERACTUAR · CLICK ATACAR · C CUACK',
+            'WASD MOVER · ESPACIO DASH · E INTERACTUAR · CLICK ATACAR · C CUACK · 1-6 USAR CONSUMIBLE',
             {
                 fontFamily: 'ReturnOfTheBoss',
                 fontSize: '20px',
@@ -329,24 +329,24 @@ export default class ConsumableBar {
         this.key4 = this.scene.input.keyboard.addKey('FOUR');
         this.key5 = this.scene.input.keyboard.addKey('FIVE');
         this.key6 = this.scene.input.keyboard.addKey('SIX');
-        this.keyF = this.scene.input.keyboard.addKey('F');
     }
 
     checkKeyboardInput() {
-        if (this.scene.input.keyboard.checkDown(this.key1, 250)) this.selectSlot(0);
-        if (this.scene.input.keyboard.checkDown(this.key2, 250)) this.selectSlot(1);
-        if (this.scene.input.keyboard.checkDown(this.key3, 250)) this.selectSlot(2);
-        if (this.scene.input.keyboard.checkDown(this.key4, 250)) this.selectSlot(3);
-        if (this.scene.input.keyboard.checkDown(this.key5, 250)) this.selectSlot(4);
-        if (this.scene.input.keyboard.checkDown(this.key6, 250)) this.selectSlot(5);
-
-        if (Phaser.Input.Keyboard.JustDown(this.keyF)) {
-            this.useSelectedItem();
-        }
+        if (this.scene.input.keyboard.checkDown(this.key1, 250)) this.useSlot(0);
+        if (this.scene.input.keyboard.checkDown(this.key2, 250)) this.useSlot(1);
+        if (this.scene.input.keyboard.checkDown(this.key3, 250)) this.useSlot(2);
+        if (this.scene.input.keyboard.checkDown(this.key4, 250)) this.useSlot(3);
+        if (this.scene.input.keyboard.checkDown(this.key5, 250)) this.useSlot(4);
+        if (this.scene.input.keyboard.checkDown(this.key6, 250)) this.useSlot(5);
     }
 
     selectSlot(slotIndex) {
         this.selectedSlotIndex = slotIndex;
+    }
+
+    useSlot(slotIndex) {
+        this.selectSlot(slotIndex);
+        this.onSlotClick(slotIndex);
     }
 
     useSelectedItem() {

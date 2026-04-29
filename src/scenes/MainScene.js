@@ -1242,14 +1242,16 @@ export default class MainScene extends Phaser.Scene {
         if (!this.crowSpawner || !this.duck || !this.duck.active) return;
 
         const currentWeaponKey = this._getCurrentDuckWeaponKey();
+        const isHoldingNonBranchWeapon = !!currentWeaponKey && currentWeaponKey !== 'ramita';
+
         if (currentWeaponKey !== this.crowSpawner.lastWeaponKey) {
             this.crowSpawner.lastWeaponKey = currentWeaponKey;
             this.crowSpawner.spawnedForCurrentWeapon = false;
-            this.crowSpawner.holdStartTime = this._isHoldingNonBranchWeapon() ? time : null;
+            this.crowSpawner.holdStartTime = isHoldingNonBranchWeapon ? time : null;
             return;
         }
 
-        if (!this._isHoldingNonBranchWeapon()) {
+        if (!isHoldingNonBranchWeapon) {
             this.crowSpawner.holdStartTime = null;
             this.crowSpawner.spawnedForCurrentWeapon = false;
             return;

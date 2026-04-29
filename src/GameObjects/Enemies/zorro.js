@@ -11,6 +11,7 @@ export default class Zorro extends Enemy {
         const stats = Zorro.BASE_STATS;
         super(scene, name, x, y, texture, frame, stats.visionRadius, stats.hp, stats.speed, weapon, movementType, hasFeather, routeFacing);
         this.setScale(4);
+        this.breadDropCount = 2;
 
         // Item especial que suelta al morir (usado por dropSpecialItem en Enemy)
         this.specialDrop = 'tail';

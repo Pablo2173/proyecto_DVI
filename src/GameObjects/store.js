@@ -73,7 +73,7 @@ export default class Store {
         this.duck         = duck;
         this.consumableBar = consumableBar;
 
-        // Slots activos: cada elemento es { sprite, priceText, priceLabel, type, price } o null si ya fue comprado
+        // Slots activos: cada elemento es { sprite, priceLabel, breadIcon, type, price } o null si ya fue comprado
         this.slots = [];
 
         // Índice del slot más cercano al jugador (-1 = ninguno)
@@ -82,7 +82,7 @@ export default class Store {
         // Posiciones guardadas para poder regenerar los items en el reroll
         this._spawnPositions = [];
 
-        // Datos del slot de reroll: { sprite, priceLabel, slotX, slotY }
+        // Datos del slot de reroll: { sprite, priceLabel, breadIcon, slotX, slotY }
         this._rerollSlot = null;
 
         // Precio actual del reroll — se duplica en cada uso
@@ -159,16 +159,12 @@ export default class Store {
 
             // ── Texto de precio debajo del icono ──
             // Alineado con la poción
-            const priceLabel = this.scene.add.text(slotX, slotY + 36, `${catalogEntry.price}`, {
-                fontSize:        '22px',
-                fill:            '#FFD700',
-                fontStyle:       'bold',
-                stroke:          '#000000',
-                strokeThickness: 3,
-                align:           'center',
-            });
-            priceLabel.setOrigin(0.5, 0);
-            priceLabel.setDepth(101);
+            const { priceLabel, breadIcon } = this._createPriceDisplay(
+                slotX,
+                slotY + 46,
+                catalogEntry.price,
+                '#FFD700'
+            );
 
             // itemCategory identifica el flujo de compra:
             //   "weapon"  → equipar directamente al jugador
@@ -183,6 +179,7 @@ export default class Store {
             this.slots.push({
                 sprite,
                 priceLabel,
+                breadIcon,
                 type:         catalogEntry.type,
                 itemCategory,
                 price:        catalogEntry.price,
@@ -281,20 +278,17 @@ export default class Store {
         });
 
         // Etiqueta de precio con el precio actual del reroll
-        const priceLabel = this.scene.add.text(rerollX, rerollY + 36, `${this.rerollPrice}`, {
-            fontSize:        '22px',
-            fill:            '#FF8C00',
-            fontStyle:       'bold',
-            stroke:          '#000000',
-            strokeThickness: 3,
-            align:           'center',
-        });
-        priceLabel.setOrigin(0.5, 0);
-        priceLabel.setDepth(101);
+        const { priceLabel, breadIcon } = this._createPriceDisplay(
+            rerollX,
+            rerollY + 42,
+            this.rerollPrice,
+            '#FF8C00'
+        );
 
         this._rerollSlot = {
             sprite,
             priceLabel,
+            breadIcon,
             slotX: rerollX,
             slotY: rerollY,
         };
@@ -305,7 +299,37 @@ export default class Store {
 
         this._rerollSlot.sprite?.destroy();
         this._rerollSlot.priceLabel?.destroy();
+        this._rerollSlot.breadIcon?.destroy();
         this._rerollSlot = null;
+    }
+
+    _createPriceDisplay(x, y, price, color = '#FFD700') {
+        const priceLabel = this.scene.add.text(x - 18, y, `${price}`, {
+            fontSize:        '28px',
+            fill:            color,
+            fontStyle:       'bold',
+            stroke:          '#000000',
+            strokeThickness: 3,
+            align:           'center',
+        });
+        priceLabel.setOrigin(0.5, 0);
+        priceLabel.setDepth(101);
+
+        const breadIcon = this.scene.add.image(0, 0, 'bread_item');
+        breadIcon.setOrigin(0, 0.5);
+        breadIcon.setScale(2.2);
+        breadIcon.setDepth(101);
+
+        this._positionBreadIcon(priceLabel, breadIcon);
+
+        return { priceLabel, breadIcon };
+    }
+
+    _positionBreadIcon(priceLabel, breadIcon) {
+        if (!priceLabel || !breadIcon) return;
+
+        const rightEdgeX = priceLabel.x + (priceLabel.displayWidth / 2);
+        breadIcon.setPosition(rightEdgeX + 8, priceLabel.y + 12);
     }
 
     // ─────────────────────────────────────────
@@ -483,6 +507,7 @@ export default class Store {
         // 5. Actualizar la etiqueta de precio del reroll con el nuevo valor
         if (this._rerollSlot.priceLabel && this._rerollSlot.priceLabel.active) {
             this._rerollSlot.priceLabel.setText(`${this.rerollPrice}`);
+            this._positionBreadIcon(this._rerollSlot.priceLabel, this._rerollSlot.breadIcon);
         }
 
         console.log(`[Store] Reroll completado. ${this.slots.length} nuevos items generados. Próximo reroll: ${this.rerollPrice} panes.`);
@@ -524,6 +549,7 @@ export default class Store {
 
         slot.sprite?.destroy();
         slot.priceLabel?.destroy();
+        slot.breadIcon?.destroy();
 
         // Marcar como comprado/vacío
         this.slots[slotIndex] = null;

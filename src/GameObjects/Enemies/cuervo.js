@@ -11,6 +11,7 @@ export default class Cuervo extends Enemy {
         const stats = Cuervo.BASE_STATS;
         super(scene, name, x, y, texture, frame, stats.visionRadius, stats.hp, stats.speed, weapon, movementType, hasFeather, routeFacing);
         this.setScale(4);
+        this.breadDropCount = 0;
 
         // El cuervo puede volar sobre obstáculos del mapa (árboles, vallas, etc.).
         this.ignoresObstacleHitbox = true;
