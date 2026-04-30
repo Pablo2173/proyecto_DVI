@@ -923,6 +923,9 @@ export default class MainScene extends Phaser.Scene {
             const screenW = this.scale.width;
             const screenH = this.scale.height;
 
+            // Mantener worldX/worldY del puntero actualizados incluso si no hay movimiento del mouse.
+            pointer.updateWorldPoint(camera);
+
             // Zona muerta circular centrada en la pantalla.
             // Mantiene un área similar a la antigua caja del 50% central,
             // pero con transición radial alrededor del pato.
@@ -950,7 +953,6 @@ export default class MainScene extends Phaser.Scene {
             if (isPuddleCameraLocked) {
                 targetCamX = this.duck.x + camera.width * 0.3;
             } else if (!isPointerInsideDeadzone) {
-                pointer.updateWorldPoint(this.cameras.main);
                 const mouseX = pointer.worldX;
                 const mouseY = pointer.worldY;
 
