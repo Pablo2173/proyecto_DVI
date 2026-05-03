@@ -1,4 +1,3 @@
-
 import Phaser from "phaser";
 
 export default class MenuScene extends Phaser.Scene {
@@ -48,21 +47,21 @@ export default class MenuScene extends Phaser.Scene {
       }
     }
 
-    this.input.once("pointerdown", () => {
-      this.sound.context.resume();
-
-      if (music && !music.isPlaying && (settings.menuMusicEnabled ?? true)) {
-        music.play();
+    // Intentar reproducir inmediatamente.
+    // Los navegadores bloquean el audio hasta que haya un gesto del usuario,
+    // así que si el contexto está suspendido esperamos el primer input como fallback.
+    const tryPlayMusic = () => {
+      if (music && !music.isPlaying && (settings.menuMusicEnabled ?? true) && !this.sound.mute) {
+        this.sound.context.resume().then(() => {
+          if (music && !music.isPlaying) music.play();
+        });
       }
-    });
+    };
 
-    this.input.keyboard.once("keydown", () => {
-      this.sound.context.resume();
+    tryPlayMusic();
 
-      if (music && !music.isPlaying && (settings.menuMusicEnabled ?? true)) {
-        music.play();
-      }
-    });
+    this.input.once("pointerdown", tryPlayMusic);
+    this.input.keyboard.once("keydown", tryPlayMusic);
 
     this.setupKeyboard();
   }
@@ -395,4 +394,3 @@ export default class MenuScene extends Phaser.Scene {
     });
   }
 }
-

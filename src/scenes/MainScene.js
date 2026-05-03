@@ -324,6 +324,27 @@ export default class MainScene extends Phaser.Scene {
         // Limpia listeners anteriores por seguridad al reiniciar la escena
         this.input.removeAllListeners();
 
+        this.isPaused = false;
+        this.pauseOverlay = null;
+        this.guideOverlay = null;
+        this.exitConfirmOverlay = null;
+
+        // Leer fontSize guardado — se usa en los textos de la Guía
+        const _savedSettings = JSON.parse(localStorage.getItem('settings')) ?? {};
+        this.currentFontSize = _savedSettings.fontSize ?? 28;
+
+        // Actualizar currentFontSize cuando el jugador cambia el ajuste desde SettingsScene
+        this._onFontSizeChanged = (size) => { this.currentFontSize = size; };
+        this.game.events.on('fontSizeChanged', this._onFontSizeChanged, this);
+
+        this.guideScrollY = 0;
+        this.guideMinScrollY = 0;
+        this.guideMaxScrollY = 0;
+        this.guideContent = null;
+        this.guideScrollStep = 50;
+
+        this.keyEsc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+
         // ─────────────────────────────────────────
         // MAPA
         // ─────────────────────────────────────────
@@ -630,6 +651,8 @@ export default class MainScene extends Phaser.Scene {
         this.consumableBar = new ConsumableBar(this, this.duck);
         this.enemiesKilled = 0;
 
+
+
         // ─────────────────────────────────────────
         // OVERLAY DE MUERTE
         // ─────────────────────────────────────────
@@ -678,7 +701,7 @@ export default class MainScene extends Phaser.Scene {
         // INPUTS
         // ─────────────────────────────────────────
         this.input.on('pointerdown', (pointer) => {
-            if (this.isPlayerDead) return;
+            if (this.isPlayerDead || this.isPaused) return;
             if (pointer?.button !== 0) return;
             console.log('[INPUT] pointerdown — weapon:', this.duck?.weapon?.constructor?.name, '| active:', this.duck?.weapon?.active);
             if (this.duck && this.duck.weapon && this.duck.weapon.attack) {
@@ -687,8 +710,11 @@ export default class MainScene extends Phaser.Scene {
         });
 
         this.input.on('pointerup', (pointer) => {
+            if (this.isPlayerDead || this.isPaused) return;
             if (pointer?.button !== 0) return;
+
             console.log('[INPUT] pointerup — arma actual:', this.duck?.weapon?.constructor?.name);
+
             if (this.duck && this.duck.weapon && this.duck.weapon.releaseAttack) {
                 this.duck.weapon.releaseAttack();
             }
@@ -792,68 +818,49 @@ export default class MainScene extends Phaser.Scene {
         this.cameras.main.centerOn(this.playerSpawn.x, this.playerSpawn.y);
         this.input.activePointer.worldX = this.playerSpawn.x;
         this.input.activePointer.worldY = this.playerSpawn.y;
+
+        //GUI MENUS
+        this.createPauseMenuUI();
+        this.createGuideUI();
+        this.createExitConfirmUI();
+        this.setupPauseInput();     
     }
 
-    /*update(time, delta) {
-        // ── Actualizar barra de consumibles ──
-        if (this.consumableBar) {
-            this.consumableBar.update();
-        }
-
-        // ── Cámara entre pato y ratón ──
-        if (this.duck) {
-            const mouseX = this.input.activePointer.worldX;
-            const mouseY = this.input.activePointer.worldY;
-            
-            // 70% hacia el pato, 30% hacia el ratón
-            const camX = this.duck.x * 0.7 + mouseX * 0.3;
-            const camY = this.duck.y * 0.7 + mouseY * 0.3;
-            
-            this.cameras.main.centerOn(camX, camY, 1, 1); // suavizado
-        }
-
-        // ── Ataque continuo mientras se mantiene el botón izquierdo ──
-        // Para armas con carga (arco), attack() solo inicia la carga una vez
-        if (this.input.activePointer.isDown && this.duck && this.duck.weapon) {
-            this.duck.weapon.attack();
-        }
-
-        if (this.enemy) {
-            this.enemy.detectAndAlert(this.duck);
-
-            // Parpadeo amarillo 0.5s al alertarse
-            if (this.enemy.isAlerted()) {
-                if (this.enemyAlertTime === null) {
-                    this.enemyAlertTime = time;
-                    this.enemy.setTint(0xFFFF01);
-                }
-                if (time - this.enemyAlertTime > 500) {
-                    // only clear if not currently flashing red
-                    if (this.enemy.tintTopLeft !== 0xFF0000) {
-                        this.enemy.clearTint();
-                    }
-                }
-            } else {
-                this.enemyAlertTime = null;
-                // clear only if not flashing damage
-                if (this.enemy.tintTopLeft !== 0xFF0000) {
-                    this.enemy.clearTint();
-                }
+    update(time, delta) {
+        if (Phaser.Input.Keyboard.JustDown(this.keyEsc)) {
+            if (this.scene.isActive('SettingsScene')) {
+                return;
             }
 
-            // Radio de visión debug
-            this.visionGraphics.clear();
-            this.enemy.drawVision(this.visionGraphics, { color: 0xff0000, fillAlpha: 0.08 });
-        }
-    }*/
-    update(time, delta) {
-        // ─────────────────────────────────────────
-        // BLOQUEO TOTAL SI EL JUGADOR ESTÁ MUERTO
-        // ─────────────────────────────────────────
-        if (this.isPlayerDead) {
+            if (this.guideOverlay?.visible) {
+                this.closeGuide();
+                this.openPauseMenu();
+                return;
+            }
+
+            if (this.exitConfirmOverlay?.visible) {
+                this.closeExitConfirm();
+                this.openPauseMenu();
+                return;
+            }
+
+            if (this.pauseOverlay?.visible) {
+                this.closePauseMenu();
+                return;
+            }
+
+            this.openPauseMenu();
             return;
         }
 
+        if (this.isPlayerDead || this.isPaused) {
+            // Mientras esté pausado, forzar velocidad cero para que el duck
+            // no se siga moviendo aunque su preUpdate() se ejecute por Phaser.
+            if (this.isPaused && this.duck?.body) {
+                this.duck.body.setVelocity(0, 0);
+            }
+            return;
+        }
 
         // ─────────────────────────────────────────
         // ESTADO SWIMMING SEGÚN CAPA ACUÁTICA
@@ -2017,5 +2024,469 @@ export default class MainScene extends Phaser.Scene {
 
         console.log(`[MainScene] Capa charquito encontrada con ${this.puddles.length} charco(s).`);
     }
+    
+    setupPauseInput() {
+        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+            if (!this.guideOverlay || !this.guideOverlay.visible || !this.guideContent) return;
 
+            this.guideScrollY -= deltaY * 0.5;
+            this.guideScrollY = Phaser.Math.Clamp(
+                this.guideScrollY,
+                this.guideMinScrollY,
+                this.guideMaxScrollY
+            );
+
+            this.guideContent.y = this.guideScrollY;
+        });
+    }
+
+
+    createPauseMenuUI() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+        const SF = 0; // scrollFactor 0 = fijo en pantalla
+
+        // Usamos un array en lugar de un Container para que setScrollFactor(0)
+        // se aplique individualmente a cada objeto y los hitboxes de input
+        // coincidan con la posición visual en pantalla.
+        this._pauseObjects = [];
+
+        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.65)
+            .setOrigin(0, 0).setScrollFactor(SF).setDepth(20000);
+
+        const panel = this.add.rectangle(W / 2, H / 2, 430, 340, 0x1e1b18, 0.96)
+            .setStrokeStyle(4, 0xe6d3a3, 1).setScrollFactor(SF).setDepth(20001);
+
+        const title = this.add.text(W / 2, H / 2 - 110, 'PAUSA', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '42px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 6
+        }).setOrigin(0.5).setScrollFactor(SF).setDepth(20002);
+
+        const makeButton = (x, y, text, callback) => {
+            const buttonBg = this.add.rectangle(x, y, 260, 58, 0x000000, 0.45)
+                .setStrokeStyle(3, 0xffffff, 0.85)
+                .setScrollFactor(SF).setDepth(20002)
+                .setInteractive({ useHandCursor: true });
+
+            const buttonText = this.add.text(x, y, text, {
+                fontFamily: 'ReturnOfTheBoss',
+                fontSize: '28px',
+                color: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 5
+            }).setOrigin(0.5).setScrollFactor(SF).setDepth(20003)
+              .setInteractive({ useHandCursor: true });
+
+            const hoverOn = () => {
+                buttonBg.setFillStyle(0x222222, 0.75);
+                buttonBg.setScale(1.03);
+                buttonText.setScale(1.03);
+            };
+
+            const hoverOff = () => {
+                buttonBg.setFillStyle(0x000000, 0.45);
+                buttonBg.setScale(1);
+                buttonText.setScale(1);
+            };
+
+            buttonBg.on('pointerover', hoverOn);
+            buttonText.on('pointerover', hoverOn);
+            buttonBg.on('pointerout', hoverOff);
+            buttonText.on('pointerout', hoverOff);
+            buttonBg.on('pointerup', () => callback());
+            buttonText.on('pointerup', () => callback());
+
+            return [buttonBg, buttonText];
+        };
+
+        const settingsBtn = makeButton(W / 2, H / 2 - 20, 'AJUSTES', () => {
+            this.openSettingsFromPause();
+        });
+
+        const guideBtn = makeButton(W / 2, H / 2 + 55, 'GUÍA', () => {
+            this.openGuide();
+        });
+
+        const exitBtn = makeButton(W / 2, H / 2 + 130, 'SALIR', () => {
+            this.openExitConfirm();
+        });
+
+        this._pauseObjects = [bg, panel, title, ...settingsBtn, ...guideBtn, ...exitBtn];
+
+        // Usamos un objeto proxy para mantener la API .setVisible() que usa el resto del código
+        this.pauseOverlay = {
+            setVisible: (v) => this._pauseObjects.forEach(o => o.setVisible(v)),
+            get visible() { return bg.visible; }
+        };
+
+        // Ocultar por defecto
+        this._pauseObjects.forEach(o => o.setVisible(false));
+
+        this._pauseResizeHandler = (gameSize) => {
+            const w = gameSize.width;
+            const h = gameSize.height;
+
+            bg.setSize(w, h);
+            panel.setPosition(w / 2, h / 2);
+            title.setPosition(w / 2, h / 2 - 110);
+
+            settingsBtn[0].setPosition(w / 2, h / 2 - 20);
+            settingsBtn[1].setPosition(w / 2, h / 2 - 20);
+
+            guideBtn[0].setPosition(w / 2, h / 2 + 55);
+            guideBtn[1].setPosition(w / 2, h / 2 + 55);
+
+            exitBtn[0].setPosition(w / 2, h / 2 + 130);
+            exitBtn[1].setPosition(w / 2, h / 2 + 130);
+        };
+
+        this.scale.on('resize', this._pauseResizeHandler, this);
+    }
+
+    createGuideUI() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+
+        // Igual que pauseOverlay: sin Container, setScrollFactor(0) individual
+        // para que los hitboxes de input coincidan con la posición visual en pantalla.
+        this._guideObjects = [];
+
+        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.72)
+            .setOrigin(0, 0).setScrollFactor(0).setDepth(20010);
+
+        const parchment = this.add.rectangle(W / 2, H / 2, 760, 560, 0xd8c08a, 0.98)
+            .setStrokeStyle(5, 0x6a4b1f, 1).setScrollFactor(0).setDepth(20011);
+
+        const title = this.add.text(W / 2, 72, 'GUÍA', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '38px',
+            color: '#3a2412',
+            stroke: '#f5e6c8',
+            strokeThickness: 2
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
+
+        const closeButton = this.add.rectangle(W - 90, 60, 120, 46, 0x000000, 0.4)
+            .setStrokeStyle(3, 0xffffff, 0.8)
+            .setScrollFactor(0).setDepth(20012)
+            .setInteractive({ useHandCursor: true });
+
+        const closeText = this.add.text(W - 90, 60, 'ATRÁS', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '22px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20013)
+          .setInteractive({ useHandCursor: true });
+
+        const viewportX = W / 2 - 320;
+        const viewportY = H / 2 - 220;
+        const viewportWidth = 640;
+        const viewportHeight = 440;
+
+        const maskShape = this.make.graphics({});
+        maskShape.fillStyle(0xffffff, 1);
+        maskShape.fillRect(viewportX, viewportY, viewportWidth, viewportHeight);
+
+        this.guideContent = this.add.container(viewportX + 24, viewportY + 20);
+        this.guideContent.setMask(maskShape.createGeometryMask());
+
+        const guideItems = [];
+
+        let currentY = 0;
+
+        const addGuideSection = (titleText, bodyText, textureKey = null) => {
+            const sectionTitle = this.add.text(0, currentY, titleText, {
+                fontFamily: 'Arial Black',
+                fontSize: '28px',
+                color: '#3a2412',
+                stroke: '#f5e6c8',
+                strokeThickness: 1,
+                wordWrap: { width: 560 }
+            });
+
+            guideItems.push(sectionTitle);
+            currentY += 42;
+
+            if (textureKey && this.textures.exists(textureKey)) {
+                const img = this.add.image(70, currentY + 40, textureKey)
+                    .setOrigin(0.5)
+                    .setScale(2.2);
+
+                guideItems.push(img);
+
+                const desc = this.add.text(150, currentY, bodyText, {
+                    fontFamily: 'Arial',
+                    fontSize: `${this.currentFontSize}px`,
+                    color: '#2e1e10',
+                    wordWrap: { width: 420 }
+                });
+
+                guideItems.push(desc);
+
+                currentY += Math.max(120, desc.height + 20);
+            } else {
+                const desc = this.add.text(0, currentY, bodyText, {
+                    fontFamily: 'Arial',
+                    fontSize: `${this.currentFontSize}px`,
+                    color: '#2e1e10',
+                    wordWrap: { width: 560 }
+                });
+
+                guideItems.push(desc);
+                currentY += desc.height + 30;
+            }
+        };
+
+        addGuideSection(
+            'Bienvenido a la guía',
+            'Aquí puedes escribir la explicación de los objetos, enemigos, mecánicas y controles del juego.'
+        );
+
+        addGuideSection(
+            'Poción de ataque',
+            'Ejemplo de texto: esta poción aumenta el daño durante un tiempo limitado.',
+            'mask_icon'
+        );
+
+        addGuideSection(
+            'Llave',
+            'Ejemplo de texto: abre puertas cerradas cuando el jugador se acerca a ellas.',
+            'feather_icon'
+        );
+
+        addGuideSection(
+            'Pan',
+            'Ejemplo de texto: sirve como recurso o moneda dentro del juego.'
+        );
+
+        this.guideContent.add(guideItems);
+
+        const contentHeight = currentY + 20;
+        this.guideMinScrollY = viewportY + viewportHeight - contentHeight;
+        this.guideMaxScrollY = viewportY + 20;
+
+        if (this.guideMinScrollY > this.guideMaxScrollY) {
+            this.guideMinScrollY = this.guideMaxScrollY;
+        }
+
+        this.guideScrollY = this.guideMaxScrollY;
+        this.guideContent.y = this.guideScrollY;
+
+        const scrollHint = this.add.text(W / 2, H - 38, 'Usa la rueda del ratón para hacer scroll', {
+            fontFamily: 'Arial',
+            fontSize: '20px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
+
+        const goBack = () => {
+            this.closeGuide();
+            this.openPauseMenu();
+        };
+
+        closeButton.on('pointerup', goBack);
+        closeText.on('pointerup', goBack);
+
+        // Recopilar todos los objetos de la guía en un array con proxy .setVisible()
+        this._guideObjects = [bg, parchment, title, closeButton, closeText, this.guideContent, scrollHint];
+        this.guideOverlay = {
+            setVisible: (v) => this._guideObjects.forEach(o => o.setVisible(v)),
+            get visible() { return bg.visible; }
+        };
+        this._guideObjects.forEach(o => o.setVisible(false));
+
+        this._guideResizeHandler = (gameSize) => {
+            const w = gameSize.width;
+            const h = gameSize.height;
+
+            bg.setSize(w, h);
+            parchment.setPosition(w / 2, h / 2);
+            title.setPosition(w / 2, 72);
+            closeButton.setPosition(w - 90, 60);
+            closeText.setPosition(w - 90, 60);
+            scrollHint.setPosition(w / 2, h - 38);
+        };
+
+        this.scale.on('resize', this._guideResizeHandler, this);
+    }
+
+    createExitConfirmUI() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+
+        this._exitObjects = [];
+
+        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.72)
+            .setOrigin(0, 0).setScrollFactor(0).setDepth(20020);
+
+        const panel = this.add.rectangle(W / 2, H / 2, 540, 260, 0x23170f, 0.98)
+            .setStrokeStyle(4, 0xe6d3a3, 1).setScrollFactor(0).setDepth(20021);
+
+        const title = this.add.text(W / 2, H / 2 - 60, '¿SEGURO QUE QUIERES SALIR?', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '28px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 5,
+            align: 'center',
+            wordWrap: { width: 460 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20022);
+
+        const desc = this.add.text(W / 2, H / 2 - 5, 'Se perderán todos los avances no guardados.', {
+            fontFamily: 'Arial',
+            fontSize: '22px',
+            color: '#f3e6d0',
+            align: 'center',
+            wordWrap: { width: 430 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20022);
+
+        const makeButton = (x, y, text, callback) => {
+            const buttonBg = this.add.rectangle(x, y, 180, 56, 0x000000, 0.45)
+                .setStrokeStyle(3, 0xffffff, 0.85)
+                .setScrollFactor(0).setDepth(20022)
+                .setInteractive({ useHandCursor: true });
+
+            const buttonText = this.add.text(x, y, text, {
+                fontFamily: 'ReturnOfTheBoss',
+                fontSize: '24px',
+                color: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 4
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(20023)
+              .setInteractive({ useHandCursor: true });
+
+            buttonBg.on('pointerup', callback);
+            buttonText.on('pointerup', callback);
+
+            return [buttonBg, buttonText];
+        };
+
+        const acceptBtn = makeButton(W / 2 - 110, H / 2 + 75, 'ACEPTAR', () => {
+            this.confirmExitToMenu();
+        });
+
+        const backBtn = makeButton(W / 2 + 110, H / 2 + 75, 'ATRÁS', () => {
+            this.closeExitConfirm();
+            this.openPauseMenu();
+        });
+
+        this._exitObjects = [bg, panel, title, desc, ...acceptBtn, ...backBtn];
+        this.exitConfirmOverlay = {
+            setVisible: (v) => this._exitObjects.forEach(o => o.setVisible(v)),
+            get visible() { return bg.visible; }
+        };
+        this._exitObjects.forEach(o => o.setVisible(false));
+
+        this._exitResizeHandler = (gameSize) => {
+            const w = gameSize.width;
+            const h = gameSize.height;
+
+            bg.setSize(w, h);
+            panel.setPosition(w / 2, h / 2);
+            title.setPosition(w / 2, h / 2 - 60);
+            desc.setPosition(w / 2, h / 2 - 5);
+
+            acceptBtn[0].setPosition(w / 2 - 110, h / 2 + 75);
+            acceptBtn[1].setPosition(w / 2 - 110, h / 2 + 75);
+
+            backBtn[0].setPosition(w / 2 + 110, h / 2 + 75);
+            backBtn[1].setPosition(w / 2 + 110, h / 2 + 75);
+        };
+
+        this.scale.on('resize', this._exitResizeHandler, this);
+    }
+
+    openPauseMenu() {
+        if (this.isPlayerDead) return;
+
+        this.isPaused = true;
+        this.pauseOverlay?.setVisible(true);
+        this.guideOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(false);
+
+        // Detener al pato: sin velocidad
+        if (this.duck?.body) {
+            this.duck.body.setVelocity(0, 0);
+        }
+    }
+
+    closePauseMenu() {
+        this.isPaused = false;
+        this.pauseOverlay?.setVisible(false);
+        this.guideOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(false);
+
+    }
+
+    openGuide() {
+        this.isPaused = true;
+        this.pauseOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(false);
+        this.guideOverlay?.setVisible(true);
+    }
+
+    closeGuide() {
+        this.guideOverlay?.setVisible(false);
+    }
+
+    openExitConfirm() {
+        this.isPaused = true;
+        this.pauseOverlay?.setVisible(false);
+        this.guideOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(true);
+    }
+
+    closeExitConfirm() {
+        this.exitConfirmOverlay?.setVisible(false);
+    }
+
+    openSettingsFromPause() {
+        this.pauseOverlay?.setVisible(false);
+
+        this.scene.launch('SettingsScene', {
+            returnScene: 'MainScene',
+            pauseUnderlyingScene: true
+        });
+
+        this.scene.pause();
+    }
+
+    confirmExitToMenu() {
+        this.isPaused = false;
+
+        if (this.scene.isActive('SettingsScene')) {
+            this.scene.stop('SettingsScene');
+        }
+
+        this.scene.start('MenuScene');
+    }
+
+    _cleanupScene() {
+        if (this._onFontSizeChanged) {
+            this.game.events.off('fontSizeChanged', this._onFontSizeChanged, this);
+        }
+
+        if (this._onResize) {
+            this.scale.off('resize', this._onResize, this);
+        }
+
+        if (this._pauseResizeHandler) {
+            this.scale.off('resize', this._pauseResizeHandler, this);
+        }
+
+        if (this._guideResizeHandler) {
+            this.scale.off('resize', this._guideResizeHandler, this);
+        }
+
+        if (this._exitResizeHandler) {
+            this.scale.off('resize', this._exitResizeHandler, this);
+        }
+
+        this.input?.off?.('wheel');
+    }
 }
