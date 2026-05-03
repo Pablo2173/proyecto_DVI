@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import BaseCharacter from './BaseCharacter.js';
 import { TEAM } from './team.js';
+import InputManager from '../managers/InputManager.js';
 
 // Importa las armas concretas
 import Arco from './Weapons/Distance/arco.js';
@@ -22,7 +23,7 @@ export const DUCK_STATE = Object.freeze({
 
 export default class Duck extends BaseCharacter {
 
-    constructor(scene, x, y, weaponKey = 'arco') {
+    constructor(scene, x, y, weaponKey = 'arco', inputManager = null) {
         super(scene, x, y, 'idle_duck', 0, TEAM.ALLY);
         this.weaponMap = {
             arco: Arco,
@@ -92,24 +93,11 @@ export default class Duck extends BaseCharacter {
         // ── Arma ──
         this.weapon = null;
 
-        // ── Input ──
-        this.cursors = scene.input.keyboard.createCursorKeys();
-        this.keyW = scene.input.keyboard.addKey('W');
-        this.keyA = scene.input.keyboard.addKey('A');
-        this.keyS = scene.input.keyboard.addKey('S');
-        this.keyD = scene.input.keyboard.addKey('D');
-        this.keySpace = scene.input.keyboard.addKey('SPACE');
-        this.keyC = scene.input.keyboard.addKey('C');
-        this.keyE = scene.input.keyboard.addKey('E');
-
-        this.quackDuration = 600;
-        this.quackEndTime = 0;
-
-        this.keySpace.on('down', () => this.startDash());
-        this.keyC.on('down', () => this.quack());
-
-        // ── Equipar arma inicial ──
+        // Equipar arma inicial
         this.equipWeapon(weaponKey);
+
+        // ── Input Manager (centralizado para teclado + gamepad) ──
+        this.inputManager = inputManager || new InputManager(scene);
 
         this._createDashCooldownUI();
     }
@@ -457,19 +445,36 @@ export default class Duck extends BaseCharacter {
         if (this.scene?.isPlayerDead) return;
         const delta = dt / 1000;
 
+        // Actualizar InputManager si existe
+        if (this.inputManager) {
+            this.inputManager.update();
+        }
+
         // Fin de quack
         if (this.state === DUCK_STATE.QUACKING && time >= this.quackEndTime) {
             this.setState(DUCK_STATE.IDLE);
         }
 
+        // ── Detección de controles ──
+        if (this.inputManager) {
+            if (this.inputManager.isDashPressed()) {
+                this.startDash();
+            }
+            if (this.inputManager.isQuackPressed()) {
+                this.quack();
+            }
+        }
+
         // ── Movimiento ──
-        let vx = 0, vy = 0;
+        const moveInput = this.inputManager ? this.inputManager.getMovementInput() : { x: 0, y: 0 };
+        let vx = moveInput.x;
+        let vy = moveInput.y;
 
         if (this.state !== DUCK_STATE.DASHING) {
-            if (this.cursors.left.isDown || this.keyA.isDown) vx -= 1;
-            if (this.cursors.right.isDown || this.keyD.isDown) vx += 1;
-            if (this.cursors.up.isDown || this.keyW.isDown) vy -= 1;
-            if (this.cursors.down.isDown || this.keyS.isDown) vy += 1;
+            // El movimiento ya viene procesado desde InputManager
+        } else {
+            vx = 0;
+            vy = 0;
         }
 
         const isDashing = this.state === DUCK_STATE.DASHING;
@@ -548,7 +553,7 @@ export default class Duck extends BaseCharacter {
         this.weaponBar?.update();
         this._updateDashCooldownUI();
 
-        // ── Detección de drops cercanos (tecla E) ──
+        // ── Detección de drops cercanos (tecla E o botón A) ──
         this._checkDropPickup();
 
         this.weaponBar.updatePosition()
@@ -569,14 +574,15 @@ export default class Duck extends BaseCharacter {
      */
     _checkDropPickup() {
         // Revisar drops de armas
-        if (this.scene.dropItems) {
+        if (this.scene.dropItems && this.inputManager && this.inputManager.isInteractPressed()) {
             const drops = this.scene.dropItems.getChildren();
             for (let i = 0; i < drops.length; i++) {
                 const drop = drops[i];
                 if (!drop.active) continue;
 
-                if (drop.isNear(this, 40) &&
-                    this.scene.input.keyboard.checkDown(this.keyE, 250)) {
+                const interactionRadius = drop.interactionRadius ?? 40;
+
+                if (drop.isNear(this, interactionRadius)) {
                     drop.interact(this);
                     return; // solo un item por pulsación
                 }

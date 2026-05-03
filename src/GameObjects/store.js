@@ -5,6 +5,7 @@ import SpeedAttackPotion from './Consumables/SpeedAttackPotion.js';
 import Mcuaktro from './Weapons/Distance/mcuaktro.js';
 import Mazo from './Weapons/Melee/mazo.js';
 import Feather from './Consumables/Drops/dropFeather.js';
+import DropItem from './dropItem.js';
 // Imports necesarios para usar los Drop como representación visual de items en tienda
 import DropWeapon from './Consumables/Drops/dropWeapon.js';
 import DropFeather from './Consumables/Drops/dropFeather.js';
@@ -45,7 +46,7 @@ export default class Store {
     static SLOT_SPACING = 120;
 
     // Distancia máxima (px) a la que el jugador puede interactuar con una poción
-    static INTERACT_RADIUS = 60;
+    static INTERACT_RADIUS = 140;
 
     // Mapa de tipo de item → clase de arma (para saber qué DropWeapon instanciar)
     static WEAPON_CLASS_MAP = {
@@ -73,6 +74,9 @@ export default class Store {
         this.duck         = duck;
         this.consumableBar = consumableBar;
 
+        // Fallback local para interacción con teclado.
+        this.keyE = this.scene.input.keyboard.addKey('E');
+
         // Slots activos: cada elemento es { sprite, priceLabel, breadIcon, type, price } o null si ya fue comprado
         this.slots = [];
 
@@ -87,6 +91,7 @@ export default class Store {
 
         // Precio actual del reroll — se duplica en cada uso
         this.rerollPrice = 1;
+        this._rerollQueued = false;
     }
 
     // ─────────────────────────────────────────
@@ -139,13 +144,24 @@ export default class Store {
      */
     _spawnItemsAtPositions(positions) {
         positions.forEach(({ x: slotX, y: slotY }) => {
+            const slotIndex = this.slots.length;
             // Selección aleatoria del catálogo (pueden repetirse entre slots)
             const catalogEntry = Phaser.Utils.Array.GetRandom(Store.POTION_CATALOG);
 
             // ── Representación visual usando el Drop system ──
-            // Se usa DropWeapon o DropFeather según el tipo, en lugar de add.image(),
-            // para garantizar escala y apariencia consistente con los drops de enemigos.
+            // Se usa un drop interactuable para que el pato lo compre con E
+            // exactamente igual que hace con las armas.
             const sprite = this._createDropVisual(catalogEntry.type, slotX, slotY);
+
+            sprite.storeSlotIndex = slotIndex;
+            sprite.interactionRadius = Store.INTERACT_RADIUS;
+            sprite.interact = () => {
+                this._tryPurchase(slotIndex);
+            };
+
+            if (this.scene.dropItems) {
+                this.scene.dropItems.add(sprite);
+            }
 
             // Efecto flotante suave para que se vea viva
             this.scene.tweens.add({
@@ -182,6 +198,7 @@ export default class Store {
                 breadIcon,
                 type:         catalogEntry.type,
                 itemCategory,
+                weaponClass:  Store.WEAPON_CLASS_MAP[catalogEntry.type] || null,
                 price:        catalogEntry.price,
                 slotX,
                 slotY,
@@ -208,42 +225,17 @@ export default class Store {
         let visual;
 
         if (Store.WEAPON_CLASS_MAP[type]) {
-            // ── Arma → usar DropWeapon para escala y textura idénticas al drop de enemigo ──
-            const weaponClass   = Store.WEAPON_CLASS_MAP[type];
-            const textureKey    = Store.WEAPON_TEXTURE_MAP[type];
-            visual = new DropWeapon(this.scene, slotX, slotY, weaponClass, textureKey);
-
-            // Neutralizar físicas: el item de tienda no debe caer ni moverse
-            if (visual.body) {
-                visual.body.setAllowGravity(false);
-                visual.body.setVelocity(0, 0);
-                visual.body.setImmovable(true);
-            }
-
-            // Sacar del grupo dropItems para que MainScene no lo trate como drop recogible
-            if (this.scene.dropItems) {
-                this.scene.dropItems.remove(visual, false, false);
-            }
-
+            // ── Armas → textura y escala de drop de arma ──
+            const textureKey = Store.WEAPON_TEXTURE_MAP[type];
+            visual = new DropItem(this.scene, slotX, slotY, textureKey);
+            visual.setScale(1.5);
         } else if (type === 'feather') {
-            // ── Pluma → usar DropFeather para escala correcta (0.08 definida en la clase) ──
-            visual = new DropFeather(this.scene, slotX, slotY);
-
-            // Neutralizar físicas
-            if (visual.body) {
-                visual.body.setAllowGravity(false);
-                visual.body.setVelocity(0, 0);
-                visual.body.setImmovable(true);
-            }
-
-            // Sacar del grupo consumableItems para que MainScene no lo recoja automáticamente
-            if (this.scene.consumableItems) {
-                this.scene.consumableItems.remove(visual, false, false);
-            }
-
+            // ── Pluma → textura y escala del drop de pluma ──
+            visual = new DropItem(this.scene, slotX, slotY, 'feather_icon');
+            visual.setScale(0.08);
         } else {
-            // ── Consumibles sin Drop dedicado → sprite estático igual que antes ──
-            visual = this.scene.add.image(slotX, slotY, type);
+            // ── Consumibles → sprite interactuable tipo drop ──
+            visual = new DropItem(this.scene, slotX, slotY, type);
             visual.setScale(4);
         }
 
@@ -262,20 +254,18 @@ export default class Store {
         const rerollX = position.x;
         const rerollY = position.y;
 
-        // Sprite de reroll como representación del slot de reroll
-        const sprite = this.scene.add.image(rerollX, rerollY, 'reroll_icon');
+        // Sprite de reroll como DropItem para que implemente `isNear()`
+        const sprite = new DropItem(this.scene, rerollX, rerollY, 'reroll_icon');
         sprite.setScale(2);
         sprite.setDepth(100);
+        sprite.interactionRadius = Store.INTERACT_RADIUS;
+        sprite.interact = () => {
+            this._queueReroll();
+        };
 
-        // Efecto flotante igual que los demás items
-        this.scene.tweens.add({
-            targets:  sprite,
-            y:        rerollY - 5,
-            duration: 900,
-            ease:     'Sine.easeInOut',
-            yoyo:     true,
-            repeat:   -1
-        });
+        if (this.scene.dropItems) {
+            this.scene.dropItems.add(sprite);
+        }
 
         // Etiqueta de precio con el precio actual del reroll
         const { priceLabel, breadIcon } = this._createPriceDisplay(
@@ -297,10 +287,24 @@ export default class Store {
     _destroyRerollSlot() {
         if (!this._rerollSlot) return;
 
+        if (this.scene.dropItems && this._rerollSlot.sprite) {
+            this.scene.dropItems.remove(this._rerollSlot.sprite, false, false);
+        }
+
         this._rerollSlot.sprite?.destroy();
         this._rerollSlot.priceLabel?.destroy();
         this._rerollSlot.breadIcon?.destroy();
         this._rerollSlot = null;
+    }
+
+    _queueReroll() {
+        if (this._rerollQueued) return;
+        this._rerollQueued = true;
+
+        this.scene.time.delayedCall(0, () => {
+            this._rerollQueued = false;
+            this._tryReroll();
+        });
     }
 
     _createPriceDisplay(x, y, price, color = '#FFD700') {
@@ -359,31 +363,14 @@ export default class Store {
                 slot.slotX,  slot.slotY
             );
 
-            if (dist < nearestDist) {
+            if (dist <= nearestDist) {
                 nearestDist            = dist;
                 this._nearestSlotIndex = index;
             }
         });
 
-        // ── Detectar si el jugador está cerca del reroll ──
-        let nearReroll = false;
-        if (this._rerollSlot) {
-            const rerollDist = Phaser.Math.Distance.Between(
-                this.duck.x, this.duck.y,
-                this._rerollSlot.slotX, this._rerollSlot.slotY
-            );
-            nearReroll = rerollDist < Store.INTERACT_RADIUS;
-        }
-
-        // ── Gestionar compra o reroll al pulsar E ──
-        // El reroll tiene prioridad si el jugador está más cerca de él
-        if (eJustDown) {
-            if (nearReroll) {
-                this._tryReroll();
-            } else if (this._nearestSlotIndex !== -1) {
-                this._tryPurchase(this._nearestSlotIndex);
-            }
-        }
+        // La compra se resuelve desde el sistema de drops del pato,
+        // igual que con las armas. Aquí solo mantenemos la detección de cercanía.
     }
 
     // ─────────────────────────────────────────
@@ -444,14 +431,15 @@ export default class Store {
      * @private
      */
     _applyPurchaseEffect(slot) {
-        const { itemCategory, sprite } = slot;
+        const { itemCategory, weaponClass } = slot;
 
         switch (itemCategory) {
             case 'weapon':
-                // Reutiliza DropWeapon.swapWeapon(): equipa la nueva arma y
-                // deja caer la anterior al suelo exactamente igual que al recoger un drop
-                if (sprite && typeof sprite.swapWeapon === 'function') {
-                    sprite.swapWeapon(this.duck);
+                // Compra de arma: equipa la clase del item comprado.
+                if (weaponClass && this.duck) {
+                    const newWeapon = new weaponClass(this.scene, this.duck, this.duck.weaponBar);
+                    this.duck.setWeapon(newWeapon);
+                    newWeapon.setBar(this.duck.weaponBar);
                 }
                 break;
 

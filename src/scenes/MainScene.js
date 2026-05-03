@@ -131,6 +131,9 @@ import movementSign from '../../assets/hints/movement_sign.png';
 //Plumas
 import feather_icon from '../../assets/sprites/UI/pluma.png';
 
+// InputManager
+import InputManager from '../managers/InputManager.js';
+
 export default class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
@@ -303,6 +306,7 @@ export default class MainScene extends Phaser.Scene {
 
     create() {
         const SCALE = 4;
+        try {
         //PARAR música del menú
         const menuMusic = this.sound.get("menu_music");
 
@@ -610,10 +614,16 @@ export default class MainScene extends Phaser.Scene {
         this.projectiles = this.add.group();
 
         // ─────────────────────────────────────────
+        // INPUT MANAGER
+        // ─────────────────────────────────────────
+        this.inputManager = new InputManager(this);
+        this.wasAttackHeld = false;
+
+        // ─────────────────────────────────────────
         // PLAYER
         // ─────────────────────────────────────────
 
-        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon);
+        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon, this.inputManager);
 
         //spawner del cuervo
         this.crowSpawner = {
@@ -627,7 +637,7 @@ export default class MainScene extends Phaser.Scene {
         // UI
         // ─────────────────────────────────────────
         this.breadCount = 0;
-        this.consumableBar = new ConsumableBar(this, this.duck);
+        this.consumableBar = new ConsumableBar(this, this.duck, this.inputManager);
         this.enemiesKilled = 0;
 
         // ─────────────────────────────────────────
@@ -673,10 +683,36 @@ export default class MainScene extends Phaser.Scene {
         // Limpieza segura al reiniciar/destruir la escena
         this.events.once('shutdown', this._cleanupScene, this);
         this.events.once('destroy', this._cleanupScene, this);
+        } catch (err) {
+            console.error('[MainScene] Error en create():', err);
+            try {
+                const msg = (err && err.stack) ? err.stack : String(err);
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.left = '0';
+                overlay.style.top = '0';
+                overlay.style.width = '100%';
+                overlay.style.height = '100%';
+                overlay.style.background = 'rgba(0,0,0,0.95)';
+                overlay.style.color = '#fff';
+                overlay.style.zIndex = '99999';
+                overlay.style.padding = '20px';
+                overlay.style.overflow = 'auto';
+                overlay.innerText = 'Error al cargar la escena de juego:\n\n' + msg;
+                document.body.appendChild(overlay);
+            } catch (inner) {
+                console.error('[MainScene] Error mostrando overlay de fallo', inner);
+            }
+
+            // Intentar volver al menú para que el jugador no quede atrapado
+            try { this.scene.start('MenuScene'); } catch (e) { console.error(e); }
+            return;
+        }
 
         // ─────────────────────────────────────────
         // INPUTS
         // ─────────────────────────────────────────
+
         this.input.on('pointerdown', (pointer) => {
             if (this.isPlayerDead) return;
             if (pointer?.button !== 0) return;
@@ -695,7 +731,7 @@ export default class MainScene extends Phaser.Scene {
         });
 
         // Tecla E: usada exclusivamente para recoger items de tipo 'interact' (DropMask)
-        this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+        // Ahora manejada por InputManager.isInteractPressed()
 
         // ─────────────────────────────────────────
         // ENEMIGOS DESDE RUTAS
@@ -792,6 +828,8 @@ export default class MainScene extends Phaser.Scene {
         this.cameras.main.centerOn(this.playerSpawn.x, this.playerSpawn.y);
         this.input.activePointer.worldX = this.playerSpawn.x;
         this.input.activePointer.worldY = this.playerSpawn.y;
+        this.virtualPointerX = this.scale.width * 0.5;
+        this.virtualPointerY = this.scale.height * 0.5;
     }
 
     /*update(time, delta) {
@@ -854,6 +892,10 @@ export default class MainScene extends Phaser.Scene {
             return;
         }
 
+        // Actualizar InputManager si existe
+        if (this.inputManager) {
+            this.inputManager.update();
+        }
 
         // ─────────────────────────────────────────
         // ESTADO SWIMMING SEGÚN CAPA ACUÁTICA
@@ -874,7 +916,7 @@ export default class MainScene extends Phaser.Scene {
         // La recogida del mundo tiene prioridad sobre el consumo de inventario con E.
         // ─────────────────────────────────────────
         if (this.duck && this.duck.active) {
-            const eJustDown = Phaser.Input.Keyboard.JustDown(this.keyE);
+            const eJustDown = this.inputManager ? this.inputManager.isInteractPressed() : false;
 
             this.consumableItems.getChildren().forEach(item => {
                 if (!item || !item.active) return;
@@ -922,6 +964,45 @@ export default class MainScene extends Phaser.Scene {
             const camera = this.cameras.main;
             const screenW = this.scale.width;
             const screenH = this.scale.height;
+
+            // Joystick derecho -> mover un puntero virtual en pantalla
+            // para reutilizar la misma lógica de cámara y apuntado del ratón.
+            if (this.inputManager) {
+                const aimInput = this.inputManager.getAimInput();
+                const hasAimInput = Math.abs(aimInput.x) > 0.001 || Math.abs(aimInput.y) > 0.001;
+
+                if (hasAimInput) {
+                    const baseVirtualPointerSpeed = 1500; // px/s
+                    const dt = Math.max(0, delta) / 1000;
+
+                    // Aumenta la respuesta cuando el stick se aleja del centro.
+                    const aimMagnitude = Phaser.Math.Clamp(Math.hypot(aimInput.x, aimInput.y), 0, 1);
+                    const responseCurve = 0.45 + Math.pow(aimMagnitude, 1.3);
+                    const virtualPointerSpeed = baseVirtualPointerSpeed * responseCurve;
+
+                    this.virtualPointerX = Phaser.Math.Clamp(
+                        this.virtualPointerX + aimInput.x * virtualPointerSpeed * dt,
+                        0,
+                        screenW
+                    );
+                    this.virtualPointerY = Phaser.Math.Clamp(
+                        this.virtualPointerY + aimInput.y * virtualPointerSpeed * dt,
+                        0,
+                        screenH
+                    );
+
+                    if (pointer?.position?.set) {
+                        pointer.position.set(this.virtualPointerX, this.virtualPointerY);
+                    } else {
+                        pointer.x = this.virtualPointerX;
+                        pointer.y = this.virtualPointerY;
+                    }
+                } else {
+                    // Si no hay stick derecho, seguir al ratón real.
+                    this.virtualPointerX = pointer.x;
+                    this.virtualPointerY = pointer.y;
+                }
+            }
 
             // Mantener worldX/worldY del puntero actualizados incluso si no hay movimiento del mouse.
             pointer.updateWorldPoint(camera);
@@ -971,18 +1052,31 @@ export default class MainScene extends Phaser.Scene {
         }
 
         // ─────────────────────────────────────────
-        // ATAQUE CONTINUO MIENTRAS SE MANTIENE CLICK
+        // ATAQUE CONTINUO MIENTRAS SE MANTIENE CLICK O GATILLO
         // Para armas con carga (arco), attack() debe
         // gestionar internamente no reiniciarse mal.
+        // Ahora también soporta gamepad (RT/RB)
         // ─────────────────────────────────────────
-        if (
-            this.input.activePointer.leftButtonDown() &&
+        const attackHeld = !!(
+            this.inputManager &&
+            this.inputManager.isAttackPressed() &&
             this.duck &&
             this.duck.active &&
             this.duck.weapon
+        );
+
+        if (
+            attackHeld
         ) {
             this.duck.weapon.attack();
         }
+
+        // Disparar al soltar (ej. arco cargable), también para gamepad.
+        if (!attackHeld && this.wasAttackHeld && this.duck && this.duck.active && this.duck.weapon?.releaseAttack) {
+            this.duck.weapon.releaseAttack();
+        }
+
+        this.wasAttackHeld = attackHeld;
 
         this._updateCrowSpawnTimer(time);
 

@@ -16,6 +16,11 @@ export default class MenuScene extends Phaser.Scene {
     // Navegación por teclado
     this._selectedIndex = 0;
     this._buttonObjs = [];
+
+    // Navegación por mando
+    this._menuNavRepeatMs = 170;
+    this._lastMenuNavAt = -Infinity;
+    this._menuActionHeld = false;
   }
 
   create() {
@@ -48,23 +53,36 @@ export default class MenuScene extends Phaser.Scene {
       }
     }
 
+    this.menuMusic = music;
+
     this.input.once("pointerdown", () => {
       this.sound.context.resume();
 
-      if (music && !music.isPlaying && (settings.menuMusicEnabled ?? true)) {
-        music.play();
+      if (this.menuMusic && !this.menuMusic.isPlaying && (settings.menuMusicEnabled ?? true)) {
+        this.menuMusic.play();
       }
     });
 
     this.input.keyboard.once("keydown", () => {
       this.sound.context.resume();
 
-      if (music && !music.isPlaying && (settings.menuMusicEnabled ?? true)) {
-        music.play();
+      if (this.menuMusic && !this.menuMusic.isPlaying && (settings.menuMusicEnabled ?? true)) {
+        this.menuMusic.play();
       }
     });
 
+    if (this.input.gamepad) {
+      this.input.gamepad.once("down", () => {
+        this.sound.context.resume();
+
+        if (this.menuMusic && !this.menuMusic.isPlaying && (settings.menuMusicEnabled ?? true)) {
+          this.menuMusic.play();
+        }
+      });
+    }
+
     this.setupKeyboard();
+    this.setupGamepadMenu();
   }
 
   // -----------------------------
@@ -157,6 +175,8 @@ export default class MenuScene extends Phaser.Scene {
     const backOffset = ((this._backScroll % bw) + bw) % bw;
     this.backA.x = -backOffset;
     this.backB.x = this.backA.x + bw;
+
+    this.updateGamepadMenu();
   }
 
   _scaleToCover(img, W, H) {
@@ -326,6 +346,87 @@ export default class MenuScene extends Phaser.Scene {
       const b = this._buttonObjs[this._selectedIndex];
       b?.onClick?.();
     });
+  }
+
+  setupGamepadMenu() {
+    this._menuNavRepeatMs = 170;
+    this._lastMenuNavAt = -Infinity;
+    this._menuActionHeld = false;
+  }
+
+  _getPrimaryPad() {
+    if (!this.input?.gamepad) return null;
+    const pads = this.input.gamepad.getAll();
+    if (!pads || pads.length === 0) return null;
+    return pads.find((pad) => pad && pad.connected) || pads[0];
+  }
+
+  _getPadAxis(pad, axisIndex) {
+    if (!pad || !Array.isArray(pad.axes) || !pad.axes[axisIndex]) return 0;
+    const axis = pad.axes[axisIndex];
+    if (typeof axis.getValue === "function") return axis.getValue();
+    if (typeof axis.value === "number") return axis.value;
+    return 0;
+  }
+
+  _isPadButtonDown(pad, buttonIndex) {
+    if (!pad || !pad.buttons || !pad.buttons[buttonIndex]) return false;
+    const button = pad.buttons[buttonIndex];
+    return !!(button.pressed || (typeof button.value === "number" && button.value > 0.5));
+  }
+
+  _moveSelection(delta) {
+    if (!this._buttonObjs.length) return;
+    const count = this._buttonObjs.length;
+    this._selectedIndex = (this._selectedIndex + delta + count) % count;
+    this.updateButtonSelection();
+  }
+
+  updateGamepadMenu() {
+    const pad = this._getPrimaryPad();
+    if (!pad) {
+      this._menuActionHeld = false;
+      return;
+    }
+
+    const now = this.time.now;
+    const deadzone = 0.35;
+
+    const leftY = this._getPadAxis(pad, 1);
+    const rightY = this._getPadAxis(pad, 3);
+
+    const dpadUp = this._isPadButtonDown(pad, 12);
+    const dpadDown = this._isPadButtonDown(pad, 13);
+    const dpadLeft = this._isPadButtonDown(pad, 14);
+    const dpadRight = this._isPadButtonDown(pad, 15);
+
+    const navUp = leftY < -deadzone || rightY < -deadzone || dpadUp || dpadLeft;
+    const navDown = leftY > deadzone || rightY > deadzone || dpadDown || dpadRight;
+
+    if (now - this._lastMenuNavAt >= this._menuNavRepeatMs) {
+      if (navUp && !navDown) {
+        this._moveSelection(-1);
+        this._lastMenuNavAt = now;
+      } else if (navDown && !navUp) {
+        this._moveSelection(1);
+        this._lastMenuNavAt = now;
+      }
+    }
+
+    // A/B/X/Y ejecutan la opción seleccionada
+    const actionPressed =
+      this._isPadButtonDown(pad, 0) || // A
+      this._isPadButtonDown(pad, 1) || // B
+      this._isPadButtonDown(pad, 2) || // X
+      this._isPadButtonDown(pad, 3) || // Y
+      this._isPadButtonDown(pad, 9);   // START (botón Start)
+
+    if (actionPressed && !this._menuActionHeld) {
+      const b = this._buttonObjs[this._selectedIndex];
+      b?.onClick?.();
+    }
+
+    this._menuActionHeld = actionPressed;
   }
 
   // -----------------------------
