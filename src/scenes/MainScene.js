@@ -26,11 +26,11 @@ import Key from '../GameObjects/Consumables/key.js';
 import DropBread from '../GameObjects/Consumables/Drops/dropBread.js';
 import DropFeather from '../GameObjects/Consumables/Drops/dropFeather.js';
 
+import Crocodile from '../GameObjects/crocodile.js';
 
 import Enemy from '../GameObjects/enemy.js';
 import Store from '../GameObjects/store.js';
 import Frog from '../GameObjects/Enemies/frog.js';
-import Car from '../GameObjects/Enemies/car.js';
 import { DUCK_STATE } from '../GameObjects/duck.js';
 import player_sprite from '../../assets/sprites/duck/idle_duck.png';
 import sprint_sprite from '../../assets/sprites/duck/sprint_duck.png';
@@ -38,9 +38,13 @@ import dash_duck_sprite from '../../assets/sprites/duck/dash_duck.png';
 import cuack_sprite from '../../assets/sprites/duck/Cuack_duck.png';
 import duck_swimming_sprite from '../../assets/sprites/duck/swimming_duck.png';
 import enemy_sprite from '../../assets/sprites/player.png';
-import coche_enemy from '../../assets/sprites/coche_enemy.png';
 
 // Sprites de enemigos específicos
+import crocoSpritePath from '../../assets/sprites/croco/croco_idle.png';
+import crocoAttackPath from '../../assets/sprites/croco/croco_attack.png';
+import crocoSubmergePath from '../../assets/sprites/croco/croco_submerge.png';
+import crocoBubblePath from '../../assets/sprites/croco/croco_bubble.png';
+
 import zorro_idle from '../../assets/sprites/Zorro/zorro_idle.png';
 import zorro_run from '../../assets/sprites/Zorro/zorro_run.png';
 import zorro_hit from '../../assets/sprites/Zorro/zorro_hit.png';
@@ -184,7 +188,6 @@ export default class MainScene extends Phaser.Scene {
         this.load.image('car-green-back', carGreenBack);
         this.load.image('car-blue-back', carBlueBack);
         this.load.image('truck-red-front', truckRedFront);
-        this.load.image('coche_enemy', coche_enemy);
 
         this.load.spritesheet('idle_duck', player_sprite, {
             frameWidth: 32,
@@ -212,6 +215,12 @@ export default class MainScene extends Phaser.Scene {
         });
 
         this.load.image('enemy', enemy_sprite);
+
+        // Sprites crocodile
+        this.load.image('croco_idle', crocoSpritePath);
+        this.load.image('croco_attack', crocoAttackPath);
+        this.load.image('croco_submerge', crocoSubmergePath);
+        this.load.image('croco_bubble', crocoBubblePath);
 
         // Cargar spritesheets de zorro (4 frames cada uno, 32x32)
         this.load.spritesheet('zorro_idle', zorro_idle, {
@@ -730,19 +739,20 @@ export default class MainScene extends Phaser.Scene {
         // ENEMIGOS DESDE RUTAS
         // ─────────────────────────────────────────
         this.enemies = this.physics.add.group();
+
+        // Crear cocodrilo boss
+        const croco = new Crocodile(
+            this,
+            'Cocodrilo_Boss',
+            this.playerSpawn.x + 1000,  // 100px a la derecha del spawn del pato
+            this.playerSpawn.y,
+            'croco_idle',
+            null
+        );
+        this.enemies.add(croco);
+        this._wireEnemyCollisions(croco);
+
         this.setupEnemiesFromRoutes(SCALE);
-
-        // Spawner de coches en la carretera
-        this.carSpawner = {
-            enabled: true,
-            lastSpawn: 0,
-            interval: 2000 // ms
-        };
-
-        // Ajustes: distancia a la izquierda desde el anchor para spawnear
-        this.carSpawner.spawnOffset = 900;
-        // Velocidad que tendrán los coches creados (anula BASE_STATS.speed)
-        this.carSpawner.carSpeed = 2200;
 
 
         // ─────────────────────────────────────────
@@ -1008,9 +1018,6 @@ export default class MainScene extends Phaser.Scene {
 
         this._updateCrowSpawnTimer(time);
 
-        // Spawner de coches: generar cada intervalo si hay alguna entidad sobre la carretera
-        if (this.carSpawner?.enabled) this._updateCarSpawner(time);
-
         // ─────────────────────────────────────────
         // IA / VISIÓN DEL ENEMIGO
         // ─────────────────────────────────────────
@@ -1019,7 +1026,9 @@ export default class MainScene extends Phaser.Scene {
                 if (!enemy || !enemy.active || enemy.isDead?.()) return;
 
                 // Detección y feedback visual manejados por la propia clase Enemy
-                enemy.updateAwareness(this.duck, time);
+                if (typeof enemy.updateAwareness === 'function') {
+                    enemy.updateAwareness(this.duck, time);
+                }
             });
         }
 
@@ -1112,73 +1121,6 @@ export default class MainScene extends Phaser.Scene {
 
         this.puddleUpgradePanel?.hide();
         this.puddleUpgradePanel?.showPurchaseResult(true, `Reward claimed! (+${rewardFeathers} feathers)`);
-    }
-
-    // ─────────────────────────────────────────
-    //  CAR SPAWNER (carretera)
-    // ─────────────────────────────────────────
-    _isEntityOnCarretera(entity) {
-        if (!entity || !entity.active || !this.carreteraLayer) return false;
-
-        // Convertir posición del mundo a coordenadas de tile usando la capa
-        const tile = this.carreteraLayer.getTileAtWorldXY(entity.x, entity.y, true);
-        return !!tile && tile.index !== -1;
-    }
-
-    _updateCarSpawner(time = this.time?.now) {
-        if (!this.carreteraLayer) return;
-
-        // ¿Hay el jugador o algún enemigo sobre la carretera?
-        let someoneOnRoad = false;
-
-        if (this.duck && this._isEntityOnCarretera(this.duck)) someoneOnRoad = true;
-
-        if (!someoneOnRoad) {
-            this.enemies.getChildren().forEach(e => {
-                if (someoneOnRoad) return;
-                if (e && e.active && this._isEntityOnCarretera(e)) someoneOnRoad = true;
-            });
-        }
-
-        if (!someoneOnRoad) return;
-
-        const now = time ?? (this.time?.now ?? Date.now());
-        if (now < (this.carSpawner.lastSpawn || 0) + (this.carSpawner.interval || 2000)) return;
-
-        // Elegir una entidad sobre la carretera para posicionar el spawn cerca
-        let anchor = this.duck && this._isEntityOnCarretera(this.duck) ? this.duck : null;
-        if (!anchor) {
-            anchor = this.enemies.getChildren().find(e => e && e.active && this._isEntityOnCarretera(e)) || null;
-        }
-
-        if (!anchor) return;
-
-        // Spawn a la izquierda del anchor para que avance a la derecha
-        const worldBounds = this.physics?.world?.bounds;
-        const offset = this.carSpawner.spawnOffset || 800;
-        let spawnX = anchor.x - offset;
-        if (worldBounds) spawnX = Phaser.Math.Clamp(spawnX, worldBounds.left + 32, worldBounds.right - 32);
-
-        const spawnY = anchor.y + Phaser.Math.Between(-12, 12);
-
-        const car = this._spawnCarAt(spawnX, spawnY);
-        // Aplicar velocidad extra al coche recién creado
-        if (car) {
-            const speed = this.carSpawner.carSpeed || car._speed || 1400;
-            car._speed = speed;
-            if (car.body) car.body.setVelocity(speed, 0);
-        }
-        this.carSpawner.lastSpawn = now;
-    }
-
-    _spawnCarAt(x, y) {
-        if (!this.scene && !this) return;
-        const timeTag = Date.now();
-        const name = `Car_${timeTag}`;
-        const car = new Car(this, name, x, y, 'coche_enemy');
-        this.enemies.add(car);
-        if (typeof this._wireEnemyCollisions === 'function') this._wireEnemyCollisions(car);
-        return car;
     }
 
     _removePuddle(puddle) {
