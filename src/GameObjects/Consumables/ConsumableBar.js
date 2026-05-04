@@ -314,8 +314,8 @@ export default class ConsumableBar {
             {
                 fontFamily: 'ReturnOfTheBoss',
                 fontSize: '20px',
-                color: '#f8e7b5',        // blanco
-                stroke: '#000000',       // dorado
+                color: '#f8e7b5',
+                stroke: '#000000',
                 strokeThickness: 4
             }
         );
@@ -324,6 +324,46 @@ export default class ConsumableBar {
         this.controlsText.setScrollFactor(0);
         this.controlsText.setDepth(9102);
         this.controlsText.setAlpha(0.92);
+
+        // ── Botón de ajustes (⚙) en la esquina superior derecha del HUD ──
+        const btnX = this.divider.x - 40; // a la izquierda del separador
+        const btnY = this.panelY + this.panelHeight / 2; // centrado vertical
+
+        this.settingsBtnBg = this.scene.add.rectangle(btnX, btnY, 44, 44, 0x000000, 0.4)
+            .setStrokeStyle(2, 0xe4c46a, 0.9)
+            .setScrollFactor(0)
+            .setDepth(9200)
+            .setInteractive({ useHandCursor: true });
+
+        this.settingsBtnText = this.scene.add.text(btnX, btnY, '⚙', {
+            fontFamily: 'Arial',
+            fontSize: '26px',
+            color: '#f4d97b',
+            stroke: '#000000',
+            strokeThickness: 3
+        })
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(9201)
+            .setInteractive({ useHandCursor: true });
+
+        const openPause = () => {
+            if (this.scene?.openPauseMenu) {
+                this.scene.openPauseMenu();
+            }
+        };
+
+        this.settingsBtnBg.on('pointerup', openPause);
+        this.settingsBtnText.on('pointerup', openPause);
+
+        this.settingsBtnBg.on('pointerover', () => {
+            this.settingsBtnBg.setFillStyle(0x333333, 0.7);
+            this.settingsBtnText.setScale(1.1);
+        });
+        this.settingsBtnBg.on('pointerout', () => {
+            this.settingsBtnBg.setFillStyle(0x000000, 0.4);
+            this.settingsBtnText.setScale(1);
+        });
     }
     // ─────────────────────────────────────────
     // INPUT
@@ -606,9 +646,9 @@ export default class ConsumableBar {
         if (!this.controlsText) return;
 
         if (this.controlMode === 'gamepad') {
-            this.controlsText.setText('MODO MANDO · D-PAD IZQ/DER SELECCIONAR · X USAR · CLICK ATACAR · C CUACK');
+            this.controlsText.setText('MODO MANDO : D-PAD IZQ/DER SELECCIONAR · X USAR · CLICK ATACAR · C CUACK');
         } else {
-            this.controlsText.setText('MODO TECLADO · WASD MOVER · ESPACIO DASH · E INTERACTUAR · CLICK ATACAR · C CUACK · 1-6 USAR CONSUMIBLE');
+            this.controlsText.setText('MODO TECLADO : WASD MOVER · ESPACIO DASH · E INTERACTUAR · CLICK ATACAR · C CUACK');
         }
     }
 
@@ -858,6 +898,8 @@ export default class ConsumableBar {
         this.useHintText?.destroy();
         this.extraItemsText?.destroy();
         this.controlsText?.destroy();
+        this.settingsBtnBg?.destroy();
+        this.settingsBtnText?.destroy();
 
         this.slots.forEach(slot => {
             slot.background?.destroy();
