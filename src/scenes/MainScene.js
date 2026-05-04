@@ -880,1888 +880,1890 @@ export default class MainScene extends Phaser.Scene {
         this.aimAssistCross.setDepth(10001);
         this.aimAssistCross.setVisible(false);
         this._syncActiveInputModeFeedback();
-    }
 
         //GUI MENUS
         this.createPauseMenuUI();
-this.createGuideUI();
-this.createExitConfirmUI();
-this.setupPauseInput();     
+        this.createGuideUI();
+        this.createExitConfirmUI();
+
+        // Inicializar teclas de entrada
+        this.keyEsc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+
+        this.setupPauseInput();
     }
 
-update(time, delta) {
-    if (Phaser.Input.Keyboard.JustDown(this.keyEsc)) {
-        if (this.scene.isActive('SettingsScene')) {
-            return;
-        }
-
-        if (this.guideOverlay?.visible) {
-            this.closeGuide();
-            this.openPauseMenu();
-            return;
-        }
-
-        if (this.exitConfirmOverlay?.visible) {
-            this.closeExitConfirm();
-            this.openPauseMenu();
-            return;
-        }
-
-        if (this.pauseOverlay?.visible) {
-            this.closePauseMenu();
-            return;
-        }
-
-        this.openPauseMenu();
-        return;
-    }
-
-    if (this.isPlayerDead || this.isPaused) {
-        // Mientras esté pausado, forzar velocidad cero para que el duck
-        // no se siga moviendo aunque su preUpdate() se ejecute por Phaser.
-        if (this.isPaused && this.duck?.body) {
-            this.duck.body.setVelocity(0, 0);
-        }
-        return;
-    }
-
-    // Actualizar InputManager si existe
-    if (this.inputManager) {
-        this.inputManager.update();
-    }
-
-    this._syncActiveInputModeFeedback();
-
-    // ─────────────────────────────────────────
-    // ESTADO SWIMMING SEGÚN CAPA ACUÁTICA
-    // ─────────────────────────────────────────
-    this._updateDuckSwimmingState();
-
-    // ─────────────────────────────────────────
-    // CHARQUITOS DESDE TILED
-    // Se mantiene separado de la lógica de agua para futuras extensiones.
-    // ─────────────────────────────────────────
-    this._updateCharquitoState();
-
-    // ─────────────────────────────────────────
-    // RECOGIDA DE CONSUMIBLES
-    // Usa isNear() (igual que el duck con las plumas) para detectar rango.
-    // - pickupType 'auto'     → interact() se llama inmediatamente (DropBread)
-    // - pickupType 'interact' → interact() solo se llama al pulsar E (DropMask)
-    // La recogida del mundo tiene prioridad sobre el consumo de inventario con E.
-    // ─────────────────────────────────────────
-    if (this.duck && this.duck.active) {
-        const eJustDown = this.inputManager ? this.inputManager.isInteractPressed() : false;
-
-        this.consumableItems.getChildren().forEach(item => {
-            if (!item || !item.active) return;
-            if (!item.isNear(this.duck, 60)) return;
-
-            if (item.pickupType === 'auto') {
-                // auto pickup: recoger inmediatamente al entrar en rango
-                item.interact(this.duck);
-            } else if (item.pickupType === 'interact' && eJustDown) {
-                // interact pickup: solo recoger si el jugador pulsa E estando en rango
-                item.interact(this.duck);
+    update(time, delta) {
+        if (Phaser.Input.Keyboard.JustDown(this.keyEsc)) {
+            if (this.scene.isActive('SettingsScene')) {
+                return;
             }
-        });
 
-        // Pasar eJustDown a la tienda para que gestione la compra con E
-        if (this.store) {
-            this.store.update(eJustDown);
+            if (this.guideOverlay?.visible) {
+                this.closeGuide();
+                this.openPauseMenu();
+                return;
+            }
+
+            if (this.exitConfirmOverlay?.visible) {
+                this.closeExitConfirm();
+                this.openPauseMenu();
+                return;
+            }
+
+            if (this.pauseOverlay?.visible) {
+                this.closePauseMenu();
+                return;
+            }
+
+            this.openPauseMenu();
+            return;
         }
 
-        // Si hay llave en inventario, abrir puerta cercana automáticamente.
-        if ((this.duck.consumables || []).some(item => item?.type === 'key')) {
-            this.tryOpenNearbyClosedDoor(this.duck, true);
+        if (this.isPlayerDead || this.isPaused) {
+            // Mientras esté pausado, forzar velocidad cero para que el duck
+            // no se siga moviendo aunque su preUpdate() se ejecute por Phaser.
+            if (this.isPaused && this.duck?.body) {
+                this.duck.body.setVelocity(0, 0);
+            }
+            return;
         }
-    }
 
-    // ─────────────────────────────────────────
-    // ACTUALIZAR BARRA DE CONSUMIBLES
-    // Se actualiza después de la recogida del mundo para que la tecla E
-    // dé prioridad a recoger DropMask del suelo antes de consumir del inventario.
-    // ─────────────────────────────────────────
-    if (this.consumableBar) {
-        this.consumableBar.update();
-    }
-
-    // ─────────────────────────────────────────
-    // CÁMARA ENTRE PATO Y RATÓN
-    // Si el cursor está en la deadzone central (50%),
-    // cámara fija al pato. Fuera: 70% pato, 30% ratón.
-    // El centro se interpola para evitar saltos bruscos.
-    // Si el pato está en un charco activo: cámara bloqueada
-    // y desplazada un 30% a la derecha.
-    // ─────────────────────────────────────────
-    if (this.duck && this.duck.active) {
-        const pointer = this.input.activePointer;
-        const camera = this.cameras.main;
-        const screenW = this.scale.width;
-        const screenH = this.scale.height;
-
-        // Joystick derecho -> mover un puntero virtual en pantalla
-        // para reutilizar la misma lógica de cámara y apuntado del ratón.
+        // Actualizar InputManager si existe
         if (this.inputManager) {
-            const aimInput = this.inputManager.getAimInput();
-            const hasAimInput = Math.abs(aimInput.x) > 0.001 || Math.abs(aimInput.y) > 0.001;
+            this.inputManager.update();
+        }
 
-            if (hasAimInput) {
-                const baseVirtualPointerSpeed = 1500; // px/s
-                const dt = Math.max(0, delta) / 1000;
+        this._syncActiveInputModeFeedback();
 
-                // Aumenta la respuesta cuando el stick se aleja del centro.
-                const aimMagnitude = Phaser.Math.Clamp(Math.hypot(aimInput.x, aimInput.y), 0, 1);
-                const responseCurve = 0.45 + Math.pow(aimMagnitude, 1.3);
-                const virtualPointerSpeed = baseVirtualPointerSpeed * responseCurve;
+        // ─────────────────────────────────────────
+        // ESTADO SWIMMING SEGÚN CAPA ACUÁTICA
+        // ─────────────────────────────────────────
+        this._updateDuckSwimmingState();
 
-                const centerX = screenW * 0.5;
-                const centerY = screenH * 0.5;
+        // ─────────────────────────────────────────
+        // CHARQUITOS DESDE TILED
+        // Se mantiene separado de la lógica de agua para futuras extensiones.
+        // ─────────────────────────────────────────
+        this._updateCharquitoState();
 
-                let newX = this.virtualPointerX + aimInput.x * virtualPointerSpeed * dt;
-                let newY = this.virtualPointerY + aimInput.y * virtualPointerSpeed * dt;
+        // ─────────────────────────────────────────
+        // RECOGIDA DE CONSUMIBLES
+        // Usa isNear() (igual que el duck con las plumas) para detectar rango.
+        // - pickupType 'auto'     → interact() se llama inmediatamente (DropBread)
+        // - pickupType 'interact' → interact() solo se llama al pulsar E (DropMask)
+        // La recogida del mundo tiene prioridad sobre el consumo de inventario con E.
+        // ─────────────────────────────────────────
+        if (this.duck && this.duck.active) {
+            const eJustDown = this.inputManager ? this.inputManager.isInteractPressed() : false;
 
-                // Determinar si el arma es cuerpo a cuerpo o a distancia
-                const currentWeapon = this.duck?.weapon;
-                const isMeleeWeapon = currentWeapon && !currentWeapon.isRanged;
+            this.consumableItems.getChildren().forEach(item => {
+                if (!item || !item.active) return;
+                if (!item.isNear(this.duck, 60)) return;
 
-                if (isMeleeWeapon) {
-                    // Arma melee: limitar al rango del arma desde el centro
-                    const maxRadius = currentWeapon.range || 250;
-                    const distance = Phaser.Math.Distance.Between(newX, newY, centerX, centerY);
-                    if (distance > maxRadius) {
-                        const angle = Math.atan2(newY - centerY, newX - centerX);
-                        newX = centerX + Math.cos(angle) * maxRadius;
-                        newY = centerY + Math.sin(angle) * maxRadius;
+                if (item.pickupType === 'auto') {
+                    // auto pickup: recoger inmediatamente al entrar en rango
+                    item.interact(this.duck);
+                } else if (item.pickupType === 'interact' && eJustDown) {
+                    // interact pickup: solo recoger si el jugador pulsa E estando en rango
+                    item.interact(this.duck);
+                }
+            });
+
+            // Pasar eJustDown a la tienda para que gestione la compra con E
+            if (this.store) {
+                this.store.update(eJustDown);
+            }
+
+            // Si hay llave en inventario, abrir puerta cercana automáticamente.
+            if ((this.duck.consumables || []).some(item => item?.type === 'key')) {
+                this.tryOpenNearbyClosedDoor(this.duck, true);
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // ACTUALIZAR BARRA DE CONSUMIBLES
+        // Se actualiza después de la recogida del mundo para que la tecla E
+        // dé prioridad a recoger DropMask del suelo antes de consumir del inventario.
+        // ─────────────────────────────────────────
+        if (this.consumableBar) {
+            this.consumableBar.update();
+        }
+
+        // ─────────────────────────────────────────
+        // CÁMARA ENTRE PATO Y RATÓN
+        // Si el cursor está en la deadzone central (50%),
+        // cámara fija al pato. Fuera: 70% pato, 30% ratón.
+        // El centro se interpola para evitar saltos bruscos.
+        // Si el pato está en un charco activo: cámara bloqueada
+        // y desplazada un 30% a la derecha.
+        // ─────────────────────────────────────────
+        if (this.duck && this.duck.active) {
+            const pointer = this.input.activePointer;
+            const camera = this.cameras.main;
+            const screenW = this.scale.width;
+            const screenH = this.scale.height;
+
+            // Joystick derecho -> mover un puntero virtual en pantalla
+            // para reutilizar la misma lógica de cámara y apuntado del ratón.
+            if (this.inputManager) {
+                const aimInput = this.inputManager.getAimInput();
+                const hasAimInput = Math.abs(aimInput.x) > 0.001 || Math.abs(aimInput.y) > 0.001;
+
+                if (hasAimInput) {
+                    const baseVirtualPointerSpeed = 1500; // px/s
+                    const dt = Math.max(0, delta) / 1000;
+
+                    // Aumenta la respuesta cuando el stick se aleja del centro.
+                    const aimMagnitude = Phaser.Math.Clamp(Math.hypot(aimInput.x, aimInput.y), 0, 1);
+                    const responseCurve = 0.45 + Math.pow(aimMagnitude, 1.3);
+                    const virtualPointerSpeed = baseVirtualPointerSpeed * responseCurve;
+
+                    const centerX = screenW * 0.5;
+                    const centerY = screenH * 0.5;
+
+                    let newX = this.virtualPointerX + aimInput.x * virtualPointerSpeed * dt;
+                    let newY = this.virtualPointerY + aimInput.y * virtualPointerSpeed * dt;
+
+                    // Determinar si el arma es cuerpo a cuerpo o a distancia
+                    const currentWeapon = this.duck?.weapon;
+                    const isMeleeWeapon = currentWeapon && !currentWeapon.isRanged;
+
+                    if (isMeleeWeapon) {
+                        // Arma melee: limitar al rango del arma desde el centro
+                        const maxRadius = currentWeapon.range || 250;
+                        const distance = Phaser.Math.Distance.Between(newX, newY, centerX, centerY);
+                        if (distance > maxRadius) {
+                            const angle = Math.atan2(newY - centerY, newX - centerX);
+                            newX = centerX + Math.cos(angle) * maxRadius;
+                            newY = centerY + Math.sin(angle) * maxRadius;
+                        }
+                    } else {
+                        // Arma ranged o sin arma: limitar solo a los bordes de pantalla
+                        newX = Phaser.Math.Clamp(newX, 0, screenW);
+                        newY = Phaser.Math.Clamp(newY, 0, screenH);
+                    }
+
+                    this.virtualPointerX = newX;
+                    this.virtualPointerY = newY;
+
+                    if (pointer?.position?.set) {
+                        pointer.position.set(this.virtualPointerX, this.virtualPointerY);
+                    } else {
+                        pointer.x = this.virtualPointerX;
+                        pointer.y = this.virtualPointerY;
                     }
                 } else {
-                    // Arma ranged o sin arma: limitar solo a los bordes de pantalla
-                    newX = Phaser.Math.Clamp(newX, 0, screenW);
-                    newY = Phaser.Math.Clamp(newY, 0, screenH);
+                    // Si no hay stick derecho, seguir al ratón real.
+                    this.virtualPointerX = pointer.x;
+                    this.virtualPointerY = pointer.y;
                 }
-
-                this.virtualPointerX = newX;
-                this.virtualPointerY = newY;
-
-                if (pointer?.position?.set) {
-                    pointer.position.set(this.virtualPointerX, this.virtualPointerY);
-                } else {
-                    pointer.x = this.virtualPointerX;
-                    pointer.y = this.virtualPointerY;
-                }
-            } else {
-                // Si no hay stick derecho, seguir al ratón real.
-                this.virtualPointerX = pointer.x;
-                this.virtualPointerY = pointer.y;
             }
+
+            this._updateAimAssistCross(pointer);
+
+            // Mantener worldX/worldY del puntero actualizados incluso si no hay movimiento del mouse.
+            pointer.updateWorldPoint(camera);
+
+            // Zona muerta circular centrada en la pantalla.
+            // Mantiene un área similar a la antigua caja del 50% central,
+            // pero con transición radial alrededor del pato.
+            const deadzoneCenterX = screenW * 0.5;
+            const deadzoneCenterY = screenH * 0.5;
+            const deadzoneRadius = Math.min(screenW, screenH) * 0.25;
+            const pointerDistanceFromCenter = Phaser.Math.Distance.Between(
+                pointer.x,
+                pointer.y,
+                deadzoneCenterX,
+                deadzoneCenterY
+            );
+
+            const isPointerInsideDeadzone = pointerDistanceFromCenter <= deadzoneRadius;
+
+            const isPuddleCameraLocked = !!(
+                this.currentPuddle &&
+                !this.currentPuddle.isRemoved &&
+                this.currentPuddle.getPrimaryUpgrade?.()
+            );
+
+            let targetCamX = this.duck.x;
+            let targetCamY = this.duck.y;
+
+            if (isPuddleCameraLocked) {
+                targetCamX = this.duck.x + camera.width * 0.3;
+            } else if (!isPointerInsideDeadzone) {
+                const mouseX = pointer.worldX;
+                const mouseY = pointer.worldY;
+
+                targetCamX = this.duck.x * 0.7 + mouseX * 0.3;
+                targetCamY = this.duck.y * 0.7 + mouseY * 0.3;
+            }
+
+            const currentCenterX = camera.scrollX + camera.width * 0.5;
+            const currentCenterY = camera.scrollY + camera.height * 0.5;
+            const cameraLerp = 0.15;
+
+            const smoothCamX = Phaser.Math.Linear(currentCenterX, targetCamX, cameraLerp);
+            const smoothCamY = Phaser.Math.Linear(currentCenterY, targetCamY, cameraLerp);
+
+            camera.centerOn(smoothCamX, smoothCamY);
         }
 
-        this._updateAimAssistCross(pointer);
-
-        // Mantener worldX/worldY del puntero actualizados incluso si no hay movimiento del mouse.
-        pointer.updateWorldPoint(camera);
-
-        // Zona muerta circular centrada en la pantalla.
-        // Mantiene un área similar a la antigua caja del 50% central,
-        // pero con transición radial alrededor del pato.
-        const deadzoneCenterX = screenW * 0.5;
-        const deadzoneCenterY = screenH * 0.5;
-        const deadzoneRadius = Math.min(screenW, screenH) * 0.25;
-        const pointerDistanceFromCenter = Phaser.Math.Distance.Between(
-            pointer.x,
-            pointer.y,
-            deadzoneCenterX,
-            deadzoneCenterY
+        // ─────────────────────────────────────────
+        // ATAQUE CONTINUO MIENTRAS SE MANTIENE CLICK O GATILLO
+        // Para armas con carga (arco), attack() debe
+        // gestionar internamente no reiniciarse mal.
+        // Ahora también soporta gamepad (RT/RB)
+        // ─────────────────────────────────────────
+        const attackHeld = !!(
+            this.inputManager &&
+            this.inputManager.isAttackPressed() &&
+            this.duck &&
+            this.duck.active &&
+            this.duck.weapon
         );
 
-        const isPointerInsideDeadzone = pointerDistanceFromCenter <= deadzoneRadius;
-
-        const isPuddleCameraLocked = !!(
-            this.currentPuddle &&
-            !this.currentPuddle.isRemoved &&
-            this.currentPuddle.getPrimaryUpgrade?.()
-        );
-
-        let targetCamX = this.duck.x;
-        let targetCamY = this.duck.y;
-
-        if (isPuddleCameraLocked) {
-            targetCamX = this.duck.x + camera.width * 0.3;
-        } else if (!isPointerInsideDeadzone) {
-            const mouseX = pointer.worldX;
-            const mouseY = pointer.worldY;
-
-            targetCamX = this.duck.x * 0.7 + mouseX * 0.3;
-            targetCamY = this.duck.y * 0.7 + mouseY * 0.3;
+        if (
+            attackHeld
+        ) {
+            this.duck.weapon.attack();
         }
 
-        const currentCenterX = camera.scrollX + camera.width * 0.5;
-        const currentCenterY = camera.scrollY + camera.height * 0.5;
-        const cameraLerp = 0.15;
+        // Disparar al soltar (ej. arco cargable), también para gamepad.
+        if (!attackHeld && this.wasAttackHeld && this.duck && this.duck.active && this.duck.weapon?.releaseAttack) {
+            this.duck.weapon.releaseAttack();
+        }
 
-        const smoothCamX = Phaser.Math.Linear(currentCenterX, targetCamX, cameraLerp);
-        const smoothCamY = Phaser.Math.Linear(currentCenterY, targetCamY, cameraLerp);
+        this.wasAttackHeld = attackHeld;
 
-        camera.centerOn(smoothCamX, smoothCamY);
+        this._updateCrowSpawnTimer(time);
+
+        // Spawner de coches: generar cada intervalo si hay alguna entidad sobre la carretera
+        if (this.carSpawner?.enabled) this._updateCarSpawner(time);
+
+        // ─────────────────────────────────────────
+        // IA / VISIÓN DEL ENEMIGO
+        // ─────────────────────────────────────────
+        if (this.duck && this.duck.active) {
+            this.enemies.getChildren().forEach(enemy => {
+                if (!enemy || !enemy.active || enemy.isDead?.()) return;
+
+                // Detección y feedback visual manejados por la propia clase Enemy
+                if (typeof enemy.updateAwareness === 'function') {
+                    enemy.updateAwareness(this.duck, time);
+                }
+            });
+        }
     }
 
-    // ─────────────────────────────────────────
-    // ATAQUE CONTINUO MIENTRAS SE MANTIENE CLICK O GATILLO
-    // Para armas con carga (arco), attack() debe
-    // gestionar internamente no reiniciarse mal.
-    // Ahora también soporta gamepad (RT/RB)
-    // ─────────────────────────────────────────
-    const attackHeld = !!(
-        this.inputManager &&
-        this.inputManager.isAttackPressed() &&
-        this.duck &&
-        this.duck.active &&
-        this.duck.weapon
-    );
-
-    if (
-        attackHeld
-    ) {
-        this.duck.weapon.attack();
+    _getActiveInputMode() {
+        return this.registry?.get('activeInputMode') || 'keyboard';
     }
 
-    // Disparar al soltar (ej. arco cargable), también para gamepad.
-    if (!attackHeld && this.wasAttackHeld && this.duck && this.duck.active && this.duck.weapon?.releaseAttack) {
-        this.duck.weapon.releaseAttack();
+    _syncActiveInputModeFeedback() {
+        const activeInputMode = this._getActiveInputMode();
+
+        if (activeInputMode === this._lastActiveInputMode) return;
+
+        this._lastActiveInputMode = activeInputMode;
+
+        if (this.input?.setDefaultCursor) {
+            this.input.setDefaultCursor(activeInputMode === 'gamepad' ? 'none' : 'default');
+        }
+
+        if (this.aimAssistCross) {
+            this.aimAssistCross.setVisible(activeInputMode === 'gamepad');
+        }
     }
 
-    this.wasAttackHeld = attackHeld;
+    _updateAimAssistCross(pointer) {
+        if (!this.aimAssistCross) return;
 
-    this._updateCrowSpawnTimer(time);
+        const activeInputMode = this._getActiveInputMode();
+        const isGamepadMode = activeInputMode === 'gamepad';
 
-    // Spawner de coches: generar cada intervalo si hay alguna entidad sobre la carretera
-    if (this.carSpawner?.enabled) this._updateCarSpawner(time);
+        this.aimAssistCross.setVisible(isGamepadMode);
+        if (!isGamepadMode || !pointer) return;
 
-    // ─────────────────────────────────────────
-    // IA / VISIÓN DEL ENEMIGO
-    // ─────────────────────────────────────────
-    if (this.duck && this.duck.active) {
-        this.enemies.getChildren().forEach(enemy => {
-            if (!enemy || !enemy.active || enemy.isDead?.()) return;
+        this.aimAssistCross.clear();
+        this.aimAssistCross.setPosition(pointer.x, pointer.y);
 
-            // Detección y feedback visual manejados por la propia clase Enemy
-            if (typeof enemy.updateAwareness === 'function') {
-                enemy.updateAwareness(this.duck, time);
+        // Círculos concéntricos (más finos que la cruz)
+        this.aimAssistCross.lineStyle(3, 0x5a0000, 0.22);
+        this.aimAssistCross.strokeCircle(0, 0, 8);
+
+        this.aimAssistCross.lineStyle(2, 0xff3b3b, 0.78);
+        this.aimAssistCross.strokeCircle(0, 0, 14);
+
+        // Cruz de fondo (gruesa)
+        this.aimAssistCross.lineStyle(10, 0x5a0000, 0.22);
+        this.aimAssistCross.beginPath();
+        this.aimAssistCross.moveTo(-25, 0);
+        this.aimAssistCross.lineTo(25, 0);
+        this.aimAssistCross.moveTo(0, -25);
+        this.aimAssistCross.lineTo(0, 25);
+        this.aimAssistCross.strokePath();
+
+        // Cruz roja brillante
+        this.aimAssistCross.lineStyle(5, 0xff3b3b, 0.78);
+        this.aimAssistCross.beginPath();
+        this.aimAssistCross.moveTo(-23, 0);
+        this.aimAssistCross.lineTo(23, 0);
+        this.aimAssistCross.moveTo(0, -23);
+        this.aimAssistCross.lineTo(0, 23);
+        this.aimAssistCross.strokePath();
+
+        // Centro rellenado
+        this.aimAssistCross.fillStyle(0xff5555, 0.85);
+        this.aimAssistCross.fillCircle(0, 0, 4);
+    }
+
+    _updateDuckSwimmingState() {
+        if (!this.duck || !this.duck.active || !this.zonasAcuaticasLayer) return;
+
+        const tileSize = 16 * 4;
+        const tileX = Math.floor(this.duck.x / tileSize);
+        const tileY = Math.floor(this.duck.y / tileSize);
+
+        const waterTile = this.zonasAcuaticasLayer.getTileAt(tileX, tileY);
+        const isInWater = !!waterTile;
+
+        if (isInWater) {
+            if (this.duck.state !== DUCK_STATE.SWIMMING && this.duck.state !== DUCK_STATE.DASHING) {
+                this.duck.setState(DUCK_STATE.SWIMMING);
             }
-        });
+            return;
+        }
+
+        if (this.duck.state === DUCK_STATE.SWIMMING) {
+            this.duck.setState(DUCK_STATE.IDLE);
+        }
     }
 
-}
+    _updateCharquitoState() {
+        if (!this.duck || !this.duck.active || !Array.isArray(this.puddles) || this.puddles.length === 0) return;
 
-_getActiveInputMode() {
-    return this.registry?.get('activeInputMode') || 'keyboard';
-}
+        const puddle = this.puddles.find(charco => charco?.containsDuck?.(this.duck)) || null;
 
-_syncActiveInputModeFeedback() {
-    const activeInputMode = this._getActiveInputMode();
+        if (!puddle) {
+            this.currentPuddle = null;
+            this.puddleUpgradePanel?.hide();
+            return;
+        }
 
-    if (activeInputMode === this._lastActiveInputMode) return;
+        if (this.currentPuddle !== puddle) {
+            if (!puddle.getCheckpointBackup?.()) {
+                puddle.setCheckpointBackup?.(this._getCurrentCheckpointData());
+            }
 
-    this._lastActiveInputMode = activeInputMode;
+            this.previousCheckpointBeforePuddle = puddle.getCheckpointBackup?.() || null;
+            this.currentPuddle = puddle;
+            this._setCheckpointFromPuddle(puddle);
+            this.puddleUpgradePanel?.show(puddle, this.duck);
+        } else {
+            this.puddleUpgradePanel?.update(this.duck);
+        }
 
-    if (this.input?.setDefaultCursor) {
-        this.input.setDefaultCursor(activeInputMode === 'gamepad' ? 'none' : 'default');
-    }
-
-    if (this.aimAssistCross) {
-        this.aimAssistCross.setVisible(activeInputMode === 'gamepad');
-    }
-}
-
-_updateAimAssistCross(pointer) {
-    if (!this.aimAssistCross) return;
-
-    const activeInputMode = this._getActiveInputMode();
-    const isGamepadMode = activeInputMode === 'gamepad';
-
-    this.aimAssistCross.setVisible(isGamepadMode);
-    if (!isGamepadMode || !pointer) return;
-
-    this.aimAssistCross.clear();
-    this.aimAssistCross.setPosition(pointer.x, pointer.y);
-
-    // Círculos concéntricos (más finos que la cruz)
-    this.aimAssistCross.lineStyle(3, 0x5a0000, 0.22);
-    this.aimAssistCross.strokeCircle(0, 0, 8);
-
-    this.aimAssistCross.lineStyle(2, 0xff3b3b, 0.78);
-    this.aimAssistCross.strokeCircle(0, 0, 14);
-
-    // Cruz de fondo (gruesa)
-    this.aimAssistCross.lineStyle(10, 0x5a0000, 0.22);
-    this.aimAssistCross.beginPath();
-    this.aimAssistCross.moveTo(-25, 0);
-    this.aimAssistCross.lineTo(25, 0);
-    this.aimAssistCross.moveTo(0, -25);
-    this.aimAssistCross.lineTo(0, 25);
-    this.aimAssistCross.strokePath();
-
-    // Cruz roja brillante
-    this.aimAssistCross.lineStyle(5, 0xff3b3b, 0.78);
-    this.aimAssistCross.beginPath();
-    this.aimAssistCross.moveTo(-23, 0);
-    this.aimAssistCross.lineTo(23, 0);
-    this.aimAssistCross.moveTo(0, -23);
-    this.aimAssistCross.lineTo(0, 23);
-    this.aimAssistCross.strokePath();
-
-    // Centro rellenado
-    this.aimAssistCross.fillStyle(0xff5555, 0.85);
-    this.aimAssistCross.fillCircle(0, 0, 4);
-}
-
-_updateDuckSwimmingState() {
-    if (!this.duck || !this.duck.active || !this.zonasAcuaticasLayer) return;
-
-    const tileSize = 16 * 4;
-    const tileX = Math.floor(this.duck.x / tileSize);
-    const tileY = Math.floor(this.duck.y / tileSize);
-
-    const waterTile = this.zonasAcuaticasLayer.getTileAt(tileX, tileY);
-    const isInWater = !!waterTile;
-
-    if (isInWater) {
         if (this.duck.state !== DUCK_STATE.SWIMMING && this.duck.state !== DUCK_STATE.DASHING) {
             this.duck.setState(DUCK_STATE.SWIMMING);
         }
-        return;
     }
 
-    if (this.duck.state === DUCK_STATE.SWIMMING) {
-        this.duck.setState(DUCK_STATE.IDLE);
+    _onPuddleUpgradePurchase(puddle, upgradeId) {
+        if (!puddle || !this.duck) return;
+
+        const purchase = puddle.purchaseUpgrade?.(upgradeId, this.duck);
+        const success = !!purchase?.success;
+        let purchaseMessage = purchase?.message || '';
+        if (success) {
+            const spentFeathers = Number(purchase?.spentFeathers) || 0;
+            const remainingFeathers = Number(purchase?.remainingFeathers);
+            if (Number.isFinite(remainingFeathers)) {
+                purchaseMessage = `${purchaseMessage} (-${spentFeathers} feather, left: ${remainingFeathers})`;
+            }
+        }
+
+        this.puddleUpgradePanel?.showPurchaseResult(success, purchaseMessage);
+        if (!success) return;
     }
-}
 
-_updateCharquitoState() {
-    if (!this.duck || !this.duck.active || !Array.isArray(this.puddles) || this.puddles.length === 0) return;
+    _onPuddleClaimReward(puddle) {
+        if (!puddle || !this.duck) return;
 
-    const puddle = this.puddles.find(charco => charco?.containsDuck?.(this.duck)) || null;
+        const rewardFeathers = 2;
+        this.duck.addFeather?.(rewardFeathers);
 
-    if (!puddle) {
-        this.currentPuddle = null;
+        const checkpointToRestore = puddle.getCheckpointBackup?.() || this.previousCheckpointBeforePuddle;
+        this._restoreCheckpoint(checkpointToRestore);
+
+        this._removePuddle(puddle);
+
+        this.previousCheckpointBeforePuddle = null;
+        if (this.currentPuddle === puddle) {
+            this.currentPuddle = null;
+        }
+
         this.puddleUpgradePanel?.hide();
-        return;
+        this.puddleUpgradePanel?.showPurchaseResult(true, `Reward claimed! (+${rewardFeathers} feathers)`);
     }
 
-    if (this.currentPuddle !== puddle) {
-        if (!puddle.getCheckpointBackup?.()) {
-            puddle.setCheckpointBackup?.(this._getCurrentCheckpointData());
+    // ─────────────────────────────────────────
+    //  CAR SPAWNER (carretera)
+    // ─────────────────────────────────────────
+    _isEntityOnCarretera(entity) {
+        if (!entity || !entity.active || !this.carreteraLayer) return false;
+
+        // Convertir posición del mundo a coordenadas de tile usando la capa
+        const tile = this.carreteraLayer.getTileAtWorldXY(entity.x, entity.y, true);
+        return !!tile && tile.index !== -1;
+    }
+
+    _updateCarSpawner(time = this.time?.now) {
+        if (!this.carreteraLayer) return;
+
+        // ¿Hay el jugador o algún enemigo sobre la carretera?
+        let someoneOnRoad = false;
+
+        if (this.duck && this._isEntityOnCarretera(this.duck)) someoneOnRoad = true;
+
+        if (!someoneOnRoad) {
+            this.enemies.getChildren().forEach(e => {
+                if (someoneOnRoad) return;
+                if (e && e.active && this._isEntityOnCarretera(e)) someoneOnRoad = true;
+            });
         }
 
-        this.previousCheckpointBeforePuddle = puddle.getCheckpointBackup?.() || null;
-        this.currentPuddle = puddle;
-        this._setCheckpointFromPuddle(puddle);
-        this.puddleUpgradePanel?.show(puddle, this.duck);
-    } else {
-        this.puddleUpgradePanel?.update(this.duck);
-    }
+        if (!someoneOnRoad) return;
 
-    if (this.duck.state !== DUCK_STATE.SWIMMING && this.duck.state !== DUCK_STATE.DASHING) {
-        this.duck.setState(DUCK_STATE.SWIMMING);
-    }
-}
+        const now = time ?? (this.time?.now ?? Date.now());
+        if (now < (this.carSpawner.lastSpawn || 0) + (this.carSpawner.interval || 2000)) return;
 
-_onPuddleUpgradePurchase(puddle, upgradeId) {
-    if (!puddle || !this.duck) return;
-
-    const purchase = puddle.purchaseUpgrade?.(upgradeId, this.duck);
-    const success = !!purchase?.success;
-    let purchaseMessage = purchase?.message || '';
-    if (success) {
-        const spentFeathers = Number(purchase?.spentFeathers) || 0;
-        const remainingFeathers = Number(purchase?.remainingFeathers);
-        if (Number.isFinite(remainingFeathers)) {
-            purchaseMessage = `${purchaseMessage} (-${spentFeathers} feather, left: ${remainingFeathers})`;
+        // Elegir una entidad sobre la carretera para posicionar el spawn cerca
+        let anchor = this.duck && this._isEntityOnCarretera(this.duck) ? this.duck : null;
+        if (!anchor) {
+            anchor = this.enemies.getChildren().find(e => e && e.active && this._isEntityOnCarretera(e)) || null;
         }
+
+        if (!anchor) return;
+
+        // Spawn a la izquierda del anchor para que avance a la derecha
+        const worldBounds = this.physics?.world?.bounds;
+        const offset = this.carSpawner.spawnOffset || 800;
+        let spawnX = anchor.x - offset;
+        if (worldBounds) spawnX = Phaser.Math.Clamp(spawnX, worldBounds.left + 32, worldBounds.right - 32);
+
+        const spawnY = anchor.y + Phaser.Math.Between(-12, 12);
+
+        const car = this._spawnCarAt(spawnX, spawnY);
+        // Aplicar velocidad extra al coche recién creado
+        if (car) {
+            const speed = this.carSpawner.carSpeed || car._speed || 1400;
+            car._speed = speed;
+            if (car.body) car.body.setVelocity(speed, 0);
+        }
+        this.carSpawner.lastSpawn = now;
     }
 
-    this.puddleUpgradePanel?.showPurchaseResult(success, purchaseMessage);
-    if (!success) return;
-}
-
-_onPuddleClaimReward(puddle) {
-    if (!puddle || !this.duck) return;
-
-    const rewardFeathers = 2;
-    this.duck.addFeather?.(rewardFeathers);
-
-    const checkpointToRestore = puddle.getCheckpointBackup?.() || this.previousCheckpointBeforePuddle;
-    this._restoreCheckpoint(checkpointToRestore);
-
-    this._removePuddle(puddle);
-
-    this.previousCheckpointBeforePuddle = null;
-    if (this.currentPuddle === puddle) {
-        this.currentPuddle = null;
+    _spawnCarAt(x, y) {
+        if (!this.scene && !this) return;
+        const timeTag = Date.now();
+        const name = `Car_${timeTag}`;
+        const car = new Car(this, name, x, y, 'coche_enemy');
+        this.enemies.add(car);
+        if (typeof this._wireEnemyCollisions === 'function') this._wireEnemyCollisions(car);
+        return car;
     }
 
-    this.puddleUpgradePanel?.hide();
-    this.puddleUpgradePanel?.showPurchaseResult(true, `Reward claimed! (+${rewardFeathers} feathers)`);
-}
+    _removePuddle(puddle) {
+        if (!puddle || !Array.isArray(this.puddles)) return;
 
-// ─────────────────────────────────────────
-//  CAR SPAWNER (carretera)
-// ─────────────────────────────────────────
-_isEntityOnCarretera(entity) {
-    if (!entity || !entity.active || !this.carreteraLayer) return false;
-
-    // Convertir posición del mundo a coordenadas de tile usando la capa
-    const tile = this.carreteraLayer.getTileAtWorldXY(entity.x, entity.y, true);
-    return !!tile && tile.index !== -1;
-}
-
-_updateCarSpawner(time = this.time?.now) {
-    if (!this.carreteraLayer) return;
-
-    // ¿Hay el jugador o algún enemigo sobre la carretera?
-    let someoneOnRoad = false;
-
-    if (this.duck && this._isEntityOnCarretera(this.duck)) someoneOnRoad = true;
-
-    if (!someoneOnRoad) {
-        this.enemies.getChildren().forEach(e => {
-            if (someoneOnRoad) return;
-            if (e && e.active && this._isEntityOnCarretera(e)) someoneOnRoad = true;
-        });
+        this.puddles = this.puddles.filter(item => item !== puddle);
+        puddle.destroy?.();
     }
 
-    if (!someoneOnRoad) return;
+    _getCurrentCheckpointData() {
+        const checkpoint = this.registry?.get('duckCheckpointSpawn');
+        const checkpointX = Number(checkpoint?.x);
+        const checkpointY = Number(checkpoint?.y);
 
-    const now = time ?? (this.time?.now ?? Date.now());
-    if (now < (this.carSpawner.lastSpawn || 0) + (this.carSpawner.interval || 2000)) return;
+        if (Number.isFinite(checkpointX) && Number.isFinite(checkpointY)) {
+            return {
+                x: checkpointX,
+                y: checkpointY,
+                puddleName: checkpoint?.puddleName || ''
+            };
+        }
 
-    // Elegir una entidad sobre la carretera para posicionar el spawn cerca
-    let anchor = this.duck && this._isEntityOnCarretera(this.duck) ? this.duck : null;
-    if (!anchor) {
-        anchor = this.enemies.getChildren().find(e => e && e.active && this._isEntityOnCarretera(e)) || null;
-    }
+        const spawnX = Number(this.playerSpawn?.x);
+        const spawnY = Number(this.playerSpawn?.y);
+        if (!Number.isFinite(spawnX) || !Number.isFinite(spawnY)) return null;
 
-    if (!anchor) return;
-
-    // Spawn a la izquierda del anchor para que avance a la derecha
-    const worldBounds = this.physics?.world?.bounds;
-    const offset = this.carSpawner.spawnOffset || 800;
-    let spawnX = anchor.x - offset;
-    if (worldBounds) spawnX = Phaser.Math.Clamp(spawnX, worldBounds.left + 32, worldBounds.right - 32);
-
-    const spawnY = anchor.y + Phaser.Math.Between(-12, 12);
-
-    const car = this._spawnCarAt(spawnX, spawnY);
-    // Aplicar velocidad extra al coche recién creado
-    if (car) {
-        const speed = this.carSpawner.carSpeed || car._speed || 1400;
-        car._speed = speed;
-        if (car.body) car.body.setVelocity(speed, 0);
-    }
-    this.carSpawner.lastSpawn = now;
-}
-
-_spawnCarAt(x, y) {
-    if (!this.scene && !this) return;
-    const timeTag = Date.now();
-    const name = `Car_${timeTag}`;
-    const car = new Car(this, name, x, y, 'coche_enemy');
-    this.enemies.add(car);
-    if (typeof this._wireEnemyCollisions === 'function') this._wireEnemyCollisions(car);
-    return car;
-}
-
-_removePuddle(puddle) {
-    if (!puddle || !Array.isArray(this.puddles)) return;
-
-    this.puddles = this.puddles.filter(item => item !== puddle);
-    puddle.destroy?.();
-}
-
-_getCurrentCheckpointData() {
-    const checkpoint = this.registry?.get('duckCheckpointSpawn');
-    const checkpointX = Number(checkpoint?.x);
-    const checkpointY = Number(checkpoint?.y);
-
-    if (Number.isFinite(checkpointX) && Number.isFinite(checkpointY)) {
         return {
-            x: checkpointX,
-            y: checkpointY,
-            puddleName: checkpoint?.puddleName || ''
+            x: spawnX,
+            y: spawnY,
+            puddleName: ''
         };
     }
 
-    const spawnX = Number(this.playerSpawn?.x);
-    const spawnY = Number(this.playerSpawn?.y);
-    if (!Number.isFinite(spawnX) || !Number.isFinite(spawnY)) return null;
+    _restoreCheckpoint(checkpointData) {
+        if (!checkpointData) return;
 
-    return {
-        x: spawnX,
-        y: spawnY,
-        puddleName: ''
-    };
-}
+        const checkpointX = Number(checkpointData.x);
+        const checkpointY = Number(checkpointData.y);
+        if (!Number.isFinite(checkpointX) || !Number.isFinite(checkpointY)) return;
 
-_restoreCheckpoint(checkpointData) {
-    if (!checkpointData) return;
+        this.playerSpawn = {
+            x: checkpointX,
+            y: checkpointY
+        };
 
-    const checkpointX = Number(checkpointData.x);
-    const checkpointY = Number(checkpointData.y);
-    if (!Number.isFinite(checkpointX) || !Number.isFinite(checkpointY)) return;
-
-    this.playerSpawn = {
-        x: checkpointX,
-        y: checkpointY
-    };
-
-    this.registry?.set('duckCheckpointSpawn', {
-        x: checkpointX,
-        y: checkpointY,
-        puddleName: checkpointData.puddleName || ''
-    });
-
-    if (this.duck?.setCheckpoint) {
-        this.duck.setCheckpoint({
+        this.registry?.set('duckCheckpointSpawn', {
             x: checkpointX,
             y: checkpointY,
             puddleName: checkpointData.puddleName || ''
         });
+
+        if (this.duck?.setCheckpoint) {
+            this.duck.setCheckpoint({
+                x: checkpointX,
+                y: checkpointY,
+                puddleName: checkpointData.puddleName || ''
+            });
+        }
     }
-}
 
-_applyStoredCheckpointSpawn() {
-    const checkpoint = this.registry?.get('duckCheckpointSpawn');
-    if (!checkpoint) return;
+    _applyStoredCheckpointSpawn() {
+        const checkpoint = this.registry?.get('duckCheckpointSpawn');
+        if (!checkpoint) return;
 
-    const checkpointX = Number(checkpoint.x);
-    const checkpointY = Number(checkpoint.y);
-    if (!Number.isFinite(checkpointX) || !Number.isFinite(checkpointY)) return;
+        const checkpointX = Number(checkpoint.x);
+        const checkpointY = Number(checkpoint.y);
+        if (!Number.isFinite(checkpointX) || !Number.isFinite(checkpointY)) return;
 
-    this.playerSpawn = {
-        x: checkpointX,
-        y: checkpointY
-    };
-}
+        this.playerSpawn = {
+            x: checkpointX,
+            y: checkpointY
+        };
+    }
 
-_applyStoredRespawnWeapon() {
-    const storedWeapon = this.registry?.get('duckRespawnWeapon');
-    if (typeof storedWeapon !== 'string') return;
+    _applyStoredRespawnWeapon() {
+        const storedWeapon = this.registry?.get('duckRespawnWeapon');
+        if (typeof storedWeapon !== 'string') return;
 
-    const normalizedWeapon = storedWeapon.trim().toLowerCase();
-    if (!normalizedWeapon) return;
+        const normalizedWeapon = storedWeapon.trim().toLowerCase();
+        if (!normalizedWeapon) return;
 
-    const allowedWeapons = new Set(['arco', 'mcuaktro', 'cuchillo', 'mazo', 'ramita', 'escoba']);
-    if (!allowedWeapons.has(normalizedWeapon)) return;
+        const allowedWeapons = new Set(['arco', 'mcuaktro', 'cuchillo', 'mazo', 'ramita', 'escoba']);
+        if (!allowedWeapons.has(normalizedWeapon)) return;
 
-    this.playerWeapon = normalizedWeapon;
-}
+        this.playerWeapon = normalizedWeapon;
+    }
 
-_setCheckpointFromPuddle(puddle) {
-    const spawnPoint = puddle?.getSpawnPoint?.();
-    if (!spawnPoint) return;
+    _setCheckpointFromPuddle(puddle) {
+        const spawnPoint = puddle?.getSpawnPoint?.();
+        if (!spawnPoint) return;
 
-    const spawnX = Number(spawnPoint.x);
-    const spawnY = Number(spawnPoint.y);
-    if (!Number.isFinite(spawnX) || !Number.isFinite(spawnY)) return;
+        const spawnX = Number(spawnPoint.x);
+        const spawnY = Number(spawnPoint.y);
+        if (!Number.isFinite(spawnX) || !Number.isFinite(spawnY)) return;
 
-    this.playerSpawn = {
-        x: spawnX,
-        y: spawnY
-    };
+        this.playerSpawn = {
+            x: spawnX,
+            y: spawnY
+        };
 
-    this.registry?.set('duckCheckpointSpawn', {
-        x: spawnX,
-        y: spawnY,
-        puddleName: puddle?.name || ''
-    });
-
-    if (this.duck?.setCheckpoint) {
-        this.duck.setCheckpoint({
+        this.registry?.set('duckCheckpointSpawn', {
             x: spawnX,
             y: spawnY,
             puddleName: puddle?.name || ''
         });
-    }
-}
 
-_getCurrentDuckWeaponKey() {
-    return this.duck?.weapon?.texture?.key ?? null;
-}
-
-_resolveRespawnWeaponKey() {
-    const weapon = this.duck?.weapon;
-    if (!weapon) return 'ramita';
-
-    const byConstructorName = {
-        arco: 'arco',
-        mcuaktro: 'mcuaktro',
-        cuchillo: 'cuchillo',
-        mazo: 'mazo',
-        ramita: 'ramita',
-        escoba: 'escoba'
-    };
-
-    const constructorName = String(weapon.constructor?.name || '').trim().toLowerCase();
-    if (byConstructorName[constructorName]) {
-        return byConstructorName[constructorName];
-    }
-
-    const textureKey = String(weapon.texture?.key || '').trim().toLowerCase();
-    if (textureKey.includes('arco')) return 'arco';
-    if (textureKey.includes('mcuaktro')) return 'mcuaktro';
-    if (textureKey.includes('cuchillo')) return 'cuchillo';
-    if (textureKey.includes('mazo')) return 'mazo';
-    if (textureKey.includes('escoba')) return 'escoba';
-    if (textureKey.includes('ramita')) return 'ramita';
-
-    return 'ramita';
-}
-
-_isHoldingNonBranchWeapon() {
-    const weaponKey = this._getCurrentDuckWeaponKey();
-    return !!weaponKey && weaponKey !== 'ramita';
-}
-
-_updateCrowSpawnTimer(time) {
-    if (!this.crowSpawner || !this.duck || !this.duck.active) return;
-
-    const currentWeaponKey = this._getCurrentDuckWeaponKey();
-    const isHoldingNonBranchWeapon = !!currentWeaponKey && currentWeaponKey !== 'ramita';
-
-    if (currentWeaponKey !== this.crowSpawner.lastWeaponKey) {
-        this.crowSpawner.lastWeaponKey = currentWeaponKey;
-        this.crowSpawner.spawnedForCurrentWeapon = false;
-        this.crowSpawner.holdStartTime = isHoldingNonBranchWeapon ? time : null;
-        return;
-    }
-
-    if (!isHoldingNonBranchWeapon) {
-        this.crowSpawner.holdStartTime = null;
-        this.crowSpawner.spawnedForCurrentWeapon = false;
-        return;
-    }
-
-    if (this.crowSpawner.spawnedForCurrentWeapon) {
-        return;
-    }
-
-    if (this.crowSpawner.holdStartTime === null) {
-        this.crowSpawner.holdStartTime = time;
-        return;
-    }
-
-    const holdElapsed = time - this.crowSpawner.holdStartTime;
-    if (holdElapsed >= this.crowSpawner.holdDurationMs) {
-        this._spawnCrowOutsidePlayerVision(time);
-        this.crowSpawner.spawnedForCurrentWeapon = true;
-    }
-}
-
-_spawnCrowOutsidePlayerVision(time) {
-    const spawnPoint = this._getRandomPointOutsideCameraView();
-    if (!spawnPoint) return;
-
-    const enemyName = `Cuervo_${Math.floor(time)}`;
-    const enemy = new Cuervo(this, enemyName, spawnPoint.x, spawnPoint.y, 'cuervo_idle', null, null, null);
-    this.enemies.add(enemy);
-    this._wireEnemyCollisions(enemy);
-}
-
-_getRandomPointOutsideCameraView() {
-    const cameraView = this.cameras?.main?.worldView;
-    if (!cameraView) return null;
-
-    const worldBounds = this.physics?.world?.bounds;
-    if (!worldBounds) return null;
-
-    const margin = 120;
-
-    for (let i = 0; i < 8; i++) {
-        const edge = Phaser.Math.Between(0, 3);
-        let x = this.duck?.x ?? cameraView.centerX;
-        let y = this.duck?.y ?? cameraView.centerY;
-
-        if (edge === 0) {
-            x = cameraView.left - margin;
-            y = Phaser.Math.Between(Math.floor(cameraView.top), Math.floor(cameraView.bottom));
-        } else if (edge === 1) {
-            x = cameraView.right + margin;
-            y = Phaser.Math.Between(Math.floor(cameraView.top), Math.floor(cameraView.bottom));
-        } else if (edge === 2) {
-            x = Phaser.Math.Between(Math.floor(cameraView.left), Math.floor(cameraView.right));
-            y = cameraView.top - margin;
-        } else {
-            x = Phaser.Math.Between(Math.floor(cameraView.left), Math.floor(cameraView.right));
-            y = cameraView.bottom + margin;
-        }
-
-        x = Phaser.Math.Clamp(x, worldBounds.left + 32, worldBounds.right - 32);
-        y = Phaser.Math.Clamp(y, worldBounds.top + 32, worldBounds.bottom - 32);
-
-        if (!cameraView.contains(x, y)) {
-            return { x, y };
-        }
-    }
-
-    return null;
-}
-
-_wireEnemyCollisions(enemy) {
-    if (!enemy) return;
-
-    this.physics.add.collider(
-        this.duck,
-        enemy,
-        null,
-        (duck) => duck?.state !== DUCK_STATE.DASHING,
-        this
-    );
-
-    if (!enemy.ignoresObstacleHitbox) {
-        this.physics.add.collider(enemy, this.colisionLayer);
-        this.physics.add.collider(enemy, this.puertaCerradaLayer);
-        this.physics.add.collider(enemy, this.vallaLayer);
-        this.physics.add.collider(enemy, this.zonasAcuaticasLayer);
-    }
-
-    this.physics.add.overlap(this.projectiles, enemy, (projectile, en) => {
-        if (this.isPlayerDead) return;
-        this._onProjectileHitEnemy(projectile, en);
-    });
-
-    this.physics.add.overlap(this.duck, enemy, (duck, en) => {
-        if (this.isPlayerDead) return;
-        this._onEnemyHitDuck(duck, en);
-    });
-}
-
-showDeathScreen() {
-    if (!this.deathOverlay || this.deathOverlay.visible) return;
-
-    this.deathOverlay.setVisible(true);
-    this.deathOverlay.setAlpha(0);
-
-    this.tweens.add({
-        targets: this.deathOverlay,
-        alpha: 1,
-        duration: 400,
-        ease: 'Power2'
-    });
-}
-
-handlePlayerDeath() {
-    if (this.isPlayerDead) return;
-
-    this.isPlayerDead = true;
-
-    const respawnWeaponKey = this._resolveRespawnWeaponKey();
-    this.registry?.set('duckRespawnWeapon', respawnWeaponKey);
-
-    if (this.duck?.body) {
-        this.duck.body.setVelocity(0, 0);
-        this.duck.body.enable = false;
-    }
-
-    if (this.duck?.weapon?.releaseAttack) {
-        this.duck.weapon.releaseAttack();
-    }
-
-    // Detener todos los enemigos
-    /*
-    this.enemies.forEach(enemy => {
-        if (enemy?.body) {
-            enemy.body.setVelocity(0, 0);
-            enemy.body.enable = false;
-        }
-    });
-    */
-
-    this.showDeathScreen();
-    this.deathSound?.play();
-
-    this.time.delayedCall(2500, () => {
-        this.scene.restart();
-    });
-}
-
-_cleanupScene() {
-    this.input.removeAllListeners();
-
-    if (this._onResize) {
-        this.scale.off('resize', this._onResize, this);
-        this._onResize = null;
-    }
-
-    if (Array.isArray(this.puddles)) {
-        this.puddles.forEach(puddle => puddle?.destroy?.());
-        this.puddles = [];
-    }
-    this.currentPuddle = null;
-    this.previousCheckpointBeforePuddle = null;
-
-    if (this.puddleUpgradePanel) {
-        this.puddleUpgradePanel.destroy();
-        this.puddleUpgradePanel = null;
-    }
-
-    if (this.deathOverlay) {
-        this.deathOverlay.destroy();
-        this.deathOverlay = null;
-    }
-
-    if (this.positionText) {
-        this.positionText.destroy();
-        this.positionText = null;
-    }
-
-    if (this.controlsText) {
-        this.controlsText.destroy();
-        this.controlsText = null;
-    }
-
-    if (this.consumableBar) {
-        this.consumableBar.destroy();
-        this.consumableBar = null;
-    }
-}
-
-/**
- * Maneja la colisión entre un proyectil y un enemigo
- * @param {Projectile} projectile - El proyectil que colisionó
- * @param {Enemy} enemy - El enemigo que fue golpeado
- */
-_onProjectileHitEnemy(projectile, enemy) {
-    if (this.isPlayerDead) return;
-    if (!projectile || !enemy) return;
-    if (!projectile.active || !enemy.active) return;
-    if (enemy.isDead && enemy.isDead()) return;
-
-    if (projectile.team && enemy.team && projectile.team === enemy.team) {
-        return; // No se golpea equipo propio
-    }
-
-    if (projectile.hitEnemies) {
-        if (projectile.hitEnemies.has(enemy)) return;
-        projectile.hitEnemies.add(enemy);
-    }
-
-    const damage = projectile.damage ?? 1;
-    enemy.takeDamage(damage);
-    projectile.owner?.weapon?.onHitTarget?.(enemy);
-
-    if (!projectile.piercing) {
-        projectile.destroy();
-    }
-
-    console.log(`¡Proyectil impactó! Daño: ${damage}, HP enemigo: ${enemy.getHP()}`);
-}
-
-_onEnemyHitDuck(duck, enemy) {
-    if (this.isPlayerDead) return;
-    if (!duck || !enemy) return;
-    if (!duck.active || !enemy.active) return;
-    if (enemy.isDead && enemy.isDead()) return;
-    if (duck.state === DUCK_STATE.DASHING) return;
-    if (duck.isInvulnerable) return;
-
-    return;
-}
-
-_onProjectileHitDuck(projectile, duck) {
-    if (this.isPlayerDead) return;
-    if (!projectile || !duck) return;
-    if (!projectile.active || !duck.active) return;
-    if (duck.state === DUCK_STATE.DASHING) return;
-    if (projectile.team && duck.team && projectile.team === duck.team) {
-        return; // No se golpea equipo propio
-    }
-    if (duck.isInvulnerable) return;
-
-    const damage = 50; // Una pluma completa por impacto
-    duck.takeDamage(damage);
-    projectile.owner?.weapon?.onHitTarget?.(duck);
-
-    if (!projectile.piercing) {
-        projectile.destroy();
-    }
-
-    console.log(`¡El pato recibió daño! Daño: ${damage}, Vida restante: ${duck.health}, Plumas restantes: ${duck.feathers}`);
-}
-
-/**
- * Crea enemigos basándose en los polígonos de la capa "routes" en Tiled
- * 
- * Cada polígono DEBE tener las siguientes propiedades personalizadas en Tiled:
- * - enemyType (string): "mapache" o "zorro"
- * - weaponType (string): "cuchillo", "arco", "mazo", "ramita", "escoba", "mcuaktro"
-* - routeFacing (string|array, opcional): direcciones por punto de ruta.
-*   Ejemplo string: "derecha,abajo,izquierda,arriba"
- * 
- * @param {number} scale - Escala del mapa
- */
-setupEnemiesFromRoutes(scale) {
-    const routesLayer = this.map.getObjectLayer('routes');
-
-    if (!routesLayer || !routesLayer.objects) {
-        console.warn(' No se encontró la capa "routes" en el mapa');
-        return;
-    }
-
-    console.log(` Capa routes encontrada con ${routesLayer.objects.length} objeto(s)`);
-
-    let enemyCount = 0;
-
-    routesLayer.objects.forEach((obj, index) => {
-        console.log(`\n Procesando objeto ${index}:`, obj);
-
-        // Extraer propiedades - soporta varios formatos de Tiled
-        let enemyType = 'mapache';
-        let weaponType = 'cuchillo';
-        let ellipseSegments = 16;
-        let routeFacing = null;
-
-        console.log(` Propiedades del objeto:`, obj.properties);
-
-        // Formato 1: propiedades como array de objetos {name, value}
-        if (obj.properties && Array.isArray(obj.properties)) {
-            console.log(`  Format: Array de propiedades`);
-            obj.properties.forEach(prop => {
-                console.log(`    - ${prop.name}: ${prop.value}`);
-                if (prop.name === 'enemyType' && prop.value) enemyType = String(prop.value).toLowerCase();
-                if (prop.name === 'weaponType' && prop.value) weaponType = String(prop.value).toLowerCase();
-                if ((prop.name === 'routeSegments' || prop.name === 'segments') && Number.isFinite(Number(prop.value))) {
-                    ellipseSegments = Number(prop.value);
-                }
-                if ((prop.name === 'routeFacing' || prop.name === 'routeFacings') && prop.value != null) {
-                    routeFacing = prop.value;
-                }
+        if (this.duck?.setCheckpoint) {
+            this.duck.setCheckpoint({
+                x: spawnX,
+                y: spawnY,
+                puddleName: puddle?.name || ''
             });
         }
-        // Formato 2: propiedades como objeto directo
-        else if (obj.properties && typeof obj.properties === 'object') {
-            console.log(`  Format: Objeto directo`);
-            if (obj.properties.enemyType) enemyType = String(obj.properties.enemyType).toLowerCase();
-            if (obj.properties.weaponType) weaponType = String(obj.properties.weaponType).toLowerCase();
-            if (Number.isFinite(Number(obj.properties.routeSegments))) {
-                ellipseSegments = Number(obj.properties.routeSegments);
-            } else if (Number.isFinite(Number(obj.properties.segments))) {
-                ellipseSegments = Number(obj.properties.segments);
-            }
-            if (obj.properties.routeFacing != null || obj.properties.routeFacings != null) {
-                routeFacing = obj.properties.routeFacing ?? obj.properties.routeFacings;
-            }
-        } else {
-            console.warn(`   Sin propiedades detectadas`);
+    }
+
+    _getCurrentDuckWeaponKey() {
+        return this.duck?.weapon?.texture?.key ?? null;
+    }
+
+    _resolveRespawnWeaponKey() {
+        const weapon = this.duck?.weapon;
+        if (!weapon) return 'ramita';
+
+        const byConstructorName = {
+            arco: 'arco',
+            mcuaktro: 'mcuaktro',
+            cuchillo: 'cuchillo',
+            mazo: 'mazo',
+            ramita: 'ramita',
+            escoba: 'escoba'
+        };
+
+        const constructorName = String(weapon.constructor?.name || '').trim().toLowerCase();
+        if (byConstructorName[constructorName]) {
+            return byConstructorName[constructorName];
         }
 
-        console.log(`  → enemyType: ${enemyType}, weaponType: ${weaponType}, routeFacing: ${routeFacing != null ? 'definido' : 'no definido'}`);
+        const textureKey = String(weapon.texture?.key || '').trim().toLowerCase();
+        if (textureKey.includes('arco')) return 'arco';
+        if (textureKey.includes('mcuaktro')) return 'mcuaktro';
+        if (textureKey.includes('cuchillo')) return 'cuchillo';
+        if (textureKey.includes('mazo')) return 'mazo';
+        if (textureKey.includes('escoba')) return 'escoba';
+        if (textureKey.includes('ramita')) return 'ramita';
 
-        // Convertir forma de Tiled a puntos de ruta en coordenadas del mundo.
-        // Soportado: polygon, polyline, ellipse y punto fijo.
-        let routePoints = [];
+        return 'ramita';
+    }
 
-        if (Array.isArray(obj.polygon) && obj.polygon.length > 0) {
-            routePoints = obj.polygon.map(point => ({
-                x: (obj.x + point.x) * scale,
-                y: (obj.y + point.y) * scale
-            }));
-            console.log(`✓ Es polígono con ${routePoints.length} punto(s)`);
-        } else if (Array.isArray(obj.polyline) && obj.polyline.length > 0) {
-            routePoints = obj.polyline.map(point => ({
-                x: (obj.x + point.x) * scale,
-                y: (obj.y + point.y) * scale
-            }));
-            console.log(`✓ Es polyline con ${routePoints.length} punto(s)`);
-        } else if (!obj.ellipse && Number(obj.width) > 1 && Number(obj.height) > 1) {
-            // Rectángulo de Tiled: se convierte a 4 esquinas para patrulla en cuadrado.
-            const x = Number(obj.x) || 0;
-            const y = Number(obj.y) || 0;
-            const width = Number(obj.width) || 0;
-            const height = Number(obj.height) || 0;
+    _isHoldingNonBranchWeapon() {
+        const weaponKey = this._getCurrentDuckWeaponKey();
+        return !!weaponKey && weaponKey !== 'ramita';
+    }
 
-            routePoints = [
-                { x: x * scale, y: y * scale },
-                { x: (x + width) * scale, y: y * scale },
-                { x: (x + width) * scale, y: (y + height) * scale },
-                { x: x * scale, y: (y + height) * scale }
-            ];
-            console.log(`✓ Es rectángulo con patrulla cuadrada (${routePoints.length} punto(s))`);
-        } else if (obj.ellipse) {
-            const width = Number(obj.width) || 0;
-            const height = Number(obj.height) || 0;
+    _updateCrowSpawnTimer(time) {
+        if (!this.crowSpawner || !this.duck || !this.duck.active) return;
 
-            if (width > 0 && height > 0) {
-                const safeSegments = Math.max(3, Math.floor(ellipseSegments));
-                const centerX = obj.x + width / 2;
-                const centerY = obj.y + height / 2;
-                const radiusX = width / 2;
-                const radiusY = height / 2;
+        const currentWeaponKey = this._getCurrentDuckWeaponKey();
+        const isHoldingNonBranchWeapon = !!currentWeaponKey && currentWeaponKey !== 'ramita';
 
-                for (let i = 0; i < safeSegments; i++) {
-                    const angle = (Math.PI * 2 * i) / safeSegments;
-                    routePoints.push({
-                        x: (centerX + Math.cos(angle) * radiusX) * scale,
-                        y: (centerY + Math.sin(angle) * radiusY) * scale
-                    });
-                }
-                console.log(`✓ Es elipse/círculo con ${safeSegments} segmento(s)`);
-            } else {
-                routePoints = [{ x: obj.x * scale, y: obj.y * scale }];
-                console.warn(`⚠️ Elipse sin tamaño válido en routes ${index}; se usará punto fijo`);
-            }
-        } else {
-            routePoints = [{ x: obj.x * scale, y: obj.y * scale }];
-            console.log(`✓ Objeto puntual en routes ${index}: enemigo estático`);
-        }
-
-        if (routePoints.length === 0) {
-            console.warn(`⚠️ Objeto en routes ${index} no tiene puntos de ruta válidos, ignorando...`);
+        if (currentWeaponKey !== this.crowSpawner.lastWeaponKey) {
+            this.crowSpawner.lastWeaponKey = currentWeaponKey;
+            this.crowSpawner.spawnedForCurrentWeapon = false;
+            this.crowSpawner.holdStartTime = isHoldingNonBranchWeapon ? time : null;
             return;
         }
 
-        const startX = routePoints[0].x;
-        const startY = routePoints[0].y;
-        const enemyName = `${enemyType.charAt(0).toUpperCase() + enemyType.slice(1)}_${index}`;
-
-        // Mapeo de tipos de armas a clases
-        const weaponClassMap = {
-            'arco': Arco,
-            'mcuaktro': Mcuaktro,
-            'cuchillo': Cuchillo,
-            'mazo': Mazo,
-            'ramita': Ramita,
-            'escoba': Escoba
-        };
-
-        const WeaponClass = weaponClassMap[weaponType] || Cuchillo;
-
-        // Crear el enemigo del tipo especificado
-        let enemy;
-        let texture;
-        if (enemyType === 'zorro') {
-            texture = 'zorro_idle';
-            enemy = new Zorro(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute', undefined, routeFacing);
-        } else {
-            texture = 'mapache_idle';
-            enemy = new Mapache(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute', undefined, routeFacing);
+        if (!isHoldingNonBranchWeapon) {
+            this.crowSpawner.holdStartTime = null;
+            this.crowSpawner.spawnedForCurrentWeapon = false;
+            return;
         }
 
-        // Asignar la ruta al enemigo
-        enemy._movementData = {
-            routePoints: routePoints,
-            currentPointIndex: 0,
-            pauseTimer: 0
-        };
+        if (this.crowSpawner.spawnedForCurrentWeapon) {
+            return;
+        }
 
-        this.enemies.add(enemy);
-        enemyCount++;
+        if (this.crowSpawner.holdStartTime === null) {
+            this.crowSpawner.holdStartTime = time;
+            return;
+        }
 
-        console.log(` ${enemyName} (${enemyType} con ${weaponType}) creado en (${startX}, ${startY}) con ruta de ${routePoints.length} puntos`);
-    });
-
-    console.log(`\n Total de enemigos creados: ${enemyCount}`);
-    if (enemyCount === 0) {
-        console.warn(`\n SIN ENEMIGOS CREADOS. Revisa:\n  1. La capa se llama "routes" en Tiled? (case-sensitive)\n  2. Los objetos tienen propiedades "enemyType" y "weaponType"?\n  3. Son polígonos (polygon), no otros tipos de objeto?`);
+        const holdElapsed = time - this.crowSpawner.holdStartTime;
+        if (holdElapsed >= this.crowSpawner.holdDurationMs) {
+            this._spawnCrowOutsidePlayerVision(time);
+            this.crowSpawner.spawnedForCurrentWeapon = true;
+        }
     }
-}
 
-/*
-    CREACCIÓN DE CONSUMIBLES USANDO LA CAPA DE CONSUMABLES DE TILED
-*/
-setupConsumablesFromLayer(scale) {
-    const consumableLayer = this.map.getObjectLayer('consumables') || this.map.getObjectLayer('consummable') || this.map.getObjectLayer('consumable');
+    _spawnCrowOutsidePlayerVision(time) {
+        const spawnPoint = this._getRandomPointOutsideCameraView();
+        if (!spawnPoint) return;
 
-    if (!consumableLayer || !Array.isArray(consumableLayer.objects)) {
-        console.warn('No se encontró una capa de consumables en Tiled. Nombres válidos: consumables, consummable, consumable.');
+        const enemyName = `Cuervo_${Math.floor(time)}`;
+        const enemy = new Cuervo(this, enemyName, spawnPoint.x, spawnPoint.y, 'cuervo_idle', null, null, null);
+        this.enemies.add(enemy);
+        this._wireEnemyCollisions(enemy);
+    }
+
+    _getRandomPointOutsideCameraView() {
+        const cameraView = this.cameras?.main?.worldView;
+        if (!cameraView) return null;
+
+        const worldBounds = this.physics?.world?.bounds;
+        if (!worldBounds) return null;
+
+        const margin = 120;
+
+        for (let i = 0; i < 8; i++) {
+            const edge = Phaser.Math.Between(0, 3);
+            let x = this.duck?.x ?? cameraView.centerX;
+            let y = this.duck?.y ?? cameraView.centerY;
+
+            if (edge === 0) {
+                x = cameraView.left - margin;
+                y = Phaser.Math.Between(Math.floor(cameraView.top), Math.floor(cameraView.bottom));
+            } else if (edge === 1) {
+                x = cameraView.right + margin;
+                y = Phaser.Math.Between(Math.floor(cameraView.top), Math.floor(cameraView.bottom));
+            } else if (edge === 2) {
+                x = Phaser.Math.Between(Math.floor(cameraView.left), Math.floor(cameraView.right));
+                y = cameraView.top - margin;
+            } else {
+                x = Phaser.Math.Between(Math.floor(cameraView.left), Math.floor(cameraView.right));
+                y = cameraView.bottom + margin;
+            }
+
+            x = Phaser.Math.Clamp(x, worldBounds.left + 32, worldBounds.right - 32);
+            y = Phaser.Math.Clamp(y, worldBounds.top + 32, worldBounds.bottom - 32);
+
+            if (!cameraView.contains(x, y)) {
+                return { x, y };
+            }
+        }
+
+        return null;
+    }
+
+    _wireEnemyCollisions(enemy) {
+        if (!enemy) return;
+
+        this.physics.add.collider(
+            this.duck,
+            enemy,
+            null,
+            (duck) => duck?.state !== DUCK_STATE.DASHING,
+            this
+        );
+
+        if (!enemy.ignoresObstacleHitbox) {
+            this.physics.add.collider(enemy, this.colisionLayer);
+            this.physics.add.collider(enemy, this.puertaCerradaLayer);
+            this.physics.add.collider(enemy, this.vallaLayer);
+            this.physics.add.collider(enemy, this.zonasAcuaticasLayer);
+        }
+
+        this.physics.add.overlap(this.projectiles, enemy, (projectile, en) => {
+            if (this.isPlayerDead) return;
+            this._onProjectileHitEnemy(projectile, en);
+        });
+
+        this.physics.add.overlap(this.duck, enemy, (duck, en) => {
+            if (this.isPlayerDead) return;
+            this._onEnemyHitDuck(duck, en);
+        });
+    }
+
+    showDeathScreen() {
+        if (!this.deathOverlay || this.deathOverlay.visible) return;
+
+        this.deathOverlay.setVisible(true);
+        this.deathOverlay.setAlpha(0);
+
+        this.tweens.add({
+            targets: this.deathOverlay,
+            alpha: 1,
+            duration: 400,
+            ease: 'Power2'
+        });
+    }
+
+    handlePlayerDeath() {
+        if (this.isPlayerDead) return;
+
+        this.isPlayerDead = true;
+
+        const respawnWeaponKey = this._resolveRespawnWeaponKey();
+        this.registry?.set('duckRespawnWeapon', respawnWeaponKey);
+
+        if (this.duck?.body) {
+            this.duck.body.setVelocity(0, 0);
+            this.duck.body.enable = false;
+        }
+
+        if (this.duck?.weapon?.releaseAttack) {
+            this.duck.weapon.releaseAttack();
+        }
+
+        // Detener todos los enemigos
+        /*
+        this.enemies.forEach(enemy => {
+            if (enemy?.body) {
+                enemy.body.setVelocity(0, 0);
+                enemy.body.enable = false;
+            }
+        });
+        */
+
+        this.showDeathScreen();
+        this.deathSound?.play();
+
+        this.time.delayedCall(2500, () => {
+            this.scene.restart();
+        });
+    }
+
+    _cleanupScene() {
+        this.input.removeAllListeners();
+
+        if (this._onResize) {
+            this.scale.off('resize', this._onResize, this);
+            this._onResize = null;
+        }
+
+        if (Array.isArray(this.puddles)) {
+            this.puddles.forEach(puddle => puddle?.destroy?.());
+            this.puddles = [];
+        }
+        this.currentPuddle = null;
+        this.previousCheckpointBeforePuddle = null;
+
+        if (this.puddleUpgradePanel) {
+            this.puddleUpgradePanel.destroy();
+            this.puddleUpgradePanel = null;
+        }
+
+        if (this.deathOverlay) {
+            this.deathOverlay.destroy();
+            this.deathOverlay = null;
+        }
+
+        if (this.positionText) {
+            this.positionText.destroy();
+            this.positionText = null;
+        }
+
+        if (this.controlsText) {
+            this.controlsText.destroy();
+            this.controlsText = null;
+        }
+
+        if (this.consumableBar) {
+            this.consumableBar.destroy();
+            this.consumableBar = null;
+        }
+    }
+
+    /**
+     * Maneja la colisión entre un proyectil y un enemigo
+     * @param {Projectile} projectile - El proyectil que colisionó
+     * @param {Enemy} enemy - El enemigo que fue golpeado
+     */
+    _onProjectileHitEnemy(projectile, enemy) {
+        if (this.isPlayerDead) return;
+        if (!projectile || !enemy) return;
+        if (!projectile.active || !enemy.active) return;
+        if (enemy.isDead && enemy.isDead()) return;
+
+        if (projectile.team && enemy.team && projectile.team === enemy.team) {
+            return; // No se golpea equipo propio
+        }
+
+        if (projectile.hitEnemies) {
+            if (projectile.hitEnemies.has(enemy)) return;
+            projectile.hitEnemies.add(enemy);
+        }
+
+        const damage = projectile.damage ?? 1;
+        enemy.takeDamage(damage);
+        projectile.owner?.weapon?.onHitTarget?.(enemy);
+
+        if (!projectile.piercing) {
+            projectile.destroy();
+        }
+
+        console.log(`¡Proyectil impactó! Daño: ${damage}, HP enemigo: ${enemy.getHP()}`);
+    }
+
+    _onEnemyHitDuck(duck, enemy) {
+        if (this.isPlayerDead) return;
+        if (!duck || !enemy) return;
+        if (!duck.active || !enemy.active) return;
+        if (enemy.isDead && enemy.isDead()) return;
+        if (duck.state === DUCK_STATE.DASHING) return;
+        if (duck.isInvulnerable) return;
+
         return;
     }
 
-    const allConsumableTypes = ['bread', 'attack_potion', 'speed_potion', 'speed_attack_potion', 'feather', 'key'];
+    _onProjectileHitDuck(projectile, duck) {
+        if (this.isPlayerDead) return;
+        if (!projectile || !duck) return;
+        if (!projectile.active || !duck.active) return;
+        if (duck.state === DUCK_STATE.DASHING) return;
+        if (projectile.team && duck.team && projectile.team === duck.team) {
+            return; // No se golpea equipo propio
+        }
+        if (duck.isInvulnerable) return;
 
-    consumableLayer.objects.forEach((obj) => {
-        const resolvedType = this.resolveConsumableTypeFromObject(obj, allConsumableTypes);
-        const selectedType = resolvedType || Phaser.Utils.Array.GetRandom(allConsumableTypes);
+        const damage = 50; // Una pluma completa por impacto
+        duck.takeDamage(damage);
+        projectile.owner?.weapon?.onHitTarget?.(duck);
 
-        if (!selectedType) {
-            console.warn('Consumable sin tipo válido:', obj);
+        if (!projectile.piercing) {
+            projectile.destroy();
+        }
+
+        console.log(`¡El pato recibió daño! Daño: ${damage}, Vida restante: ${duck.health}, Plumas restantes: ${duck.feathers}`);
+    }
+
+    /**
+     * Crea enemigos basándose en los polígonos de la capa "routes" en Tiled
+     * 
+     * Cada polígono DEBE tener las siguientes propiedades personalizadas en Tiled:
+     * - enemyType (string): "mapache" o "zorro"
+     * - weaponType (string): "cuchillo", "arco", "mazo", "ramita", "escoba", "mcuaktro"
+    * - routeFacing (string|array, opcional): direcciones por punto de ruta.
+    *   Ejemplo string: "derecha,abajo,izquierda,arriba"
+     * 
+     * @param {number} scale - Escala del mapa
+     */
+    setupEnemiesFromRoutes(scale) {
+        const routesLayer = this.map.getObjectLayer('routes');
+
+        if (!routesLayer || !routesLayer.objects) {
+            console.warn(' No se encontró la capa "routes" en el mapa');
             return;
         }
 
-        this.createConsumable(selectedType, obj.x * scale, obj.y * scale);
-    });
-}
+        console.log(` Capa routes encontrada con ${routesLayer.objects.length} objeto(s)`);
 
-/**
- * Intenta resolver el tipo de consumible desde el objeto de Tiled.
- * Prioridad: obj.name -> property.name.
- * Si no coincide con un tipo válido, el caller debe usar aleatorio.
- * @param {Phaser.Types.Tilemaps.TiledObject} obj
- * @param {string[]} validTypes
- * @returns {string|null}
- */
-resolveConsumableTypeFromObject(obj, validTypes) {
-    const normalize = (value) => {
-        const normalized = String(value || '')
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g, '_')
-            .replace(/-/g, '_');
+        let enemyCount = 0;
 
-        switch (normalized) {
-            case 'dropfeather':
-            case 'drop_feather':
-                return 'feather';
-            case 'bread_item':
-            case 'dropbread':
-            case 'drop_bread':
-                return 'bread';
-            case 'attackpotion':
-                return 'attack_potion';
-            case 'speedpotion':
-                return 'speed_potion';
-            case 'speed_attackpotion':
-            case 'speedattackpotion':
-                return 'speed_attack_potion';
-            case 'key':
-            case 'key_item':
-            case 'llave':
-                return 'key';
-            default:
-                return normalized;
+        routesLayer.objects.forEach((obj, index) => {
+            console.log(`\n Procesando objeto ${index}:`, obj);
+
+            // Extraer propiedades - soporta varios formatos de Tiled
+            let enemyType = 'mapache';
+            let weaponType = 'cuchillo';
+            let ellipseSegments = 16;
+            let routeFacing = null;
+
+            console.log(` Propiedades del objeto:`, obj.properties);
+
+            // Formato 1: propiedades como array de objetos {name, value}
+            if (obj.properties && Array.isArray(obj.properties)) {
+                console.log(`  Format: Array de propiedades`);
+                obj.properties.forEach(prop => {
+                    console.log(`    - ${prop.name}: ${prop.value}`);
+                    if (prop.name === 'enemyType' && prop.value) enemyType = String(prop.value).toLowerCase();
+                    if (prop.name === 'weaponType' && prop.value) weaponType = String(prop.value).toLowerCase();
+                    if ((prop.name === 'routeSegments' || prop.name === 'segments') && Number.isFinite(Number(prop.value))) {
+                        ellipseSegments = Number(prop.value);
+                    }
+                    if ((prop.name === 'routeFacing' || prop.name === 'routeFacings') && prop.value != null) {
+                        routeFacing = prop.value;
+                    }
+                });
+            }
+            // Formato 2: propiedades como objeto directo
+            else if (obj.properties && typeof obj.properties === 'object') {
+                console.log(`  Format: Objeto directo`);
+                if (obj.properties.enemyType) enemyType = String(obj.properties.enemyType).toLowerCase();
+                if (obj.properties.weaponType) weaponType = String(obj.properties.weaponType).toLowerCase();
+                if (Number.isFinite(Number(obj.properties.routeSegments))) {
+                    ellipseSegments = Number(obj.properties.routeSegments);
+                } else if (Number.isFinite(Number(obj.properties.segments))) {
+                    ellipseSegments = Number(obj.properties.segments);
+                }
+                if (obj.properties.routeFacing != null || obj.properties.routeFacings != null) {
+                    routeFacing = obj.properties.routeFacing ?? obj.properties.routeFacings;
+                }
+            } else {
+                console.warn(`   Sin propiedades detectadas`);
+            }
+
+            console.log(`  → enemyType: ${enemyType}, weaponType: ${weaponType}, routeFacing: ${routeFacing != null ? 'definido' : 'no definido'}`);
+
+            // Convertir forma de Tiled a puntos de ruta en coordenadas del mundo.
+            // Soportado: polygon, polyline, ellipse y punto fijo.
+            let routePoints = [];
+
+            if (Array.isArray(obj.polygon) && obj.polygon.length > 0) {
+                routePoints = obj.polygon.map(point => ({
+                    x: (obj.x + point.x) * scale,
+                    y: (obj.y + point.y) * scale
+                }));
+                console.log(`✓ Es polígono con ${routePoints.length} punto(s)`);
+            } else if (Array.isArray(obj.polyline) && obj.polyline.length > 0) {
+                routePoints = obj.polyline.map(point => ({
+                    x: (obj.x + point.x) * scale,
+                    y: (obj.y + point.y) * scale
+                }));
+                console.log(`✓ Es polyline con ${routePoints.length} punto(s)`);
+            } else if (!obj.ellipse && Number(obj.width) > 1 && Number(obj.height) > 1) {
+                // Rectángulo de Tiled: se convierte a 4 esquinas para patrulla en cuadrado.
+                const x = Number(obj.x) || 0;
+                const y = Number(obj.y) || 0;
+                const width = Number(obj.width) || 0;
+                const height = Number(obj.height) || 0;
+
+                routePoints = [
+                    { x: x * scale, y: y * scale },
+                    { x: (x + width) * scale, y: y * scale },
+                    { x: (x + width) * scale, y: (y + height) * scale },
+                    { x: x * scale, y: (y + height) * scale }
+                ];
+                console.log(`✓ Es rectángulo con patrulla cuadrada (${routePoints.length} punto(s))`);
+            } else if (obj.ellipse) {
+                const width = Number(obj.width) || 0;
+                const height = Number(obj.height) || 0;
+
+                if (width > 0 && height > 0) {
+                    const safeSegments = Math.max(3, Math.floor(ellipseSegments));
+                    const centerX = obj.x + width / 2;
+                    const centerY = obj.y + height / 2;
+                    const radiusX = width / 2;
+                    const radiusY = height / 2;
+
+                    for (let i = 0; i < safeSegments; i++) {
+                        const angle = (Math.PI * 2 * i) / safeSegments;
+                        routePoints.push({
+                            x: (centerX + Math.cos(angle) * radiusX) * scale,
+                            y: (centerY + Math.sin(angle) * radiusY) * scale
+                        });
+                    }
+                    console.log(`✓ Es elipse/círculo con ${safeSegments} segmento(s)`);
+                } else {
+                    routePoints = [{ x: obj.x * scale, y: obj.y * scale }];
+                    console.warn(`⚠️ Elipse sin tamaño válido en routes ${index}; se usará punto fijo`);
+                }
+            } else {
+                routePoints = [{ x: obj.x * scale, y: obj.y * scale }];
+                console.log(`✓ Objeto puntual en routes ${index}: enemigo estático`);
+            }
+
+            if (routePoints.length === 0) {
+                console.warn(`⚠️ Objeto en routes ${index} no tiene puntos de ruta válidos, ignorando...`);
+                return;
+            }
+
+            const startX = routePoints[0].x;
+            const startY = routePoints[0].y;
+            const enemyName = `${enemyType.charAt(0).toUpperCase() + enemyType.slice(1)}_${index}`;
+
+            // Mapeo de tipos de armas a clases
+            const weaponClassMap = {
+                'arco': Arco,
+                'mcuaktro': Mcuaktro,
+                'cuchillo': Cuchillo,
+                'mazo': Mazo,
+                'ramita': Ramita,
+                'escoba': Escoba
+            };
+
+            const WeaponClass = weaponClassMap[weaponType] || Cuchillo;
+
+            // Crear el enemigo del tipo especificado
+            let enemy;
+            let texture;
+            if (enemyType === 'zorro') {
+                texture = 'zorro_idle';
+                enemy = new Zorro(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute', undefined, routeFacing);
+            } else {
+                texture = 'mapache_idle';
+                enemy = new Mapache(this, enemyName, startX, startY, texture, null, WeaponClass, 'followRoute', undefined, routeFacing);
+            }
+
+            // Asignar la ruta al enemigo
+            enemy._movementData = {
+                routePoints: routePoints,
+                currentPointIndex: 0,
+                pauseTimer: 0
+            };
+
+            this.enemies.add(enemy);
+            enemyCount++;
+
+            console.log(` ${enemyName} (${enemyType} con ${weaponType}) creado en (${startX}, ${startY}) con ruta de ${routePoints.length} puntos`);
+        });
+
+        console.log(`\n Total de enemigos creados: ${enemyCount}`);
+        if (enemyCount === 0) {
+            console.warn(`\n SIN ENEMIGOS CREADOS. Revisa:\n  1. La capa se llama "routes" en Tiled? (case-sensitive)\n  2. Los objetos tienen propiedades "enemyType" y "weaponType"?\n  3. Son polígonos (polygon), no otros tipos de objeto?`);
         }
-    };
-
-    const objectName = normalize(obj?.name);
-    if (objectName && objectName !== 'consumable' && objectName !== 'consummable' && validTypes.includes(objectName)) {
-        return objectName;
     }
 
-    const propertyName = Array.isArray(obj?.properties)
-        ? normalize(obj.properties.find(p => String(p.name || '').toLowerCase() === 'name')?.value)
-        : '';
+    /*
+        CREACCIÓN DE CONSUMIBLES USANDO LA CAPA DE CONSUMABLES DE TILED
+    */
+    setupConsumablesFromLayer(scale) {
+        const consumableLayer = this.map.getObjectLayer('consumables') || this.map.getObjectLayer('consummable') || this.map.getObjectLayer('consumable');
 
-    if (propertyName && propertyName !== 'consumable' && propertyName !== 'consummable' && validTypes.includes(propertyName)) {
-        return propertyName;
+        if (!consumableLayer || !Array.isArray(consumableLayer.objects)) {
+            console.warn('No se encontró una capa de consumables en Tiled. Nombres válidos: consumables, consummable, consumable.');
+            return;
+        }
+
+        const allConsumableTypes = ['bread', 'attack_potion', 'speed_potion', 'speed_attack_potion', 'feather', 'key'];
+
+        consumableLayer.objects.forEach((obj) => {
+            const resolvedType = this.resolveConsumableTypeFromObject(obj, allConsumableTypes);
+            const selectedType = resolvedType || Phaser.Utils.Array.GetRandom(allConsumableTypes);
+
+            if (!selectedType) {
+                console.warn('Consumable sin tipo válido:', obj);
+                return;
+            }
+
+            this.createConsumable(selectedType, obj.x * scale, obj.y * scale);
+        });
     }
 
-    return null;
-}
+    /**
+     * Intenta resolver el tipo de consumible desde el objeto de Tiled.
+     * Prioridad: obj.name -> property.name.
+     * Si no coincide con un tipo válido, el caller debe usar aleatorio.
+     * @param {Phaser.Types.Tilemaps.TiledObject} obj
+     * @param {string[]} validTypes
+     * @returns {string|null}
+     */
+    resolveConsumableTypeFromObject(obj, validTypes) {
+        const normalize = (value) => {
+            const normalized = String(value || '')
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, '_')
+                .replace(/-/g, '_');
 
-/**
- * Crea un consumible basado en el tipo especificado
- * @param {string} type - Tipo del consumible ('bread', 'attack_potion', 'speed_potion', etc.)
- * @param {number} x - Posición X
- * @param {number} y - Posición Y
- */
-createConsumable(type, x, y) {
-    switch (type) {
-        case 'bread':
-            new Bread(this, x, y);
-            break;
-        case 'attack_potion':
-            new AttackPotion(this, x, y);
-            break;
-        case 'speed_potion':
-            new SpeedPotion(this, x, y);
-            break;
-        case 'speed_attack_potion':
-            new SpeedAttackPotion(this, x, y);
-            break;
-        case 'feather':
-            new DropFeather(this, x, y);
-            break;
-        case 'key':
-            new Key(this, x, y);
-            break;
-        default:
-            console.warn(`Tipo de consumible desconocido: ${type}`);
-    }
-}
+            switch (normalized) {
+                case 'dropfeather':
+                case 'drop_feather':
+                    return 'feather';
+                case 'bread_item':
+                case 'dropbread':
+                case 'drop_bread':
+                    return 'bread';
+                case 'attackpotion':
+                    return 'attack_potion';
+                case 'speedpotion':
+                    return 'speed_potion';
+                case 'speed_attackpotion':
+                case 'speedattackpotion':
+                    return 'speed_attack_potion';
+                case 'key':
+                case 'key_item':
+                case 'llave':
+                    return 'key';
+                default:
+                    return normalized;
+            }
+        };
 
-// ─────────────────────────────────────────
-// SISTEMA MONETARIO DE PAN
-// ─────────────────────────────────────────
+        const objectName = normalize(obj?.name);
+        if (objectName && objectName !== 'consumable' && objectName !== 'consummable' && validTypes.includes(objectName)) {
+            return objectName;
+        }
 
-/**
- * Incrementa el contador de pan (moneda del juego) y actualiza la UI.
- * Llamado por Bread.interact() y DropBread.interact() al recoger un pan.
- * @param {number} amount - Cantidad de panes a añadir
- */
-addBread(amount) {
-    this.breadCount += amount;
+        const propertyName = Array.isArray(obj?.properties)
+            ? normalize(obj.properties.find(p => String(p.name || '').toLowerCase() === 'name')?.value)
+            : '';
 
-    if (this.consumableBar) {
-        this.consumableBar.update();
-        this.consumableBar.pulseBread?.();
-    }
-}
+        if (propertyName && propertyName !== 'consumable' && propertyName !== 'consummable' && validTypes.includes(propertyName)) {
+            return propertyName;
+        }
 
-tryOpenNearbyClosedDoor(player, consumeKey = true) {
-    if (!player || !this.puertaCerradaLayer) {
-        return false;
-    }
-
-    const SCALE = 4;
-    const TILE_SIZE = 16;
-    const range = 80;
-
-    const playerTileX = Math.floor(player.x / SCALE / TILE_SIZE);
-    const playerTileY = Math.floor(player.y / SCALE / TILE_SIZE);
-    const rangeTiles = Math.ceil(range / SCALE / TILE_SIZE);
-
-    const doorTiles = this.puertaCerradaLayer.getTilesWithin(
-        playerTileX - rangeTiles,
-        playerTileY - rangeTiles,
-        rangeTiles * 2,
-        rangeTiles * 2
-    ).filter(tile => tile && tile.index !== -1);
-
-    if (doorTiles.length === 0) {
-        return false;
+        return null;
     }
 
-    if (consumeKey) {
-        const keyIndex = (player.consumables || []).findIndex(item => item?.type === 'key');
-        if (keyIndex === -1) {
+    /**
+     * Crea un consumible basado en el tipo especificado
+     * @param {string} type - Tipo del consumible ('bread', 'attack_potion', 'speed_potion', etc.)
+     * @param {number} x - Posición X
+     * @param {number} y - Posición Y
+     */
+    createConsumable(type, x, y) {
+        switch (type) {
+            case 'bread':
+                new Bread(this, x, y);
+                break;
+            case 'attack_potion':
+                new AttackPotion(this, x, y);
+                break;
+            case 'speed_potion':
+                new SpeedPotion(this, x, y);
+                break;
+            case 'speed_attack_potion':
+                new SpeedAttackPotion(this, x, y);
+                break;
+            case 'feather':
+                new DropFeather(this, x, y);
+                break;
+            case 'key':
+                new Key(this, x, y);
+                break;
+            default:
+                console.warn(`Tipo de consumible desconocido: ${type}`);
+        }
+    }
+
+    // ─────────────────────────────────────────
+    // SISTEMA MONETARIO DE PAN
+    // ─────────────────────────────────────────
+
+    /**
+     * Incrementa el contador de pan (moneda del juego) y actualiza la UI.
+     * Llamado por Bread.interact() y DropBread.interact() al recoger un pan.
+     * @param {number} amount - Cantidad de panes a añadir
+     */
+    addBread(amount) {
+        this.breadCount += amount;
+
+        if (this.consumableBar) {
+            this.consumableBar.update();
+            this.consumableBar.pulseBread?.();
+        }
+    }
+
+    tryOpenNearbyClosedDoor(player, consumeKey = true) {
+        if (!player || !this.puertaCerradaLayer) {
             return false;
         }
 
-        player.consumables.splice(keyIndex, 1);
-    }
+        const SCALE = 4;
+        const TILE_SIZE = 16;
+        const range = 80;
 
-    const allDoorTiles = this.puertaCerradaLayer.getTilesWithin(
-        0,
-        0,
-        this.puertaCerradaLayer.layer.width,
-        this.puertaCerradaLayer.layer.height
-    ).filter(tile => tile && tile.index !== -1);
+        const playerTileX = Math.floor(player.x / SCALE / TILE_SIZE);
+        const playerTileY = Math.floor(player.y / SCALE / TILE_SIZE);
+        const rangeTiles = Math.ceil(range / SCALE / TILE_SIZE);
 
-    allDoorTiles.forEach(tile => {
-        this.puertaCerradaLayer.removeTileAt(tile.x, tile.y);
-    });
+        const doorTiles = this.puertaCerradaLayer.getTilesWithin(
+            playerTileX - rangeTiles,
+            playerTileY - rangeTiles,
+            rangeTiles * 2,
+            rangeTiles * 2
+        ).filter(tile => tile && tile.index !== -1);
 
-    this.consumableBar?.update?.();
-    console.log('Puerta cerrada abierta con llave');
-    return true;
-}
-
-/**
- * Actualiza el texto del contador de pan en el HUD.
- */
-updateBreadUI() {
-    if (this.consumableBar) {
-        this.consumableBar.update();
-    }
-}
-
-// ─────────────────────────────────────────
-// TIENDA DESDE TILED
-// ─────────────────────────────────────────
-
-/**
- * Lee la capa 'Store' del mapa, extrae las posiciones de sus objetos
- * y los pasa a la clase Store para que genere una poción aleatoria en cada uno.
- *
- * Cada objeto de la capa representa un slot de tienda independiente.
- * Las posiciones se escalan igual que el resto del mapa (× SCALE).
- *
- * @param {number} scale - Escala del mapa
- */
-setupStoreFromLayer(scale) {
-    const storeLayer = this.map.getObjectLayer('store');
-
-    if (!storeLayer || !Array.isArray(storeLayer.objects) || storeLayer.objects.length === 0) {
-        console.warn('[MainScene] No se encontró la capa "Store" en el mapa o está vacía.');
-        return;
-    }
-
-    console.log(`[MainScene] Capa Store encontrada con ${storeLayer.objects.length} objeto(s).`);
-
-    const getStoreObjectName = (obj) => {
-        const objectName = String(obj?.name || '').trim().toLowerCase();
-        if (objectName) return objectName;
-
-        const propertyName = Array.isArray(obj?.properties)
-            ? String(obj.properties.find(p => String(p.name || '').toLowerCase() === 'name')?.value || '').trim().toLowerCase()
-            : '';
-
-        return propertyName;
-    };
-
-    const rerollObjects = storeLayer.objects.filter(
-        obj => getStoreObjectName(obj) === 'reroll'
-    );
-
-    const rerollObject = rerollObjects[0] || null;
-
-    // Todo objeto que NO sea reroll se interpreta como slot normal de tienda.
-    const itemObjects = storeLayer.objects.filter(
-        obj => getStoreObjectName(obj) !== 'reroll'
-    );
-
-    // Extraer posiciones escaladas de slots normales
-    const positions = itemObjects.map(obj => ({
-        x: obj.x * scale,
-        y: obj.y * scale,
-    }));
-
-    const rerollPosition = rerollObject
-        ? {
-            x: rerollObject.x * scale,
-            y: rerollObject.y * scale,
+        if (doorTiles.length === 0) {
+            return false;
         }
-        : null;
 
-    if (rerollObjects.length > 1) {
-        console.warn(`[MainScene] Se encontraron ${rerollObjects.length} objetos "reroll" en la capa "store". Se usará el primero.`);
+        if (consumeKey) {
+            const keyIndex = (player.consumables || []).findIndex(item => item?.type === 'key');
+            if (keyIndex === -1) {
+                return false;
+            }
+
+            player.consumables.splice(keyIndex, 1);
+        }
+
+        const allDoorTiles = this.puertaCerradaLayer.getTilesWithin(
+            0,
+            0,
+            this.puertaCerradaLayer.layer.width,
+            this.puertaCerradaLayer.layer.height
+        ).filter(tile => tile && tile.index !== -1);
+
+        allDoorTiles.forEach(tile => {
+            this.puertaCerradaLayer.removeTileAt(tile.x, tile.y);
+        });
+
+        this.consumableBar?.update?.();
+        console.log('Puerta cerrada abierta con llave');
+        return true;
     }
 
-    // Instanciar la tienda sin posición central fija; los slots vienen del mapa
-    this.store = new Store(this, 0, 0, this.duck, this.consumableBar);
-
-    // Generar items en posiciones del mapa y colocar reroll solo si existe objeto 'reroll'
-    this.store.spawnAtPositions(positions, rerollPosition);
-}
-
-// ─────────────────────────────────────────
-// RANA DESDE TILED
-// ─────────────────────────────────────────
-
-/**
- * Lee la capa 'Rana' del mapa, localiza el objeto llamado 'Rana'
- * y spawnea la clase Frog en esa posición exacta.
- *
- * La posición se escala igual que el resto del mapa (× SCALE).
- *
- * @param {number} scale - Escala del mapa
- */
-setupFrogFromLayer(scale) {
-    const frogLayer = this.map.getObjectLayer('rana');
-
-    if (!frogLayer || !Array.isArray(frogLayer.objects)) {
-        console.warn('[MainScene] No se encontró la capa "Rana" en el mapa.');
-        return;
+    /**
+     * Actualiza el texto del contador de pan en el HUD.
+     */
+    updateBreadUI() {
+        if (this.consumableBar) {
+            this.consumableBar.update();
+        }
     }
 
-    const frogObject = frogLayer.objects.find(
-        obj => (obj.name || '').trim().toLowerCase() === 'rana'
-    );
+    // ─────────────────────────────────────────
+    // TIENDA DESDE TILED
+    // ─────────────────────────────────────────
 
-    if (!frogObject) {
-        console.warn('[MainScene] No se encontró un objeto llamado "Rana" dentro de la capa "Rana".');
-        return;
-    }
+    /**
+     * Lee la capa 'Store' del mapa, extrae las posiciones de sus objetos
+     * y los pasa a la clase Store para que genere una poción aleatoria en cada uno.
+     *
+     * Cada objeto de la capa representa un slot de tienda independiente.
+     * Las posiciones se escalan igual que el resto del mapa (× SCALE).
+     *
+     * @param {number} scale - Escala del mapa
+     */
+    setupStoreFromLayer(scale) {
+        const storeLayer = this.map.getObjectLayer('store');
 
-    const frogX = frogObject.x * scale;
-    const frogY = frogObject.y * scale;
-
-    // Spawnear la rana en la posición exacta del mapa
-    this.frog = new Frog(this, 'rana', frogX, frogY, 'rana_idle', null);
-
-    console.log(`[MainScene] Frog spawneada en (${frogX}, ${frogY}) desde la capa "Rana".`);
-}
-
-// ─────────────────────────────────────────
-// CHARCOS DESDE TILED
-// ─────────────────────────────────────────
-
-/**
- * Lee la capa 'charquito' del mapa y crea una instancia de Puddle por cada polígono.
- *
- * Cada objeto debe tener el campo `polygon` de Tiled. Las coordenadas se escalan igual
- * que el resto del mapa (× SCALE).
- *
- * @param {number} scale - Escala del mapa
- */
-setupPuddlesFromLayer(scale) {
-    const puddleLayer = this.map.getObjectLayer('charquito');
-
-    this.puddles = [];
-
-    if (!puddleLayer || !Array.isArray(puddleLayer.objects) || puddleLayer.objects.length === 0) {
-        console.log('[MainScene] No se encontró la capa "charquito" o está vacía.');
-        return;
-    }
-
-    puddleLayer.objects.forEach((obj, index) => {
-        if (!Array.isArray(obj.polygon) || obj.polygon.length < 3) {
+        if (!storeLayer || !Array.isArray(storeLayer.objects) || storeLayer.objects.length === 0) {
+            console.warn('[MainScene] No se encontró la capa "Store" en el mapa o está vacía.');
             return;
         }
 
-        const points = obj.polygon.map(point => ({
-            x: (obj.x + point.x) * scale,
-            y: (obj.y + point.y) * scale
-        }));
+        console.log(`[MainScene] Capa Store encontrada con ${storeLayer.objects.length} objeto(s).`);
 
-        const puddle = new Puddle(this, points, obj.name || `charco_${index + 1}`);
-        this.puddles.push(puddle);
-    });
+        const getStoreObjectName = (obj) => {
+            const objectName = String(obj?.name || '').trim().toLowerCase();
+            if (objectName) return objectName;
 
-    console.log(`[MainScene] Capa charquito encontrada con ${this.puddles.length} charco(s).`);
-}
+            const propertyName = Array.isArray(obj?.properties)
+                ? String(obj.properties.find(p => String(p.name || '').toLowerCase() === 'name')?.value || '').trim().toLowerCase()
+                : '';
 
-setupPauseInput() {
-    this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
-        if (!this.guideOverlay || !this.guideOverlay.visible || !this.guideContent) return;
+            return propertyName;
+        };
 
-        this.guideScrollY -= deltaY * 0.5;
-        this.guideScrollY = Phaser.Math.Clamp(
-            this.guideScrollY,
-            this.guideMinScrollY,
-            this.guideMaxScrollY
+        const rerollObjects = storeLayer.objects.filter(
+            obj => getStoreObjectName(obj) === 'reroll'
         );
 
-        this.guideContent.y = this.guideScrollY;
-    });
-}
+        const rerollObject = rerollObjects[0] || null;
 
+        // Todo objeto que NO sea reroll se interpreta como slot normal de tienda.
+        const itemObjects = storeLayer.objects.filter(
+            obj => getStoreObjectName(obj) !== 'reroll'
+        );
 
-createPauseMenuUI() {
-    const W = this.scale.width;
-    const H = this.scale.height;
-    const SF = 0; // scrollFactor 0 = fijo en pantalla
+        // Extraer posiciones escaladas de slots normales
+        const positions = itemObjects.map(obj => ({
+            x: obj.x * scale,
+            y: obj.y * scale,
+        }));
 
-    // Usamos un array en lugar de un Container para que setScrollFactor(0)
-    // se aplique individualmente a cada objeto y los hitboxes de input
-    // coincidan con la posición visual en pantalla.
-    this._pauseObjects = [];
+        const rerollPosition = rerollObject
+            ? {
+                x: rerollObject.x * scale,
+                y: rerollObject.y * scale,
+            }
+            : null;
 
-    const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.65)
-        .setOrigin(0, 0).setScrollFactor(SF).setDepth(20000);
-
-    const panel = this.add.rectangle(W / 2, H / 2, 430, 340, 0x1e1b18, 0.96)
-        .setStrokeStyle(4, 0xe6d3a3, 1).setScrollFactor(SF).setDepth(20001);
-
-    const title = this.add.text(W / 2, H / 2 - 110, 'PAUSA', {
-        fontFamily: 'ReturnOfTheBoss',
-        fontSize: '42px',
-        color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 6
-    }).setOrigin(0.5).setScrollFactor(SF).setDepth(20002);
-
-    const makeButton = (x, y, text, callback) => {
-        const buttonBg = this.add.rectangle(x, y, 260, 58, 0x000000, 0.45)
-            .setStrokeStyle(3, 0xffffff, 0.85)
-            .setScrollFactor(SF).setDepth(20002)
-            .setInteractive({ useHandCursor: true });
-
-        const buttonText = this.add.text(x, y, text, {
-            fontFamily: 'ReturnOfTheBoss',
-            fontSize: '28px',
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 5
-        }).setOrigin(0.5).setScrollFactor(SF).setDepth(20003)
-            .setInteractive({ useHandCursor: true });
-
-        const hoverOn = () => {
-            buttonBg.setFillStyle(0x222222, 0.75);
-            buttonBg.setScale(1.03);
-            buttonText.setScale(1.03);
-        };
-
-        const hoverOff = () => {
-            buttonBg.setFillStyle(0x000000, 0.45);
-            buttonBg.setScale(1);
-            buttonText.setScale(1);
-        };
-
-        buttonBg.on('pointerover', hoverOn);
-        buttonText.on('pointerover', hoverOn);
-        buttonBg.on('pointerout', hoverOff);
-        buttonText.on('pointerout', hoverOff);
-        buttonBg.on('pointerup', () => callback());
-        buttonText.on('pointerup', () => callback());
-
-        return [buttonBg, buttonText];
-    };
-
-    const settingsBtn = makeButton(W / 2, H / 2 - 20, 'AJUSTES', () => {
-        this.openSettingsFromPause();
-    });
-
-    const guideBtn = makeButton(W / 2, H / 2 + 55, 'GUÍA', () => {
-        this.openGuide();
-    });
-
-    const exitBtn = makeButton(W / 2, H / 2 + 130, 'SALIR', () => {
-        this.openExitConfirm();
-    });
-
-    this._pauseObjects = [bg, panel, title, ...settingsBtn, ...guideBtn, ...exitBtn];
-
-    // Usamos un objeto proxy para mantener la API .setVisible() que usa el resto del código
-    this.pauseOverlay = {
-        setVisible: (v) => this._pauseObjects.forEach(o => o.setVisible(v)),
-        get visible() { return bg.visible; }
-    };
-
-    // Ocultar por defecto
-    this._pauseObjects.forEach(o => o.setVisible(false));
-
-    this._pauseResizeHandler = (gameSize) => {
-        const w = gameSize.width;
-        const h = gameSize.height;
-
-        bg.setSize(w, h);
-        panel.setPosition(w / 2, h / 2);
-        title.setPosition(w / 2, h / 2 - 110);
-
-        settingsBtn[0].setPosition(w / 2, h / 2 - 20);
-        settingsBtn[1].setPosition(w / 2, h / 2 - 20);
-
-        guideBtn[0].setPosition(w / 2, h / 2 + 55);
-        guideBtn[1].setPosition(w / 2, h / 2 + 55);
-
-        exitBtn[0].setPosition(w / 2, h / 2 + 130);
-        exitBtn[1].setPosition(w / 2, h / 2 + 130);
-    };
-
-    this.scale.on('resize', this._pauseResizeHandler, this);
-}
-
-createGuideUI() {
-    const W = this.scale.width;
-    const H = this.scale.height;
-
-    // Igual que pauseOverlay: sin Container, setScrollFactor(0) individual
-    // para que los hitboxes de input coincidan con la posición visual en pantalla.
-    this._guideObjects = [];
-
-    const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.72)
-        .setOrigin(0, 0).setScrollFactor(0).setDepth(20010);
-
-    const parchment = this.add.rectangle(W / 2, H / 2, 760, 560, 0xd8c08a, 0.98)
-        .setStrokeStyle(5, 0x6a4b1f, 1).setScrollFactor(0).setDepth(20011);
-
-    const title = this.add.text(W / 2, 72, 'GUÍA', {
-        fontFamily: 'ReturnOfTheBoss',
-        fontSize: '38px',
-        color: '#3a2412',
-        stroke: '#f5e6c8',
-        strokeThickness: 2
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
-
-    const closeButton = this.add.rectangle(W - 90, 60, 120, 46, 0x000000, 0.4)
-        .setStrokeStyle(3, 0xffffff, 0.8)
-        .setScrollFactor(0).setDepth(20012)
-        .setInteractive({ useHandCursor: true });
-
-    const closeText = this.add.text(W - 90, 60, 'ATRÁS', {
-        fontFamily: 'ReturnOfTheBoss',
-        fontSize: '22px',
-        color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 4
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(20013)
-        .setInteractive({ useHandCursor: true });
-
-    const viewportX = W / 2 - 320;
-    const viewportY = H / 2 - 220;
-    const viewportWidth = 640;
-    const viewportHeight = 440;
-
-    const maskShape = this.make.graphics({});
-    maskShape.fillStyle(0xffffff, 1);
-    maskShape.fillRect(viewportX, viewportY, viewportWidth, viewportHeight);
-
-    this.guideContent = this.add.container(viewportX + 24, viewportY + 20);
-    this.guideContent.setMask(maskShape.createGeometryMask());
-
-    const guideItems = [];
-
-    let currentY = 0;
-
-    const addGuideSection = (titleText, bodyText, textureKey = null) => {
-        const sectionTitle = this.add.text(0, currentY, titleText, {
-            fontFamily: 'Arial Black',
-            fontSize: '28px',
-            color: '#3a2412',
-            stroke: '#f5e6c8',
-            strokeThickness: 1,
-            wordWrap: { width: 560 }
-        });
-
-        guideItems.push(sectionTitle);
-        currentY += 42;
-
-        if (textureKey && this.textures.exists(textureKey)) {
-            const img = this.add.image(70, currentY + 40, textureKey)
-                .setOrigin(0.5)
-                .setScale(2.2);
-
-            guideItems.push(img);
-
-            const desc = this.add.text(150, currentY, bodyText, {
-                fontFamily: 'Arial',
-                fontSize: `${this.currentFontSize}px`,
-                color: '#2e1e10',
-                wordWrap: { width: 420 }
-            });
-
-            guideItems.push(desc);
-
-            currentY += Math.max(120, desc.height + 20);
-        } else {
-            const desc = this.add.text(0, currentY, bodyText, {
-                fontFamily: 'Arial',
-                fontSize: `${this.currentFontSize}px`,
-                color: '#2e1e10',
-                wordWrap: { width: 560 }
-            });
-
-            guideItems.push(desc);
-            currentY += desc.height + 30;
+        if (rerollObjects.length > 1) {
+            console.warn(`[MainScene] Se encontraron ${rerollObjects.length} objetos "reroll" en la capa "store". Se usará el primero.`);
         }
-    };
 
-    addGuideSection(
-        'Bienvenido a la guía',
-        'Aquí puedes escribir la explicación de los objetos, enemigos, mecánicas y controles del juego.'
-    );
+        // Instanciar la tienda sin posición central fija; los slots vienen del mapa
+        this.store = new Store(this, 0, 0, this.duck, this.consumableBar);
 
-    addGuideSection(
-        'Poción de ataque',
-        'Ejemplo de texto: esta poción aumenta el daño durante un tiempo limitado.',
-        'mask_icon'
-    );
-
-    addGuideSection(
-        'Llave',
-        'Ejemplo de texto: abre puertas cerradas cuando el jugador se acerca a ellas.',
-        'feather_icon'
-    );
-
-    addGuideSection(
-        'Pan',
-        'Ejemplo de texto: sirve como recurso o moneda dentro del juego.'
-    );
-
-    this.guideContent.add(guideItems);
-
-    const contentHeight = currentY + 20;
-    this.guideMinScrollY = viewportY + viewportHeight - contentHeight;
-    this.guideMaxScrollY = viewportY + 20;
-
-    if (this.guideMinScrollY > this.guideMaxScrollY) {
-        this.guideMinScrollY = this.guideMaxScrollY;
+        // Generar items en posiciones del mapa y colocar reroll solo si existe objeto 'reroll'
+        this.store.spawnAtPositions(positions, rerollPosition);
     }
 
-    this.guideScrollY = this.guideMaxScrollY;
-    this.guideContent.y = this.guideScrollY;
+    // ─────────────────────────────────────────
+    // RANA DESDE TILED
+    // ─────────────────────────────────────────
 
-    const scrollHint = this.add.text(W / 2, H - 38, 'Usa la rueda del ratón para hacer scroll', {
-        fontFamily: 'Arial',
-        fontSize: '20px',
-        color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 4
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
+    /**
+     * Lee la capa 'Rana' del mapa, localiza el objeto llamado 'Rana'
+     * y spawnea la clase Frog en esa posición exacta.
+     *
+     * La posición se escala igual que el resto del mapa (× SCALE).
+     *
+     * @param {number} scale - Escala del mapa
+     */
+    setupFrogFromLayer(scale) {
+        const frogLayer = this.map.getObjectLayer('rana');
 
-    const goBack = () => {
-        this.closeGuide();
-        this.openPauseMenu();
-    };
+        if (!frogLayer || !Array.isArray(frogLayer.objects)) {
+            console.warn('[MainScene] No se encontró la capa "Rana" en el mapa.');
+            return;
+        }
 
-    closeButton.on('pointerup', goBack);
-    closeText.on('pointerup', goBack);
+        const frogObject = frogLayer.objects.find(
+            obj => (obj.name || '').trim().toLowerCase() === 'rana'
+        );
 
-    // Recopilar todos los objetos de la guía en un array con proxy .setVisible()
-    this._guideObjects = [bg, parchment, title, closeButton, closeText, this.guideContent, scrollHint];
-    this.guideOverlay = {
-        setVisible: (v) => this._guideObjects.forEach(o => o.setVisible(v)),
-        get visible() { return bg.visible; }
-    };
-    this._guideObjects.forEach(o => o.setVisible(false));
+        if (!frogObject) {
+            console.warn('[MainScene] No se encontró un objeto llamado "Rana" dentro de la capa "Rana".');
+            return;
+        }
 
-    this._guideResizeHandler = (gameSize) => {
-        const w = gameSize.width;
-        const h = gameSize.height;
+        const frogX = frogObject.x * scale;
+        const frogY = frogObject.y * scale;
 
-        bg.setSize(w, h);
-        parchment.setPosition(w / 2, h / 2);
-        title.setPosition(w / 2, 72);
-        closeButton.setPosition(w - 90, 60);
-        closeText.setPosition(w - 90, 60);
-        scrollHint.setPosition(w / 2, h - 38);
-    };
+        // Spawnear la rana en la posición exacta del mapa
+        this.frog = new Frog(this, 'rana', frogX, frogY, 'rana_idle', null);
 
-    this.scale.on('resize', this._guideResizeHandler, this);
-}
+        console.log(`[MainScene] Frog spawneada en (${frogX}, ${frogY}) desde la capa "Rana".`);
+    }
 
-createExitConfirmUI() {
-    const W = this.scale.width;
-    const H = this.scale.height;
+    // ─────────────────────────────────────────
+    // CHARCOS DESDE TILED
+    // ─────────────────────────────────────────
 
-    this._exitObjects = [];
+    /**
+     * Lee la capa 'charquito' del mapa y crea una instancia de Puddle por cada polígono.
+     *
+     * Cada objeto debe tener el campo `polygon` de Tiled. Las coordenadas se escalan igual
+     * que el resto del mapa (× SCALE).
+     *
+     * @param {number} scale - Escala del mapa
+     */
+    setupPuddlesFromLayer(scale) {
+        const puddleLayer = this.map.getObjectLayer('charquito');
 
-    const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.72)
-        .setOrigin(0, 0).setScrollFactor(0).setDepth(20020);
+        this.puddles = [];
 
-    const panel = this.add.rectangle(W / 2, H / 2, 540, 260, 0x23170f, 0.98)
-        .setStrokeStyle(4, 0xe6d3a3, 1).setScrollFactor(0).setDepth(20021);
+        if (!puddleLayer || !Array.isArray(puddleLayer.objects) || puddleLayer.objects.length === 0) {
+            console.log('[MainScene] No se encontró la capa "charquito" o está vacía.');
+            return;
+        }
 
-    const title = this.add.text(W / 2, H / 2 - 60, '¿SEGURO QUE QUIERES SALIR?', {
-        fontFamily: 'ReturnOfTheBoss',
-        fontSize: '28px',
-        color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 5,
-        align: 'center',
-        wordWrap: { width: 460 }
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(20022);
+        puddleLayer.objects.forEach((obj, index) => {
+            if (!Array.isArray(obj.polygon) || obj.polygon.length < 3) {
+                return;
+            }
 
-    const desc = this.add.text(W / 2, H / 2 - 5, 'Se perderán todos los avances no guardados.', {
-        fontFamily: 'Arial',
-        fontSize: '22px',
-        color: '#f3e6d0',
-        align: 'center',
-        wordWrap: { width: 430 }
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(20022);
+            const points = obj.polygon.map(point => ({
+                x: (obj.x + point.x) * scale,
+                y: (obj.y + point.y) * scale
+            }));
 
-    const makeButton = (x, y, text, callback) => {
-        const buttonBg = this.add.rectangle(x, y, 180, 56, 0x000000, 0.45)
-            .setStrokeStyle(3, 0xffffff, 0.85)
-            .setScrollFactor(0).setDepth(20022)
+            const puddle = new Puddle(this, points, obj.name || `charco_${index + 1}`);
+            this.puddles.push(puddle);
+        });
+
+        console.log(`[MainScene] Capa charquito encontrada con ${this.puddles.length} charco(s).`);
+    }
+
+    setupPauseInput() {
+        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+            if (!this.guideOverlay || !this.guideOverlay.visible || !this.guideContent) return;
+
+            this.guideScrollY -= deltaY * 0.5;
+            this.guideScrollY = Phaser.Math.Clamp(
+                this.guideScrollY,
+                this.guideMinScrollY,
+                this.guideMaxScrollY
+            );
+
+            this.guideContent.y = this.guideScrollY;
+        });
+    }
+
+
+    createPauseMenuUI() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+        const SF = 0; // scrollFactor 0 = fijo en pantalla
+
+        // Usamos un array en lugar de un Container para que setScrollFactor(0)
+        // se aplique individualmente a cada objeto y los hitboxes de input
+        // coincidan con la posición visual en pantalla.
+        this._pauseObjects = [];
+
+        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.65)
+            .setOrigin(0, 0).setScrollFactor(SF).setDepth(20000);
+
+        const panel = this.add.rectangle(W / 2, H / 2, 430, 340, 0x1e1b18, 0.96)
+            .setStrokeStyle(4, 0xe6d3a3, 1).setScrollFactor(SF).setDepth(20001);
+
+        const title = this.add.text(W / 2, H / 2 - 110, 'PAUSA', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '42px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 6
+        }).setOrigin(0.5).setScrollFactor(SF).setDepth(20002);
+
+        const makeButton = (x, y, text, callback) => {
+            const buttonBg = this.add.rectangle(x, y, 260, 58, 0x000000, 0.45)
+                .setStrokeStyle(3, 0xffffff, 0.85)
+                .setScrollFactor(SF).setDepth(20002)
+                .setInteractive({ useHandCursor: true });
+
+            const buttonText = this.add.text(x, y, text, {
+                fontFamily: 'ReturnOfTheBoss',
+                fontSize: '28px',
+                color: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 5
+            }).setOrigin(0.5).setScrollFactor(SF).setDepth(20003)
+                .setInteractive({ useHandCursor: true });
+
+            const hoverOn = () => {
+                buttonBg.setFillStyle(0x222222, 0.75);
+                buttonBg.setScale(1.03);
+                buttonText.setScale(1.03);
+            };
+
+            const hoverOff = () => {
+                buttonBg.setFillStyle(0x000000, 0.45);
+                buttonBg.setScale(1);
+                buttonText.setScale(1);
+            };
+
+            buttonBg.on('pointerover', hoverOn);
+            buttonText.on('pointerover', hoverOn);
+            buttonBg.on('pointerout', hoverOff);
+            buttonText.on('pointerout', hoverOff);
+            buttonBg.on('pointerup', () => callback());
+            buttonText.on('pointerup', () => callback());
+
+            return [buttonBg, buttonText];
+        };
+
+        const settingsBtn = makeButton(W / 2, H / 2 - 20, 'AJUSTES', () => {
+            this.openSettingsFromPause();
+        });
+
+        const guideBtn = makeButton(W / 2, H / 2 + 55, 'GUÍA', () => {
+            this.openGuide();
+        });
+
+        const exitBtn = makeButton(W / 2, H / 2 + 130, 'SALIR', () => {
+            this.openExitConfirm();
+        });
+
+        this._pauseObjects = [bg, panel, title, ...settingsBtn, ...guideBtn, ...exitBtn];
+
+        // Usamos un objeto proxy para mantener la API .setVisible() que usa el resto del código
+        this.pauseOverlay = {
+            setVisible: (v) => this._pauseObjects.forEach(o => o.setVisible(v)),
+            get visible() { return bg.visible; }
+        };
+
+        // Ocultar por defecto
+        this._pauseObjects.forEach(o => o.setVisible(false));
+
+        this._pauseResizeHandler = (gameSize) => {
+            const w = gameSize.width;
+            const h = gameSize.height;
+
+            bg.setSize(w, h);
+            panel.setPosition(w / 2, h / 2);
+            title.setPosition(w / 2, h / 2 - 110);
+
+            settingsBtn[0].setPosition(w / 2, h / 2 - 20);
+            settingsBtn[1].setPosition(w / 2, h / 2 - 20);
+
+            guideBtn[0].setPosition(w / 2, h / 2 + 55);
+            guideBtn[1].setPosition(w / 2, h / 2 + 55);
+
+            exitBtn[0].setPosition(w / 2, h / 2 + 130);
+            exitBtn[1].setPosition(w / 2, h / 2 + 130);
+        };
+
+        this.scale.on('resize', this._pauseResizeHandler, this);
+    }
+
+    createGuideUI() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+
+        // Igual que pauseOverlay: sin Container, setScrollFactor(0) individual
+        // para que los hitboxes de input coincidan con la posición visual en pantalla.
+        this._guideObjects = [];
+
+        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.72)
+            .setOrigin(0, 0).setScrollFactor(0).setDepth(20010);
+
+        const parchment = this.add.rectangle(W / 2, H / 2, 760, 560, 0xd8c08a, 0.98)
+            .setStrokeStyle(5, 0x6a4b1f, 1).setScrollFactor(0).setDepth(20011);
+
+        const title = this.add.text(W / 2, 72, 'GUÍA', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '38px',
+            color: '#3a2412',
+            stroke: '#f5e6c8',
+            strokeThickness: 2
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
+
+        const closeButton = this.add.rectangle(W - 90, 60, 120, 46, 0x000000, 0.4)
+            .setStrokeStyle(3, 0xffffff, 0.8)
+            .setScrollFactor(0).setDepth(20012)
             .setInteractive({ useHandCursor: true });
 
-        const buttonText = this.add.text(x, y, text, {
+        const closeText = this.add.text(W - 90, 60, 'ATRÁS', {
             fontFamily: 'ReturnOfTheBoss',
-            fontSize: '24px',
+            fontSize: '22px',
             color: '#ffffff',
             stroke: '#000000',
             strokeThickness: 4
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(20023)
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20013)
             .setInteractive({ useHandCursor: true });
 
-        buttonBg.on('pointerup', callback);
-        buttonText.on('pointerup', callback);
+        const viewportX = W / 2 - 320;
+        const viewportY = H / 2 - 220;
+        const viewportWidth = 640;
+        const viewportHeight = 440;
 
-        return [buttonBg, buttonText];
-    };
+        const maskShape = this.make.graphics({});
+        maskShape.fillStyle(0xffffff, 1);
+        maskShape.fillRect(viewportX, viewportY, viewportWidth, viewportHeight);
 
-    const acceptBtn = makeButton(W / 2 - 110, H / 2 + 75, 'ACEPTAR', () => {
-        this.confirmExitToMenu();
-    });
+        this.guideContent = this.add.container(viewportX + 24, viewportY + 20);
+        this.guideContent.setMask(maskShape.createGeometryMask());
 
-    const backBtn = makeButton(W / 2 + 110, H / 2 + 75, 'ATRÁS', () => {
-        this.closeExitConfirm();
-        this.openPauseMenu();
-    });
+        const guideItems = [];
 
-    this._exitObjects = [bg, panel, title, desc, ...acceptBtn, ...backBtn];
-    this.exitConfirmOverlay = {
-        setVisible: (v) => this._exitObjects.forEach(o => o.setVisible(v)),
-        get visible() { return bg.visible; }
-    };
-    this._exitObjects.forEach(o => o.setVisible(false));
+        let currentY = 0;
 
-    this._exitResizeHandler = (gameSize) => {
-        const w = gameSize.width;
-        const h = gameSize.height;
+        const addGuideSection = (titleText, bodyText, textureKey = null) => {
+            const sectionTitle = this.add.text(0, currentY, titleText, {
+                fontFamily: 'Arial Black',
+                fontSize: '28px',
+                color: '#3a2412',
+                stroke: '#f5e6c8',
+                strokeThickness: 1,
+                wordWrap: { width: 560 }
+            });
 
-        bg.setSize(w, h);
-        panel.setPosition(w / 2, h / 2);
-        title.setPosition(w / 2, h / 2 - 60);
-        desc.setPosition(w / 2, h / 2 - 5);
+            guideItems.push(sectionTitle);
+            currentY += 42;
 
-        acceptBtn[0].setPosition(w / 2 - 110, h / 2 + 75);
-        acceptBtn[1].setPosition(w / 2 - 110, h / 2 + 75);
+            if (textureKey && this.textures.exists(textureKey)) {
+                const img = this.add.image(70, currentY + 40, textureKey)
+                    .setOrigin(0.5)
+                    .setScale(2.2);
 
-        backBtn[0].setPosition(w / 2 + 110, h / 2 + 75);
-        backBtn[1].setPosition(w / 2 + 110, h / 2 + 75);
-    };
+                guideItems.push(img);
 
-    this.scale.on('resize', this._exitResizeHandler, this);
-}
+                const desc = this.add.text(150, currentY, bodyText, {
+                    fontFamily: 'Arial',
+                    fontSize: `${this.currentFontSize}px`,
+                    color: '#2e1e10',
+                    wordWrap: { width: 420 }
+                });
 
-openPauseMenu() {
-    if (this.isPlayerDead) return;
+                guideItems.push(desc);
 
-    this.isPaused = true;
-    this.pauseOverlay?.setVisible(true);
-    this.guideOverlay?.setVisible(false);
-    this.exitConfirmOverlay?.setVisible(false);
+                currentY += Math.max(120, desc.height + 20);
+            } else {
+                const desc = this.add.text(0, currentY, bodyText, {
+                    fontFamily: 'Arial',
+                    fontSize: `${this.currentFontSize}px`,
+                    color: '#2e1e10',
+                    wordWrap: { width: 560 }
+                });
 
-    // Detener al pato: sin velocidad
-    if (this.duck?.body) {
-        this.duck.body.setVelocity(0, 0);
+                guideItems.push(desc);
+                currentY += desc.height + 30;
+            }
+        };
+
+        addGuideSection(
+            'Bienvenido a la guía',
+            'Aquí puedes escribir la explicación de los objetos, enemigos, mecánicas y controles del juego.'
+        );
+
+        addGuideSection(
+            'Poción de ataque',
+            'Ejemplo de texto: esta poción aumenta el daño durante un tiempo limitado.',
+            'mask_icon'
+        );
+
+        addGuideSection(
+            'Llave',
+            'Ejemplo de texto: abre puertas cerradas cuando el jugador se acerca a ellas.',
+            'feather_icon'
+        );
+
+        addGuideSection(
+            'Pan',
+            'Ejemplo de texto: sirve como recurso o moneda dentro del juego.'
+        );
+
+        this.guideContent.add(guideItems);
+
+        const contentHeight = currentY + 20;
+        this.guideMinScrollY = viewportY + viewportHeight - contentHeight;
+        this.guideMaxScrollY = viewportY + 20;
+
+        if (this.guideMinScrollY > this.guideMaxScrollY) {
+            this.guideMinScrollY = this.guideMaxScrollY;
+        }
+
+        this.guideScrollY = this.guideMaxScrollY;
+        this.guideContent.y = this.guideScrollY;
+
+        const scrollHint = this.add.text(W / 2, H - 38, 'Usa la rueda del ratón para hacer scroll', {
+            fontFamily: 'Arial',
+            fontSize: '20px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
+
+        const goBack = () => {
+            this.closeGuide();
+            this.openPauseMenu();
+        };
+
+        closeButton.on('pointerup', goBack);
+        closeText.on('pointerup', goBack);
+
+        // Recopilar todos los objetos de la guía en un array con proxy .setVisible()
+        this._guideObjects = [bg, parchment, title, closeButton, closeText, this.guideContent, scrollHint];
+        this.guideOverlay = {
+            setVisible: (v) => this._guideObjects.forEach(o => o.setVisible(v)),
+            get visible() { return bg.visible; }
+        };
+        this._guideObjects.forEach(o => o.setVisible(false));
+
+        this._guideResizeHandler = (gameSize) => {
+            const w = gameSize.width;
+            const h = gameSize.height;
+
+            bg.setSize(w, h);
+            parchment.setPosition(w / 2, h / 2);
+            title.setPosition(w / 2, 72);
+            closeButton.setPosition(w - 90, 60);
+            closeText.setPosition(w - 90, 60);
+            scrollHint.setPosition(w / 2, h - 38);
+        };
+
+        this.scale.on('resize', this._guideResizeHandler, this);
     }
-}
 
-closePauseMenu() {
-    this.isPaused = false;
-    this.pauseOverlay?.setVisible(false);
-    this.guideOverlay?.setVisible(false);
-    this.exitConfirmOverlay?.setVisible(false);
+    createExitConfirmUI() {
+        const W = this.scale.width;
+        const H = this.scale.height;
 
-}
+        this._exitObjects = [];
 
-openGuide() {
-    this.isPaused = true;
-    this.pauseOverlay?.setVisible(false);
-    this.exitConfirmOverlay?.setVisible(false);
-    this.guideOverlay?.setVisible(true);
-}
+        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.72)
+            .setOrigin(0, 0).setScrollFactor(0).setDepth(20020);
 
-closeGuide() {
-    this.guideOverlay?.setVisible(false);
-}
+        const panel = this.add.rectangle(W / 2, H / 2, 540, 260, 0x23170f, 0.98)
+            .setStrokeStyle(4, 0xe6d3a3, 1).setScrollFactor(0).setDepth(20021);
 
-openExitConfirm() {
-    this.isPaused = true;
-    this.pauseOverlay?.setVisible(false);
-    this.guideOverlay?.setVisible(false);
-    this.exitConfirmOverlay?.setVisible(true);
-}
+        const title = this.add.text(W / 2, H / 2 - 60, '¿SEGURO QUE QUIERES SALIR?', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '28px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 5,
+            align: 'center',
+            wordWrap: { width: 460 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20022);
 
-closeExitConfirm() {
-    this.exitConfirmOverlay?.setVisible(false);
-}
+        const desc = this.add.text(W / 2, H / 2 - 5, 'Se perderán todos los avances no guardados.', {
+            fontFamily: 'Arial',
+            fontSize: '22px',
+            color: '#f3e6d0',
+            align: 'center',
+            wordWrap: { width: 430 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20022);
 
-openSettingsFromPause() {
-    this.pauseOverlay?.setVisible(false);
+        const makeButton = (x, y, text, callback) => {
+            const buttonBg = this.add.rectangle(x, y, 180, 56, 0x000000, 0.45)
+                .setStrokeStyle(3, 0xffffff, 0.85)
+                .setScrollFactor(0).setDepth(20022)
+                .setInteractive({ useHandCursor: true });
 
-    this.scene.launch('SettingsScene', {
-        returnScene: 'MainScene',
-        pauseUnderlyingScene: true
-    });
+            const buttonText = this.add.text(x, y, text, {
+                fontFamily: 'ReturnOfTheBoss',
+                fontSize: '24px',
+                color: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 4
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(20023)
+                .setInteractive({ useHandCursor: true });
 
-    this.scene.pause();
-}
+            buttonBg.on('pointerup', callback);
+            buttonText.on('pointerup', callback);
 
-confirmExitToMenu() {
-    this.isPaused = false;
+            return [buttonBg, buttonText];
+        };
 
-    if (this.scene.isActive('SettingsScene')) {
-        this.scene.stop('SettingsScene');
+        const acceptBtn = makeButton(W / 2 - 110, H / 2 + 75, 'ACEPTAR', () => {
+            this.confirmExitToMenu();
+        });
+
+        const backBtn = makeButton(W / 2 + 110, H / 2 + 75, 'ATRÁS', () => {
+            this.closeExitConfirm();
+            this.openPauseMenu();
+        });
+
+        this._exitObjects = [bg, panel, title, desc, ...acceptBtn, ...backBtn];
+        this.exitConfirmOverlay = {
+            setVisible: (v) => this._exitObjects.forEach(o => o.setVisible(v)),
+            get visible() { return bg.visible; }
+        };
+        this._exitObjects.forEach(o => o.setVisible(false));
+
+        this._exitResizeHandler = (gameSize) => {
+            const w = gameSize.width;
+            const h = gameSize.height;
+
+            bg.setSize(w, h);
+            panel.setPosition(w / 2, h / 2);
+            title.setPosition(w / 2, h / 2 - 60);
+            desc.setPosition(w / 2, h / 2 - 5);
+
+            acceptBtn[0].setPosition(w / 2 - 110, h / 2 + 75);
+            acceptBtn[1].setPosition(w / 2 - 110, h / 2 + 75);
+
+            backBtn[0].setPosition(w / 2 + 110, h / 2 + 75);
+            backBtn[1].setPosition(w / 2 + 110, h / 2 + 75);
+        };
+
+        this.scale.on('resize', this._exitResizeHandler, this);
     }
 
-    this.scene.start('MenuScene');
-}
+    openPauseMenu() {
+        if (this.isPlayerDead) return;
 
-_cleanupScene() {
-    if (this._onFontSizeChanged) {
-        this.game.events.off('fontSizeChanged', this._onFontSizeChanged, this);
+        this.isPaused = true;
+        this.pauseOverlay?.setVisible(true);
+        this.guideOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(false);
+
+        // Detener al pato: sin velocidad
+        if (this.duck?.body) {
+            this.duck.body.setVelocity(0, 0);
+        }
     }
 
-    if (this._onResize) {
-        this.scale.off('resize', this._onResize, this);
+    closePauseMenu() {
+        this.isPaused = false;
+        this.pauseOverlay?.setVisible(false);
+        this.guideOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(false);
+
     }
 
-    if (this._pauseResizeHandler) {
-        this.scale.off('resize', this._pauseResizeHandler, this);
+    openGuide() {
+        this.isPaused = true;
+        this.pauseOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(false);
+        this.guideOverlay?.setVisible(true);
     }
 
-    if (this._guideResizeHandler) {
-        this.scale.off('resize', this._guideResizeHandler, this);
+    closeGuide() {
+        this.guideOverlay?.setVisible(false);
     }
 
-    if (this._exitResizeHandler) {
-        this.scale.off('resize', this._exitResizeHandler, this);
+    openExitConfirm() {
+        this.isPaused = true;
+        this.pauseOverlay?.setVisible(false);
+        this.guideOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(true);
     }
 
-    this.input?.off?.('wheel');
-}
+    closeExitConfirm() {
+        this.exitConfirmOverlay?.setVisible(false);
+    }
+
+    openSettingsFromPause() {
+        this.pauseOverlay?.setVisible(false);
+
+        this.scene.launch('SettingsScene', {
+            returnScene: 'MainScene',
+            pauseUnderlyingScene: true
+        });
+
+        this.scene.pause();
+    }
+
+    confirmExitToMenu() {
+        this.isPaused = false;
+
+        if (this.scene.isActive('SettingsScene')) {
+            this.scene.stop('SettingsScene');
+        }
+
+        this.scene.start('MenuScene');
+    }
+
+    _cleanupScene() {
+        if (this._onFontSizeChanged) {
+            this.game.events.off('fontSizeChanged', this._onFontSizeChanged, this);
+        }
+
+        if (this._onResize) {
+            this.scale.off('resize', this._onResize, this);
+        }
+
+        if (this._pauseResizeHandler) {
+            this.scale.off('resize', this._pauseResizeHandler, this);
+        }
+
+        if (this._guideResizeHandler) {
+            this.scale.off('resize', this._guideResizeHandler, this);
+        }
+
+        if (this._exitResizeHandler) {
+            this.scale.off('resize', this._exitResizeHandler, this);
+        }
+
+        this.input?.off?.('wheel');
+    }
 }

@@ -27,7 +27,7 @@ export default class InputManager {
     constructor(scene) {
         this.scene = scene;
         this.input = scene.input;
-d        this.activeInputMode = 'keyboard';
+        this.activeInputMode = 'keyboard';
 
         this.scene?.registry?.set('activeInputMode', this.activeInputMode);
 
