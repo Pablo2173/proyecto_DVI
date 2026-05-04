@@ -25,7 +25,6 @@ export default class Crocodile extends BaseCharacter {
         // ── Identidad ──
         this._nombre = name;
         this.team    = TEAM.ENEMY;
-        this.weapon  = null; // El cocodrilo no usa armas
 
         // ── Stats ──
         this.health  = 120;
@@ -138,12 +137,24 @@ export default class Crocodile extends BaseCharacter {
     }
 
     // ─────────────────────────────────────────
+    //  SPRITE BASE SEGÚN TERRENO
+    // ─────────────────────────────────────────
+
+    _idleSprite() {
+        this.setTexture(this._isInWater() ? 'croco_submerge' : 'croco_idle');
+    }
+
+    _attackSprite() {
+        this.setTexture(this._isInWater() ? 'croco_bubble' : 'croco_attack');
+    }
+
+    // ─────────────────────────────────────────
     //  MANEJADORES DE ESTADO
     // ─────────────────────────────────────────
 
     _handleIdle(distance) {
         this.body?.setVelocity(0, 0);
-        this.setTexture('croco_idle');
+        this._idleSprite();
 
         if (distance <= this.alertRadius) {
             this._transitionTo(this.states.ALERTED);
@@ -164,6 +175,7 @@ export default class Crocodile extends BaseCharacter {
         // Perseguir al jugador si no está atacando
         if (!this.isAttacking) {
             this._moveTowards(player);
+            this._idleSprite();
         }
 
         // Si el jugador sale del radio de alerta → búsqueda
@@ -184,6 +196,7 @@ export default class Crocodile extends BaseCharacter {
         if (this._lastKnownX !== null) {
             const target = { x: this._lastKnownX, y: this._lastKnownY };
             this._moveTowardsPoint(target);
+            this._idleSprite();
         }
 
         // Cuenta atrás de búsqueda
@@ -192,19 +205,6 @@ export default class Crocodile extends BaseCharacter {
             this._lastKnownX = null;
             this._lastKnownY = null;
             this._transitionTo(this.states.IDLE);
-        }
-    }
-
-    _handleMovementState(player, distance, now) {
-        // Walking/Swimming mientras está en persecución
-        if (distance <= this.alertRadius) {
-            // Volver a ALERTED si el jugador reaparece en rango
-            this._transitionTo(this.states.ALERTED);
-            return;
-        }
-
-        if (!this.isAttacking) {
-            this.body?.setVelocity(0, 0);
         }
     }
 
@@ -220,28 +220,20 @@ export default class Crocodile extends BaseCharacter {
         this.body?.setVelocity(0, 0);
 
         // Sprite de ataque según terreno
-        if (this._isInWater()) {
-            this.setTexture('croco_bubble');
-        } else {
-            this.setTexture('croco_attack');
-        }
+        this._attackSprite();
 
         // Aplicar daño y screen shake
         player.takeDamage(this.damage);
         this.scene?.cameras?.main?.shake?.(200, 0.008);
 
-        // Finalizar ataque tras 2 segundos
+        // Finalizar ataque tras 500ms
         this.scene?.time?.delayedCall(500, () => {
             if (!this.active || this.currentState === this.states.DEAD) return;
 
             this.isAttacking = false;
 
             // Restaurar sprite según terreno actual
-            if (this._isInWater()) {
-                this.setTexture('croco_submerge');
-            } else {
-                this.setTexture('croco_idle');
-            }
+            this._idleSprite();
         });
     }
 
@@ -355,16 +347,13 @@ export default class Crocodile extends BaseCharacter {
                 break;
 
             case this.states.ALERTED:
+            case this.states.WALKING:   // Walking y Swimming comparten lógica de alerted
+            case this.states.SWIMMING:
                 this._handleAlerted(player, distance, time);
                 break;
 
             case this.states.SEARCH:
                 this._handleSearch(player, distance, delta);
-                break;
-
-            case this.states.WALKING:
-            case this.states.SWIMMING:
-                this._handleMovementState(player, distance, time);
                 break;
 
             // DEAD ya se gestiona al principio del método

@@ -747,7 +747,7 @@ export default class MainScene extends Phaser.Scene {
         const croco = new Crocodile(
             this,
             'Cocodrilo_Boss',
-            this.playerSpawn.x + 100,  // 100px a la derecha del spawn del pato
+            this.playerSpawn.x + 1000,  // 100px a la derecha del spawn del pato
             this.playerSpawn.y,
             'croco_idle',
             null
