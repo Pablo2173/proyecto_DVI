@@ -3,6 +3,7 @@ import Boot from "./scenes/boot.js";
 import MenuScene from "./scenes/MenuScene.js";
 import MainScene from "./scenes/MainScene.js";
 import SettingsScene from "./scenes/SettingsScene.js";
+import AlcantarillasScene from "./scenes/AlcantarillasScene.js";
 
 async function loadFont() {
   const fontUrl = new URL("../css/typo/return-of-the-boss.ttf", import.meta.url);
@@ -22,20 +23,20 @@ async function loadFont() {
     pixelArt: true,
     antialias: false,    // desactiva suavizado para pixelart
     backgroundColor: '#cacaca',
-    scene: [Boot, MenuScene, MainScene, SettingsScene],
+    scene: [Boot, MenuScene, MainScene, AlcantarillasScene, SettingsScene],
     scale: {
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
     },
     input: {
       gamepad: true,
     },
     physics: {
-        default: 'arcade',
-        arcade: {
-            gravity: { y: 0 }, // sin gravedad para top-down
+      default: 'arcade',
+      arcade: {
+        gravity: { y: 0 }, // sin gravedad para top-down
         debug: false // oculta hitboxes y colisiones debug
-        }
+      }
     },
   };
 

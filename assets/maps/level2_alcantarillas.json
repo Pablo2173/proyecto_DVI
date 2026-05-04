@@ -2757,12 +2757,49 @@
          "visible":true,
          "x":0,
          "y":0
+        }, 
+        {
+         "draworder":"topdown",
+         "id":15,
+         "name":"duck",
+         "objects":[
+                {
+                 "gid":2882,
+                 "height":16,
+                 "id":1,
+                 "name":"duck",
+                 "opacity":1,
+                 "properties":[
+                        {
+                         "name":"name",
+                         "type":"string",
+                         "value":"duck"
+                        }, 
+                        {
+                         "name":"weapon",
+                         "type":"string",
+                         "value":"null"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":16,
+                 "x":2398,
+                 "y":2506
+                }],
+         "offsetx":-130,
+         "offsety":636,
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
         }],
- "nextlayerid":15,
- "nextobjectid":1,
+ "nextlayerid":16,
+ "nextobjectid":2,
  "orientation":"orthogonal",
  "renderorder":"right-down",
- "tiledversion":"1.11.2",
+ "tiledversion":"1.12.0",
  "tileheight":16,
  "tilesets":[
         {

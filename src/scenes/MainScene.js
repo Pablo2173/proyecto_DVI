@@ -1052,6 +1052,8 @@ export default class MainScene extends Phaser.Scene {
                         pointer.x = this.virtualPointerX;
                         pointer.y = this.virtualPointerY;
                     }
+
+                    // (puerta detection moved later, run every frame)
                 } else {
                     // Si no hay stick derecho, seguir al ratón real.
                     this.virtualPointerX = pointer.x;
@@ -1063,6 +1065,30 @@ export default class MainScene extends Phaser.Scene {
 
             // Mantener worldX/worldY del puntero actualizados incluso si no hay movimiento del mouse.
             pointer.updateWorldPoint(camera);
+
+            // Detectar entrada a la capa de puerta abierta y cambiar de escena a Alcantarillas
+            try {
+                if (!this._isSceneTransitioning && this.puertaAbiertaLayer && this.duck) {
+                    const SCALE = 4;
+                    const TILE_SIZE = 16;
+                    const tileX = Math.floor(this.duck.x / SCALE / TILE_SIZE);
+                    const tileY = Math.floor(this.duck.y / SCALE / TILE_SIZE);
+
+                    // Comprobar tiles dentro de un pequeño radio alrededor del jugador
+                    const tiles = this.puertaAbiertaLayer.getTilesWithin(tileX - 1, tileY - 1, 3, 3)
+                        .filter(t => t && t.index !== -1);
+                    if (tiles.length > 0) {
+                        this._isSceneTransitioning = true;
+                        this.registry.set('duckConsumables', JSON.parse(JSON.stringify(this.duck.consumables || [])));
+                        const respawnWeapon = this._resolveRespawnWeaponKey();
+                        this.registry.set('duckRespawnWeapon', respawnWeapon);
+                        this.scene.start('AlcantarillasScene');
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('Error comprobando puerta abierta:', e);
+            }
 
             // Zona muerta circular centrada en la pantalla.
             // Mantiene un área similar a la antigua caja del 50% central,

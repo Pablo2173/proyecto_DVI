@@ -93,6 +93,6 @@ export default class Boot extends Phaser.Scene {
 
   create() {
     console.log("menu_music exists?", this.cache.audio.exists("menu_music"));
-    this.scene.start("MenuScene");
+    this.scene.start("MainScene");
   }
 }
