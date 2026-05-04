@@ -1,4 +1,3 @@
-
 import Phaser from "phaser";
 
 export default class MenuScene extends Phaser.Scene {
@@ -455,7 +454,7 @@ export default class MenuScene extends Phaser.Scene {
       }
     });
   }
-  
+
   // EMPIEZA EL JUEGO//
   startGameTransition() {
     // evita dobles clicks
@@ -496,4 +495,3 @@ export default class MenuScene extends Phaser.Scene {
     });
   }
 }
-

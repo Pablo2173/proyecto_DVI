@@ -5,7 +5,10 @@ export default class SettingsScene extends Phaser.Scene {
     super("SettingsScene");
   }
 
-  create() {
+  create(data) {
+    this.returnScene = data?.returnScene || "MenuScene";
+    this.pauseUnderlyingScene = data?.pauseUnderlyingScene ?? false;
+
     const saved = localStorage.getItem("settings");
 
     if (saved) {
@@ -71,10 +74,8 @@ export default class SettingsScene extends Phaser.Scene {
 
     const volumeLevels = [0, 0.25, 0.5, 0.75, 1];
 
-    // Música ya existente de menú/config
     this.menuMusic = this.sound.get("menu_music") ?? null;
 
-    // Si no existe pero debería sonar, la creamos
     if (!this.menuMusic && this.cache.audio.exists("menu_music") && this.menuMusicEnabled) {
       this.menuMusic = this.sound.add("menu_music", {
         loop: true,
@@ -85,7 +86,6 @@ export default class SettingsScene extends Phaser.Scene {
 
     this.applyAudioSettings();
 
-    // SONIDO GENERAL
     this.add.text(labelX, row1Y, "SONIDO GENERAL", labelStyle)
       .setOrigin(0, 0.5)
       .setDepth(10);
@@ -96,12 +96,10 @@ export default class SettingsScene extends Phaser.Scene {
       this.saveSettings();
     });
 
-    // MÚSICA MENÚ
     this.add.text(labelX, row2Y, "MÚSICA MENÚ", labelStyle)
       .setOrigin(0, 0.5)
       .setDepth(10);
 
-    
     this.menuVolumeBoxes = [];
     volumeLevels.forEach((level, i) => {
       const x = volumeStartX + i * 58;
@@ -117,7 +115,6 @@ export default class SettingsScene extends Phaser.Scene {
       this.menuVolumeBoxes.push({ box, level });
     });
 
-    // MÚSICA JUEGO
     this.add.text(labelX, row3Y, "MÚSICA JUEGO", labelStyle)
       .setOrigin(0, 0.5)
       .setDepth(10);
@@ -136,7 +133,6 @@ export default class SettingsScene extends Phaser.Scene {
       this.gameVolumeBoxes.push({ box, level });
     });
 
-    // TAMAÑO LETRA
     this.add.text(labelX, row4Y, "TAMAÑO LETRA", labelStyle)
       .setOrigin(0, 0.5)
       .setDepth(10);
@@ -159,12 +155,13 @@ export default class SettingsScene extends Phaser.Scene {
         this.fontSize = opt.value;
         this.updateFontBoxes();
         this.saveSettings();
+        // Emitir evento global para que otras escenas puedan reaccionar al cambio de fuente
+        this.game.events.emit('fontSizeChanged', this.fontSize);
       });
 
       this.fontBoxes.push({ box, value: opt.value });
     });
 
-    // PANTALLA COMPLETA
     this.add.text(labelX, row5Y, "PANTALLA COMPLETA", labelStyle)
       .setOrigin(0, 0.5)
       .setDepth(10);
@@ -182,7 +179,6 @@ export default class SettingsScene extends Phaser.Scene {
       }
     );
 
-    // VOLVER
     this.backButton = this.add.rectangle(W / 2, 610, 340, 72, 0x000000, 0.5)
       .setStrokeStyle(4, 0xffffff, 0.8)
       .setDepth(10)
@@ -200,7 +196,17 @@ export default class SettingsScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     const goBack = () => {
-      this.scene.start("MenuScene");
+      if (this.pauseUnderlyingScene && this.returnScene) {
+        this.scene.stop();
+        this.scene.resume(this.returnScene);
+
+        const underlyingScene = this.scene.get(this.returnScene);
+        if (underlyingScene?.closePauseMenu) {
+          underlyingScene.closePauseMenu();
+        }
+      } else {
+        this.scene.start(this.returnScene);
+      }
     };
 
     this.backButton.on("pointerup", goBack);
@@ -213,12 +219,14 @@ export default class SettingsScene extends Phaser.Scene {
     this.scale.on("resize", () => {
       this.layoutBackground();
     });
+
+    this.input.keyboard.on("keydown-ESC", goBack);
   }
 
   applyAudioSettings() {
     this.sound.mute = this.mute;
 
-    // si volumen 0 → no hay música
+      // si volumen 0 → no hay música
     if (this.menuVolume <= 0) {
       if (this.menuMusic) {
         this.menuMusic.stop();
@@ -253,9 +261,10 @@ export default class SettingsScene extends Phaser.Scene {
       stroke: "#000000",
       strokeThickness: 4
     })
-      .setOrigin(0.5)
-      .setDepth(11)
-      .setInteractive({ useHandCursor: true });
+
+    .setOrigin(0.5)
+    .setDepth(11)
+    .setInteractive({ useHandCursor: true });
 
     const setChecked = (value) => {
       mark.setText(value ? "X" : "");
@@ -290,9 +299,10 @@ export default class SettingsScene extends Phaser.Scene {
       stroke: "#000000",
       strokeThickness: 4
     })
-      .setOrigin(0.5)
-      .setDepth(11)
-      .setInteractive({ useHandCursor: true });
+
+    .setOrigin(0.5)
+    .setDepth(11)
+    .setInteractive({ useHandCursor: true });
 
     const setSelected = (value) => {
       bg.setStrokeStyle(3, value ? 0xffff99 : 0xffffff, value ? 1 : 0.85);
@@ -332,7 +342,7 @@ export default class SettingsScene extends Phaser.Scene {
   }
 
   saveSettings() {
-    localStorage.setItem("settings", JSON.stringify({
+      localStorage.setItem("settings", JSON.stringify({
       mute: this.mute,
       menuMusicEnabled: this.menuMusicEnabled,
       menuVolume: this.menuVolume,
