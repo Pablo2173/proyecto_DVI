@@ -1284,19 +1284,32 @@ export default class MainScene extends Phaser.Scene {
     _onPuddleUpgradePurchase(puddle, upgradeId) {
         if (!puddle || !this.duck) return;
 
-        const purchase = puddle.purchaseUpgrade?.(upgradeId, this.duck);
+        // Llamamos a purchaseUpgrade (pasando el duck primero, como definimos en puddle.js)
+        const purchase = puddle.purchaseUpgrade?.(this.duck, upgradeId);
+        
         const success = !!purchase?.success;
         let purchaseMessage = purchase?.message || '';
+
         if (success) {
             const spentFeathers = Number(purchase?.spentFeathers) || 0;
             const remainingFeathers = Number(purchase?.remainingFeathers);
             if (Number.isFinite(remainingFeathers)) {
-                purchaseMessage = `${purchaseMessage} (-${spentFeathers} feather, left: ${remainingFeathers})`;
+                purchaseMessage = `${purchaseMessage} (-${spentFeathers} plumas, quedan: ${remainingFeathers})`;
+            }
+
+            // IMPORTANTE: Refrescamos el panel entero para mostrar los nuevos precios de las demás mejoras
+            this.puddleUpgradePanel?.show(puddle, this.duck);
+
+            // Si el charquito debe desaparecer tras la compra (en este caso lo pusimos en false en puddle.js)
+            if (purchase.removePuddle) {
+                this._removePuddle(puddle);
+                this.puddleUpgradePanel?.hide();
+                this.currentPuddle = null;
             }
         }
 
+        // Mostramos el mensaje (ya sea de éxito o de "¡No tienes suficientes plumas!")
         this.puddleUpgradePanel?.showPurchaseResult(success, purchaseMessage);
-        if (!success) return;
     }
 
     _onPuddleClaimReward(puddle) {
@@ -1316,7 +1329,7 @@ export default class MainScene extends Phaser.Scene {
         }
 
         this.puddleUpgradePanel?.hide();
-        this.puddleUpgradePanel?.showPurchaseResult(true, `Reward claimed! (+${rewardFeathers} feathers)`);
+        this.puddleUpgradePanel?.showPurchaseResult(true, `¡Recompensa obtenida! (+${rewardFeathers} plumas)`);
     }
 
     // ─────────────────────────────────────────
@@ -2409,7 +2422,7 @@ export default class MainScene extends Phaser.Scene {
         });
 
         // Panel más alto para acomodar 4 botones
-        panel.setSize(430, 400);
+        panel.setSize(430, 430);
 
         this._pauseObjects = [bg, panel, title, ...resumeBtn, ...settingsBtn, ...guideBtn, ...exitBtn];
 
@@ -2846,6 +2859,12 @@ export default class MainScene extends Phaser.Scene {
 
         if (this.scene.isActive('SettingsScene')) {
             this.scene.stop('SettingsScene');
+        }
+
+        // Parar la música del juego antes de volver al menú
+        const gameMusic = this.sound.get('game_sound') ?? this.gameMusic;
+        if (gameMusic) {
+            gameMusic.stop();
         }
 
         this.scene.start('MenuScene');

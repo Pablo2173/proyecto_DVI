@@ -1,36 +1,28 @@
+// Busca esta función y actualiza los objetos
 export function createDefaultPuddleUpgrades() {
     return [
         {
             id: 'puddle_speed_10',
-            label: 'contramuslo',
-            description: '¡muévete más rápido!',
+            label: 'CONTRAMUSLO AGIL',
+            description: 'Aumenta permanentemente tu velocidad de movimiento en un 10%. !Corre Sal de Aqui!',
             costFeathers: 1,
-            effect: {
-                type: 'move_speed_percent',
-                value: 0.1
-            },
+            effect: { type: 'move_speed_percent', value: 0.1 },
             purchased: false
         },
         {
             id: 'puddle_attack_10',
-            label: 'alitas',
-            description: '¡pega más fuerte!',
+            label: 'ALITAS PODEROSAS',
+            description: 'Tus ataques hacen un 10% más de daño. ¡Derrumba a los enemigos con menos golpes!',
             costFeathers: 1,
-            effect: {
-                type: 'base_attack_percent',
-                value: 0.1
-            },
+            effect: { type: 'base_attack_percent', value: 0.1 },
             purchased: false
         },
         {
             id: 'puddle_weapon_duration_50',
-            label: 'gracia patuna',
-            description: '¡aumenta la duración\nde tus armas!',
-            costFeathers: 3,
-            effect: {
-                type: 'weapon_duration_percent',
-                value: 0.5
-            },
+            label: 'GRACIA PATUNA',
+            description: 'Tus armas (como el arco o maza) duran un 50% más antes de romperse.',
+            costFeathers: 3, // Este es más caro porque es muy potente
+            effect: { type: 'weapon_duration_percent', value: 0.5 },
             purchased: false
         }
     ];

@@ -326,18 +326,18 @@ export default class ConsumableBar {
         this.controlsText.setAlpha(0.92);
 
         // ── Botón de ajustes (⚙) en la esquina superior derecha del HUD ──
-        const btnX = this.divider.x - 40; // a la izquierda del separador
+        const btnX = this.divider.x - 50; // a la izquierda del separador
         const btnY = this.panelY + this.panelHeight / 2; // centrado vertical
 
-        this.settingsBtnBg = this.scene.add.rectangle(btnX, btnY, 44, 44, 0x000000, 0.4)
-            .setStrokeStyle(2, 0xe4c46a, 0.9)
+        this.settingsBtnBg = this.scene.add.rectangle(btnX, btnY, 58, 58, 0x000000, 0.4)
+            .setStrokeStyle(3, 0xe4c46a, 0.9)
             .setScrollFactor(0)
             .setDepth(9200)
             .setInteractive({ useHandCursor: true });
 
         this.settingsBtnText = this.scene.add.text(btnX, btnY, '⚙', {
             fontFamily: 'Arial',
-            fontSize: '26px',
+            fontSize: '36px',
             color: '#f4d97b',
             stroke: '#000000',
             strokeThickness: 3
