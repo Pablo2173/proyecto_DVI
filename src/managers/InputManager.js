@@ -27,6 +27,16 @@ export default class InputManager {
     constructor(scene) {
         this.scene = scene;
         this.input = scene.input;
+d        this.activeInputMode = 'keyboard';
+
+        this.scene?.registry?.set('activeInputMode', this.activeInputMode);
+
+        if (this.input.keyboard) {
+            this.input.keyboard.on('keydown', this._onKeyboardInput, this);
+        }
+
+        this.input.on('pointerdown', this._onPointerInput, this);
+        this.input.on('pointermove', this._onPointerInput, this);
 
         // ─── TECLADO ───
         this.cursors = this.input.keyboard.createCursorKeys();
@@ -102,6 +112,23 @@ export default class InputManager {
         }
     }
 
+    _setActiveInputMode(mode) {
+        if (mode !== 'keyboard' && mode !== 'gamepad') return;
+
+        if (this.activeInputMode === mode) return;
+
+        this.activeInputMode = mode;
+        this.scene?.registry?.set('activeInputMode', mode);
+    }
+
+    _onKeyboardInput() {
+        this._setActiveInputMode('keyboard');
+    }
+
+    _onPointerInput() {
+        this._setActiveInputMode('keyboard');
+    }
+
     /**
      * Obtiene el vector de movimiento normalizado
      * @returns {{x: number, y: number}}
@@ -124,9 +151,11 @@ export default class InputManager {
             const threshold = 0.3;
 
             if (Math.abs(leftStickX) > threshold) {
+                this._setActiveInputMode('gamepad');
                 x = leftStickX;
             }
             if (Math.abs(leftStickY) > threshold) {
+                this._setActiveInputMode('gamepad');
                 y = leftStickY;
             }
         }
@@ -253,6 +282,7 @@ export default class InputManager {
         // Gamepad: D-pad left
         const pad = this.getPrimaryGamepad();
         if (pad && this._gamepadButtonJustDown[XBOX_BUTTONS.DPAD_LEFT]) {
+            this._setActiveInputMode('gamepad');
             console.log('[INPUT] D-pad LEFT detectado');
             return true;
         }
@@ -269,7 +299,10 @@ export default class InputManager {
 
         // Gamepad: D-pad right
         const pad = this.getPrimaryGamepad();
-        if (pad && this._gamepadButtonJustDown[XBOX_BUTTONS.DPAD_RIGHT]) return true;
+        if (pad && this._gamepadButtonJustDown[XBOX_BUTTONS.DPAD_RIGHT]) {
+            this._setActiveInputMode('gamepad');
+            return true;
+        }
 
         return false;
     }
@@ -291,6 +324,7 @@ export default class InputManager {
         if (pad) {
             const xPressed = this._gamepadButtonJustDown[XBOX_BUTTONS.X];
             if (xPressed) {
+                this._setActiveInputMode('gamepad');
                 console.log('[INPUT] Bot\u00f3n X detectado - usar item seleccionado');
                 return 'use_selected'; // Se\u00f1al especial para usar el item seleccionado
             }
@@ -386,6 +420,23 @@ export default class InputManager {
             }
 
             this._pollPrimaryGamepadButtons();
+            this._updateActiveInputModeFromGamepad();
+        }
+    }
+
+    _updateActiveInputModeFromGamepad() {
+        const pad = this.getPrimaryGamepad();
+        if (!pad) return;
+
+        const anyButtonPressed = Object.values(this._gamepadButtonDown).some(Boolean);
+        const leftStickX = this.getAxisValue(pad, 0);
+        const leftStickY = this.getAxisValue(pad, 1);
+        const rightStickX = this.getAxisValue(pad, 2);
+        const rightStickY = this.getAxisValue(pad, 3);
+        const axisActive = Math.abs(leftStickX) > 0.3 || Math.abs(leftStickY) > 0.3 || Math.abs(rightStickX) > 0.3 || Math.abs(rightStickY) > 0.3;
+
+        if (anyButtonPressed || axisActive) {
+            this._setActiveInputMode('gamepad');
         }
     }
 

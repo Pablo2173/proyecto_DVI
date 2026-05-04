@@ -307,382 +307,382 @@ export default class MainScene extends Phaser.Scene {
     create() {
         const SCALE = 4;
         try {
-        //PARAR música del menú
-        const menuMusic = this.sound.get("menu_music");
+            //PARAR música del menú
+            const menuMusic = this.sound.get("menu_music");
 
-        if (menuMusic) {
-            menuMusic.stop();
-        }
-        // ─────────────────────────────────────────
-        // CONFIG GENERAL DE LA ESCENA
-        // ─────────────────────────────────────────
-        this.isPlayerDead = false;
-        this.playerSpawn = null;
-        this.playerWeapon = 'cuchillo';
-        this.positionText = null;
-        this.puddles = [];
-        this.currentPuddle = null;
-        this.previousCheckpointBeforePuddle = null;
-        this.puddleUpgradePanel = null;
+            if (menuMusic) {
+                menuMusic.stop();
+            }
+            // ─────────────────────────────────────────
+            // CONFIG GENERAL DE LA ESCENA
+            // ─────────────────────────────────────────
+            this.isPlayerDead = false;
+            this.playerSpawn = null;
+            this.playerWeapon = 'cuchillo';
+            this.positionText = null;
+            this.puddles = [];
+            this.currentPuddle = null;
+            this.previousCheckpointBeforePuddle = null;
+            this.puddleUpgradePanel = null;
 
-        // Limpia listeners anteriores por seguridad al reiniciar la escena
-        this.input.removeAllListeners();
+            // Limpia listeners anteriores por seguridad al reiniciar la escena
+            this.input.removeAllListeners();
 
-        // ─────────────────────────────────────────
-        // MAPA
-        // ─────────────────────────────────────────
-        this.map = this.make.tilemap({
-            key: 'level1',
-            tileWidth: 16,
-            tileHeight: 16
-        });
+            // ─────────────────────────────────────────
+            // MAPA
+            // ─────────────────────────────────────────
+            this.map = this.make.tilemap({
+                key: 'level1',
+                tileWidth: 16,
+                tileHeight: 16
+            });
 
-        const tilesetNames = [
-            'dark-grass-middle-middle', 'sidewalk-1', 'asphalt-road-1', 'asphalt-road-3',
-            'asphalt-road-2', 'sidewalk-5', 'dirtpath-1', 'dirtpath-8', 'dirtpath-9',
-            'dirtpath-10', 'dirtpath-11', 'dirtpath-15', 'dirtpath-12', 'dirtpath-13',
-            'dirtpath-14', 'dirtpath-2', 'dirtpath-5', 'dirtpath-4', 'dirtpath-6',
-            'house-2', 'wood-fence-left-middle', 'wood-fence-right-middle',
-            'wood-fence-interior-corner-1', 'wood-fence-bottom-middle',
-            'wood-fence-interior-corner-2', 'wood-fence-interior-corner-3',
-            'wood-fence-top-left-corner', 'apartment-building', 'grocery-store',
-            'tree-1', 'small-bushes-blue-berries', 'water-fountain',
-            'wood-fence-interior-corner-4', 'tall-grass-middle', 'bush',
-            'Overworld', 'objects', 'car-green-back', 'car-blue-back', 'truck-red-front'
-        ];
+            const tilesetNames = [
+                'dark-grass-middle-middle', 'sidewalk-1', 'asphalt-road-1', 'asphalt-road-3',
+                'asphalt-road-2', 'sidewalk-5', 'dirtpath-1', 'dirtpath-8', 'dirtpath-9',
+                'dirtpath-10', 'dirtpath-11', 'dirtpath-15', 'dirtpath-12', 'dirtpath-13',
+                'dirtpath-14', 'dirtpath-2', 'dirtpath-5', 'dirtpath-4', 'dirtpath-6',
+                'house-2', 'wood-fence-left-middle', 'wood-fence-right-middle',
+                'wood-fence-interior-corner-1', 'wood-fence-bottom-middle',
+                'wood-fence-interior-corner-2', 'wood-fence-interior-corner-3',
+                'wood-fence-top-left-corner', 'apartment-building', 'grocery-store',
+                'tree-1', 'small-bushes-blue-berries', 'water-fountain',
+                'wood-fence-interior-corner-4', 'tall-grass-middle', 'bush',
+                'Overworld', 'objects', 'car-green-back', 'car-blue-back', 'truck-red-front'
+            ];
 
-        const tilesets = tilesetNames.map(name => this.map.addTilesetImage(name, name));
+            const tilesets = tilesetNames.map(name => this.map.addTilesetImage(name, name));
 
-        this.baseLayer = this.map.createLayer('base', tilesets, 0, 0);
-        this.baseLayer.setScale(SCALE);
+            this.baseLayer = this.map.createLayer('base', tilesets, 0, 0);
+            this.baseLayer.setScale(SCALE);
 
-        this.patrones1Layer = this.map.createLayer('Capa de patrones 1', tilesets, 0, 0);
-        this.patrones1Layer.setScale(SCALE);
+            this.patrones1Layer = this.map.createLayer('Capa de patrones 1', tilesets, 0, 0);
+            this.patrones1Layer.setScale(SCALE);
 
-        this.patrones2Layer = this.map.createLayer('Capa de patrones 2', tilesets, 0, 0);
-        this.patrones2Layer.setScale(SCALE);
+            this.patrones2Layer = this.map.createLayer('Capa de patrones 2', tilesets, 0, 0);
+            this.patrones2Layer.setScale(SCALE);
 
-        this.carreteraLayer = this.map.createLayer('carretera', tilesets, 0, 0);
-        this.carreteraLayer.setScale(SCALE);
+            this.carreteraLayer = this.map.createLayer('carretera', tilesets, 0, 0);
+            this.carreteraLayer.setScale(SCALE);
 
-        this.desnivelLayer = this.map.createLayer('Desnivel', tilesets, 0, 0);
-        this.desnivelLayer.setScale(SCALE);
+            this.desnivelLayer = this.map.createLayer('Desnivel', tilesets, 0, 0);
+            this.desnivelLayer.setScale(SCALE);
 
-        this.zonasAcuaticasLayer = this.map.createLayer('Zonas aquaticas', tilesets, 0, 0);
-        this.zonasAcuaticasLayer.setScale(SCALE);
+            this.zonasAcuaticasLayer = this.map.createLayer('Zonas aquaticas', tilesets, 0, 0);
+            this.zonasAcuaticasLayer.setScale(SCALE);
 
-        this.sombreado1Layer = this.map.createLayer('Sombreado1', tilesets, 0, 0);
-        this.sombreado1Layer.setScale(SCALE);
+            this.sombreado1Layer = this.map.createLayer('Sombreado1', tilesets, 0, 0);
+            this.sombreado1Layer.setScale(SCALE);
 
-        this.colisionLayer = this.map.createLayer('Zonas con colision', tilesets, 0, 0);
-        this.colisionLayer.setScale(SCALE);
+            this.colisionLayer = this.map.createLayer('Zonas con colision', tilesets, 0, 0);
+            this.colisionLayer.setScale(SCALE);
 
-        this.estetica1Layer = this.map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
-        this.estetica1Layer.setScale(SCALE);
+            this.estetica1Layer = this.map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
+            this.estetica1Layer.setScale(SCALE);
 
-        this.puertaAbiertaLayer = this.map.createLayer('puerta', tilesets, 0, 0);
-        this.puertaAbiertaLayer.setScale(SCALE);
+            this.puertaAbiertaLayer = this.map.createLayer('puerta', tilesets, 0, 0);
+            this.puertaAbiertaLayer.setScale(SCALE);
 
-        this.puertaCerradaLayer = this.map.createLayer('puertaCerrada', tilesets, 0, 0);
-        this.puertaCerradaLayer.setScale(SCALE);
+            this.puertaCerradaLayer = this.map.createLayer('puertaCerrada', tilesets, 0, 0);
+            this.puertaCerradaLayer.setScale(SCALE);
 
-        this.vallaLayer = this.map.createLayer('Valla', tilesets, 0, 0);
-        this.vallaLayer.setScale(SCALE);
+            this.vallaLayer = this.map.createLayer('Valla', tilesets, 0, 0);
+            this.vallaLayer.setScale(SCALE);
 
-        this.sombreado2Layer = this.map.createLayer('Sombreado2', tilesets, 0, 0);
-        this.sombreado2Layer.setScale(SCALE);
-        this.sombreado2Layer.setDepth(200);
+            this.sombreado2Layer = this.map.createLayer('Sombreado2', tilesets, 0, 0);
+            this.sombreado2Layer.setScale(SCALE);
+            this.sombreado2Layer.setDepth(200);
 
-        this.estetica2Layer = this.map.createLayer('Objetos estéticos sin colision 2', tilesets, 0, 0);
-        this.estetica2Layer.setScale(SCALE);
-        this.estetica2Layer.setDepth(201); //le he añadido esto para que el patete este por debajo
+            this.estetica2Layer = this.map.createLayer('Objetos estéticos sin colision 2', tilesets, 0, 0);
+            this.estetica2Layer.setScale(SCALE);
+            this.estetica2Layer.setDepth(201); //le he añadido esto para que el patete este por debajo
 
-        this.techo1Layer = this.map.createLayer('Techo1', tilesets, 0, 0);
-        this.techo1Layer.setScale(SCALE);
-        this.techo1Layer.setDepth(202);
+            this.techo1Layer = this.map.createLayer('Techo1', tilesets, 0, 0);
+            this.techo1Layer.setScale(SCALE);
+            this.techo1Layer.setDepth(202);
 
-        // CAPA DE HINTS (PISTAS VISUALES)
-        const hintsLayer = this.map.getObjectLayer('hints');
-        if (hintsLayer && hintsLayer.objects) {
-            hintsLayer.objects.forEach(obj => {
-                if (obj.visible !== false) {
-                    // Leer atributo personalizado 'texture'
-                    let textureName = null;
-                    if (obj.properties) {
-                        const textureProp = obj.properties.find(p => p.name === 'texture');
-                        if (textureProp) textureName = textureProp.value;
+            // CAPA DE HINTS (PISTAS VISUALES)
+            const hintsLayer = this.map.getObjectLayer('hints');
+            if (hintsLayer && hintsLayer.objects) {
+                hintsLayer.objects.forEach(obj => {
+                    if (obj.visible !== false) {
+                        // Leer atributo personalizado 'texture'
+                        let textureName = null;
+                        if (obj.properties) {
+                            const textureProp = obj.properties.find(p => p.name === 'texture');
+                            if (textureProp) textureName = textureProp.value;
+                        }
+
+                        if (textureName && this.textures.exists(textureName)) {
+                            const hint = this.add.image(obj.x * SCALE, (obj.y - obj.height) * SCALE, textureName);
+                            hint.setOrigin(0, 0);
+                            hint.setDisplaySize(obj.width * SCALE, obj.height * SCALE);
+                            hint.setAlpha(0.7);
+                            //hint.setDepth(100);
+                        }
                     }
+                });
+            }
 
-                    if (textureName && this.textures.exists(textureName)) {
-                        const hint = this.add.image(obj.x * SCALE, (obj.y - obj.height) * SCALE, textureName);
-                        hint.setOrigin(0, 0);
-                        hint.setDisplaySize(obj.width * SCALE, obj.height * SCALE);
-                        hint.setAlpha(0.7);
-                        //hint.setDepth(100);
+            const duckLayer = this.map.getObjectLayer('duck');
+            if (!duckLayer || duckLayer.objects.length === 0) {
+                throw new Error('Falta la capa de objetos duck o esta vacia. Debes definir el jugador desde el mapa.');
+            }
+
+            const duckObj = duckLayer.objects.find(obj => (obj.name || '').trim().toLowerCase() === 'duck');
+            if (!duckObj) {
+                throw new Error('Falta un objeto llamado duck dentro de la capa duck.');
+            }
+
+            this.playerSpawn = {
+                x: duckObj.x * SCALE,
+                y: duckObj.y * SCALE
+            };
+
+            this._applyStoredCheckpointSpawn();
+
+            if (duckObj.properties) {
+                const duckProps = {};
+                duckObj.properties.forEach(p => duckProps[p.name] = p.value);
+                if (Object.prototype.hasOwnProperty.call(duckProps, 'weapon')) {
+                    const weaponFromMap = duckProps.weapon;
+
+                    if (weaponFromMap === null) {
+                        this.playerWeapon = 'ramita';
+                    } else if (typeof weaponFromMap === 'string') {
+                        const normalizedWeapon = weaponFromMap.trim().toLowerCase();
+                        this.playerWeapon = normalizedWeapon === '' || normalizedWeapon === 'null'
+                            ? 'ramita'
+                            : normalizedWeapon;
+                    } else {
+                        this.playerWeapon = weaponFromMap;
                     }
                 }
-            });
-        }
+            }
 
-        const duckLayer = this.map.getObjectLayer('duck');
-        if (!duckLayer || duckLayer.objects.length === 0) {
-            throw new Error('Falta la capa de objetos duck o esta vacia. Debes definir el jugador desde el mapa.');
-        }
+            this._applyStoredRespawnWeapon();
 
-        const duckObj = duckLayer.objects.find(obj => (obj.name || '').trim().toLowerCase() === 'duck');
-        if (!duckObj) {
-            throw new Error('Falta un objeto llamado duck dentro de la capa duck.');
-        }
+            // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
+            // Esto evita depender de propiedades "collides" en cada tile del tileset.
+            this.colisionLayer.setCollisionByExclusion([-1], true);
+            this.puertaCerradaLayer.setCollisionByExclusion([-1], true);
+            this.vallaLayer.setCollisionByExclusion([-1], true);
+            this.desnivelLayer.setCollisionByExclusion([-1], true);
+            this.zonasAcuaticasLayer.setCollisionByExclusion([-1], true);
 
-        this.playerSpawn = {
-            x: duckObj.x * SCALE,
-            y: duckObj.y * SCALE
-        };
+            const worldWidth = this.map.widthInPixels * SCALE;
+            const worldHeight = this.map.heightInPixels * SCALE;
 
-        this._applyStoredCheckpointSpawn();
+            this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
+            this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+            // Esto es para arreglar que el dash atraviesa paredes al ir muy rapido
+            this.physics.world.setFPS(120);
+            this.physics.world.TILE_BIAS = Math.max(this.physics.world.TILE_BIAS, 48);
 
-        if (duckObj.properties) {
-            const duckProps = {};
-            duckObj.properties.forEach(p => duckProps[p.name] = p.value);
-            if (Object.prototype.hasOwnProperty.call(duckProps, 'weapon')) {
-                const weaponFromMap = duckProps.weapon;
+            // ─────────────────────────────────────────
+            // ANIMACIONES
+            // ─────────────────────────────────────────
+            if (!this.anims.exists('duck-idle')) {
+                this.anims.create({
+                    key: 'duck-idle',
+                    frames: this.anims.generateFrameNumbers('idle_duck', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
 
-                if (weaponFromMap === null) {
-                    this.playerWeapon = 'ramita';
-                } else if (typeof weaponFromMap === 'string') {
-                    const normalizedWeapon = weaponFromMap.trim().toLowerCase();
-                    this.playerWeapon = normalizedWeapon === '' || normalizedWeapon === 'null'
-                        ? 'ramita'
-                        : normalizedWeapon;
-                } else {
-                    this.playerWeapon = weaponFromMap;
+            if (!this.anims.exists('duck-walk')) {
+                this.anims.create({
+                    key: 'duck-walk',
+                    frames: this.anims.generateFrameNumbers('duck_walk', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('duck-cuack')) {
+                this.anims.create({
+                    key: 'duck-cuack',
+                    frames: this.anims.generateFrameNumbers('duck-cuack', { start: 0, end: 0 }),
+                    frameRate: 8,
+                    repeat: 0
+                });
+            }
+
+            if (!this.anims.exists('duck-dash')) {
+                this.anims.create({
+                    key: 'duck-dash',
+                    frames: this.anims.generateFrameNumbers('duck-dash', { start: 0, end: 3 }),
+                    frameRate: 16,
+                    repeat: 0
+                });
+            }
+
+            if (!this.anims.exists('duck-swimming')) {
+                this.anims.create({
+                    key: 'duck-swimming',
+                    frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('zorro-idle') && this.textures.exists('zorro_idle')) {
+                this.anims.create({
+                    key: 'zorro-idle',
+                    frames: this.anims.generateFrameNumbers('zorro_idle', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('zorro-run') && this.textures.exists('zorro_run')) {
+                this.anims.create({
+                    key: 'zorro-run',
+                    frames: this.anims.generateFrameNumbers('zorro_run', { start: 0, end: 3 }),
+                    frameRate: 12,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('mapache-idle') && this.textures.exists('mapache_idle')) {
+                this.anims.create({
+                    key: 'mapache-idle',
+                    frames: this.anims.generateFrameNumbers('mapache_idle', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('mapache-run') && this.textures.exists('mapache_run')) {
+                this.anims.create({
+                    key: 'mapache-run',
+                    frames: this.anims.generateFrameNumbers('mapache_run', { start: 0, end: 3 }),
+                    frameRate: 12,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('cuervo-idle') && this.textures.exists('cuervo_idle')) {
+                this.anims.create({
+                    key: 'cuervo-idle',
+                    frames: this.anims.generateFrameNumbers('cuervo_idle', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('cuervo-run') && this.textures.exists('cuervo_run')) {
+                this.anims.create({
+                    key: 'cuervo-run',
+                    frames: this.anims.generateFrameNumbers('cuervo_run', { start: 0, end: 3 }),
+                    frameRate: 12,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('rana-idle') && this.textures.exists('rana_idle')) {
+                this.anims.create({
+                    key: 'rana-idle',
+                    frames: this.anims.generateFrameNumbers('rana_idle', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+
+            /* if (!this.anims.exists('duck-swimming') && this.textures.exists('duck-swimming')) {
+                 this.anims.create({
+                     key: 'duck-swimming',
+                     frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
+                     frameRate: 8,
+                     repeat: -1
+                 });
+             }*/
+
+            // ─────────────────────────────────────────
+            // AUDIO
+            // ─────────────────────────────────────────
+            this.cuackSound = this.sound.add('cuack', { volume: 1 });
+            this.deathSound = this.sound.add('death_sound', { volume: 1 });
+
+            // ─────────────────────────────────────────
+            // GRUPOS
+            // ─────────────────────────────────────────
+            this.dropItems = this.add.group();
+            this.consumableItems = this.add.group();
+            this.projectiles = this.add.group();
+
+            // ─────────────────────────────────────────
+            // INPUT MANAGER
+            // ─────────────────────────────────────────
+            this.inputManager = new InputManager(this);
+            this.wasAttackHeld = false;
+
+            // ─────────────────────────────────────────
+            // PLAYER
+            // ─────────────────────────────────────────
+
+            this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon, this.inputManager);
+
+            //spawner del cuervo
+            this.crowSpawner = {
+                holdDurationMs: 40000,
+                holdStartTime: null,
+                lastWeaponKey: this._getCurrentDuckWeaponKey(),
+                spawnedForCurrentWeapon: false
+            };
+
+            // ─────────────────────────────────────────
+            // UI
+            // ─────────────────────────────────────────
+            this.breadCount = 0;
+            this.consumableBar = new ConsumableBar(this, this.duck, this.inputManager);
+            this.enemiesKilled = 0;
+
+            // ─────────────────────────────────────────
+            // OVERLAY DE MUERTE
+            // ─────────────────────────────────────────
+            this.deathOverlay = this.add.container(0, 0).setScrollFactor(0).setDepth(10000);
+            this.deathOverlay.setVisible(false);
+
+            const deathBg = this.add.rectangle(
+                0,
+                0,
+                this.scale.width,
+                this.scale.height,
+                0x000000,
+                0.82
+            ).setOrigin(0, 0);
+
+            const deathText = this.add.text(
+                this.scale.width / 2,
+                this.scale.height / 2,
+                'YOU DIED',
+                {
+                    fontFamily: 'Arial Black',
+                    fontSize: '72px',
+                    color: '#b30000',
+                    stroke: '#000000',
+                    strokeThickness: 8
                 }
+            ).setOrigin(0.5);
+
+            this.deathOverlay.add([deathBg, deathText]);
+
+            // Si la ventana cambia, reajustamos overlay
+            if (this._onResize) {
+                this.scale.off('resize', this._onResize, this);
             }
-        }
+            this._onResize = (gameSize) => {
+                deathBg.setSize(gameSize.width, gameSize.height);
+                deathText.setPosition(gameSize.width / 2, gameSize.height / 2);
+            };
+            this.scale.on('resize', this._onResize, this);
 
-        this._applyStoredRespawnWeapon();
-
-        // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
-        // Esto evita depender de propiedades "collides" en cada tile del tileset.
-        this.colisionLayer.setCollisionByExclusion([-1], true);
-        this.puertaCerradaLayer.setCollisionByExclusion([-1], true);
-        this.vallaLayer.setCollisionByExclusion([-1], true);
-        this.desnivelLayer.setCollisionByExclusion([-1], true);
-        this.zonasAcuaticasLayer.setCollisionByExclusion([-1], true);
-
-        const worldWidth = this.map.widthInPixels * SCALE;
-        const worldHeight = this.map.heightInPixels * SCALE;
-
-        this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
-        this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
-        // Esto es para arreglar que el dash atraviesa paredes al ir muy rapido
-        this.physics.world.setFPS(120);
-        this.physics.world.TILE_BIAS = Math.max(this.physics.world.TILE_BIAS, 48);
-
-        // ─────────────────────────────────────────
-        // ANIMACIONES
-        // ─────────────────────────────────────────
-        if (!this.anims.exists('duck-idle')) {
-            this.anims.create({
-                key: 'duck-idle',
-                frames: this.anims.generateFrameNumbers('idle_duck', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('duck-walk')) {
-            this.anims.create({
-                key: 'duck-walk',
-                frames: this.anims.generateFrameNumbers('duck_walk', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('duck-cuack')) {
-            this.anims.create({
-                key: 'duck-cuack',
-                frames: this.anims.generateFrameNumbers('duck-cuack', { start: 0, end: 0 }),
-                frameRate: 8,
-                repeat: 0
-            });
-        }
-
-        if (!this.anims.exists('duck-dash')) {
-            this.anims.create({
-                key: 'duck-dash',
-                frames: this.anims.generateFrameNumbers('duck-dash', { start: 0, end: 3 }),
-                frameRate: 16,
-                repeat: 0
-            });
-        }
-
-        if (!this.anims.exists('duck-swimming')) {
-            this.anims.create({
-                key: 'duck-swimming',
-                frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('zorro-idle') && this.textures.exists('zorro_idle')) {
-            this.anims.create({
-                key: 'zorro-idle',
-                frames: this.anims.generateFrameNumbers('zorro_idle', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('zorro-run') && this.textures.exists('zorro_run')) {
-            this.anims.create({
-                key: 'zorro-run',
-                frames: this.anims.generateFrameNumbers('zorro_run', { start: 0, end: 3 }),
-                frameRate: 12,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('mapache-idle') && this.textures.exists('mapache_idle')) {
-            this.anims.create({
-                key: 'mapache-idle',
-                frames: this.anims.generateFrameNumbers('mapache_idle', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('mapache-run') && this.textures.exists('mapache_run')) {
-            this.anims.create({
-                key: 'mapache-run',
-                frames: this.anims.generateFrameNumbers('mapache_run', { start: 0, end: 3 }),
-                frameRate: 12,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('cuervo-idle') && this.textures.exists('cuervo_idle')) {
-            this.anims.create({
-                key: 'cuervo-idle',
-                frames: this.anims.generateFrameNumbers('cuervo_idle', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('cuervo-run') && this.textures.exists('cuervo_run')) {
-            this.anims.create({
-                key: 'cuervo-run',
-                frames: this.anims.generateFrameNumbers('cuervo_run', { start: 0, end: 3 }),
-                frameRate: 12,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('rana-idle') && this.textures.exists('rana_idle')) {
-            this.anims.create({
-                key: 'rana-idle',
-                frames: this.anims.generateFrameNumbers('rana_idle', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-
-        /* if (!this.anims.exists('duck-swimming') && this.textures.exists('duck-swimming')) {
-             this.anims.create({
-                 key: 'duck-swimming',
-                 frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
-                 frameRate: 8,
-                 repeat: -1
-             });
-         }*/
-
-        // ─────────────────────────────────────────
-        // AUDIO
-        // ─────────────────────────────────────────
-        this.cuackSound = this.sound.add('cuack', { volume: 1 });
-        this.deathSound = this.sound.add('death_sound', { volume: 1 });
-
-        // ─────────────────────────────────────────
-        // GRUPOS
-        // ─────────────────────────────────────────
-        this.dropItems = this.add.group();
-        this.consumableItems = this.add.group();
-        this.projectiles = this.add.group();
-
-        // ─────────────────────────────────────────
-        // INPUT MANAGER
-        // ─────────────────────────────────────────
-        this.inputManager = new InputManager(this);
-        this.wasAttackHeld = false;
-
-        // ─────────────────────────────────────────
-        // PLAYER
-        // ─────────────────────────────────────────
-
-        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon, this.inputManager);
-
-        //spawner del cuervo
-        this.crowSpawner = {
-            holdDurationMs: 40000,
-            holdStartTime: null,
-            lastWeaponKey: this._getCurrentDuckWeaponKey(),
-            spawnedForCurrentWeapon: false
-        };
-
-        // ─────────────────────────────────────────
-        // UI
-        // ─────────────────────────────────────────
-        this.breadCount = 0;
-        this.consumableBar = new ConsumableBar(this, this.duck, this.inputManager);
-        this.enemiesKilled = 0;
-
-        // ─────────────────────────────────────────
-        // OVERLAY DE MUERTE
-        // ─────────────────────────────────────────
-        this.deathOverlay = this.add.container(0, 0).setScrollFactor(0).setDepth(10000);
-        this.deathOverlay.setVisible(false);
-
-        const deathBg = this.add.rectangle(
-            0,
-            0,
-            this.scale.width,
-            this.scale.height,
-            0x000000,
-            0.82
-        ).setOrigin(0, 0);
-
-        const deathText = this.add.text(
-            this.scale.width / 2,
-            this.scale.height / 2,
-            'YOU DIED',
-            {
-                fontFamily: 'Arial Black',
-                fontSize: '72px',
-                color: '#b30000',
-                stroke: '#000000',
-                strokeThickness: 8
-            }
-        ).setOrigin(0.5);
-
-        this.deathOverlay.add([deathBg, deathText]);
-
-        // Si la ventana cambia, reajustamos overlay
-        if (this._onResize) {
-            this.scale.off('resize', this._onResize, this);
-        }
-        this._onResize = (gameSize) => {
-            deathBg.setSize(gameSize.width, gameSize.height);
-            deathText.setPosition(gameSize.width / 2, gameSize.height / 2);
-        };
-        this.scale.on('resize', this._onResize, this);
-
-        // Limpieza segura al reiniciar/destruir la escena
-        this.events.once('shutdown', this._cleanupScene, this);
-        this.events.once('destroy', this._cleanupScene, this);
+            // Limpieza segura al reiniciar/destruir la escena
+            this.events.once('shutdown', this._cleanupScene, this);
+            this.events.once('destroy', this._cleanupScene, this);
         } catch (err) {
             console.error('[MainScene] Error en create():', err);
             try {
@@ -830,6 +830,13 @@ export default class MainScene extends Phaser.Scene {
         this.input.activePointer.worldY = this.playerSpawn.y;
         this.virtualPointerX = this.scale.width * 0.5;
         this.virtualPointerY = this.scale.height * 0.5;
+
+        this._lastActiveInputMode = null;
+        this.aimAssistCross = this.add.graphics();
+        this.aimAssistCross.setScrollFactor(0);
+        this.aimAssistCross.setDepth(10001);
+        this.aimAssistCross.setVisible(false);
+        this._syncActiveInputModeFeedback();
     }
 
     /*update(time, delta) {
@@ -896,6 +903,8 @@ export default class MainScene extends Phaser.Scene {
         if (this.inputManager) {
             this.inputManager.update();
         }
+
+        this._syncActiveInputModeFeedback();
 
         // ─────────────────────────────────────────
         // ESTADO SWIMMING SEGÚN CAPA ACUÁTICA
@@ -980,16 +989,33 @@ export default class MainScene extends Phaser.Scene {
                     const responseCurve = 0.45 + Math.pow(aimMagnitude, 1.3);
                     const virtualPointerSpeed = baseVirtualPointerSpeed * responseCurve;
 
-                    this.virtualPointerX = Phaser.Math.Clamp(
-                        this.virtualPointerX + aimInput.x * virtualPointerSpeed * dt,
-                        0,
-                        screenW
-                    );
-                    this.virtualPointerY = Phaser.Math.Clamp(
-                        this.virtualPointerY + aimInput.y * virtualPointerSpeed * dt,
-                        0,
-                        screenH
-                    );
+                    const centerX = screenW * 0.5;
+                    const centerY = screenH * 0.5;
+
+                    let newX = this.virtualPointerX + aimInput.x * virtualPointerSpeed * dt;
+                    let newY = this.virtualPointerY + aimInput.y * virtualPointerSpeed * dt;
+
+                    // Determinar si el arma es cuerpo a cuerpo o a distancia
+                    const currentWeapon = this.duck?.weapon;
+                    const isMeleeWeapon = currentWeapon && !currentWeapon.isRanged;
+
+                    if (isMeleeWeapon) {
+                        // Arma melee: limitar al rango del arma desde el centro
+                        const maxRadius = currentWeapon.range || 250;
+                        const distance = Phaser.Math.Distance.Between(newX, newY, centerX, centerY);
+                        if (distance > maxRadius) {
+                            const angle = Math.atan2(newY - centerY, newX - centerX);
+                            newX = centerX + Math.cos(angle) * maxRadius;
+                            newY = centerY + Math.sin(angle) * maxRadius;
+                        }
+                    } else {
+                        // Arma ranged o sin arma: limitar solo a los bordes de pantalla
+                        newX = Phaser.Math.Clamp(newX, 0, screenW);
+                        newY = Phaser.Math.Clamp(newY, 0, screenH);
+                    }
+
+                    this.virtualPointerX = newX;
+                    this.virtualPointerY = newY;
 
                     if (pointer?.position?.set) {
                         pointer.position.set(this.virtualPointerX, this.virtualPointerY);
@@ -1003,6 +1029,8 @@ export default class MainScene extends Phaser.Scene {
                     this.virtualPointerY = pointer.y;
                 }
             }
+
+            this._updateAimAssistCross(pointer);
 
             // Mantener worldX/worldY del puntero actualizados incluso si no hay movimiento del mouse.
             pointer.updateWorldPoint(camera);
@@ -1092,6 +1120,68 @@ export default class MainScene extends Phaser.Scene {
             });
         }
 
+    }
+
+    _getActiveInputMode() {
+        return this.registry?.get('activeInputMode') || 'keyboard';
+    }
+
+    _syncActiveInputModeFeedback() {
+        const activeInputMode = this._getActiveInputMode();
+
+        if (activeInputMode === this._lastActiveInputMode) return;
+
+        this._lastActiveInputMode = activeInputMode;
+
+        if (this.input?.setDefaultCursor) {
+            this.input.setDefaultCursor(activeInputMode === 'gamepad' ? 'none' : 'default');
+        }
+
+        if (this.aimAssistCross) {
+            this.aimAssistCross.setVisible(activeInputMode === 'gamepad');
+        }
+    }
+
+    _updateAimAssistCross(pointer) {
+        if (!this.aimAssistCross) return;
+
+        const activeInputMode = this._getActiveInputMode();
+        const isGamepadMode = activeInputMode === 'gamepad';
+
+        this.aimAssistCross.setVisible(isGamepadMode);
+        if (!isGamepadMode || !pointer) return;
+
+        this.aimAssistCross.clear();
+        this.aimAssistCross.setPosition(pointer.x, pointer.y);
+
+        // Círculos concéntricos (más finos que la cruz)
+        this.aimAssistCross.lineStyle(3, 0x5a0000, 0.22);
+        this.aimAssistCross.strokeCircle(0, 0, 8);
+
+        this.aimAssistCross.lineStyle(2, 0xff3b3b, 0.78);
+        this.aimAssistCross.strokeCircle(0, 0, 14);
+
+        // Cruz de fondo (gruesa)
+        this.aimAssistCross.lineStyle(10, 0x5a0000, 0.22);
+        this.aimAssistCross.beginPath();
+        this.aimAssistCross.moveTo(-25, 0);
+        this.aimAssistCross.lineTo(25, 0);
+        this.aimAssistCross.moveTo(0, -25);
+        this.aimAssistCross.lineTo(0, 25);
+        this.aimAssistCross.strokePath();
+
+        // Cruz roja brillante
+        this.aimAssistCross.lineStyle(5, 0xff3b3b, 0.78);
+        this.aimAssistCross.beginPath();
+        this.aimAssistCross.moveTo(-23, 0);
+        this.aimAssistCross.lineTo(23, 0);
+        this.aimAssistCross.moveTo(0, -23);
+        this.aimAssistCross.lineTo(0, 23);
+        this.aimAssistCross.strokePath();
+
+        // Centro rellenado
+        this.aimAssistCross.fillStyle(0xff5555, 0.85);
+        this.aimAssistCross.fillCircle(0, 0, 4);
     }
 
     _updateDuckSwimmingState() {

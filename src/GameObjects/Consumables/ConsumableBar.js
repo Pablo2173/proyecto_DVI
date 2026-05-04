@@ -198,7 +198,6 @@ export default class ConsumableBar {
             slot.inner.setDepth(9100);
 
             slot.background.on('pointerdown', () => {
-                this.controlMode = 'keyboard';
                 this.selectSlot(i);
                 this.useSelectedItem();
             });
@@ -363,12 +362,10 @@ export default class ConsumableBar {
             handled = true;
         }
         if (this.scene.input.keyboard.checkDown(this.key5, 250)) {
-            this.controlMode = 'keyboard';
             this.useSlot(4);
             handled = true;
         }
         if (this.scene.input.keyboard.checkDown(this.key6, 250)) {
-            this.controlMode = 'keyboard';
             this.useSlot(5);
             handled = true;
         }
@@ -391,19 +388,16 @@ export default class ConsumableBar {
         let handled = false;
 
         if (leftDown && !this._previousGamepadButtons.left) {
-            this.controlMode = 'gamepad';
             this.selectPreviousSlot();
             handled = true;
         }
 
         if (rightDown && !this._previousGamepadButtons.right) {
-            this.controlMode = 'gamepad';
             this.selectNextSlot();
             handled = true;
         }
 
         if (useDown && !this._previousGamepadButtons.use) {
-            this.controlMode = 'gamepad';
             this.useSelectedItem();
             handled = true;
         }
@@ -503,9 +497,7 @@ export default class ConsumableBar {
         const keyboardHandled = this.checkKeyboardInput();
         const gamepadHandled = this.checkGamepadInput();
 
-        if (!keyboardHandled && !gamepadHandled) {
-            this.updateControlMode();
-        }
+        this.controlMode = this.getActiveInputMode();
 
         if (this.controlMode === 'gamepad') {
             this.ensureGamepadSelection();
@@ -516,16 +508,8 @@ export default class ConsumableBar {
         this.refreshControlsHint();
     }
 
-    updateControlMode() {
-        const nextMode = this.getPrimaryGamepad() ? 'gamepad' : 'keyboard';
-
-        if (nextMode !== this.controlMode) {
-            this.controlMode = nextMode;
-
-            if (this.controlMode === 'gamepad') {
-                this.ensureGamepadSelection();
-            }
-        }
+    getActiveInputMode() {
+        return this.scene?.registry?.get('activeInputMode') || 'keyboard';
     }
 
     ensureGamepadSelection() {
