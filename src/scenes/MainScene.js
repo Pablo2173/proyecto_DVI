@@ -26,6 +26,7 @@ import Key from '../GameObjects/Consumables/key.js';
 import DropBread from '../GameObjects/Consumables/Drops/dropBread.js';
 import DropFeather from '../GameObjects/Consumables/Drops/dropFeather.js';
 
+import Crocodile from '../GameObjects/crocodile.js';
 
 import Enemy from '../GameObjects/enemy.js';
 import Store from '../GameObjects/store.js';
@@ -39,6 +40,11 @@ import duck_swimming_sprite from '../../assets/sprites/duck/swimming_duck.png';
 import enemy_sprite from '../../assets/sprites/player.png';
 
 // Sprites de enemigos específicos
+import crocoSpritePath from '../../assets/sprites/croco/croco_idle.png';
+import crocoAttackPath from '../../assets/sprites/croco/croco_attack.png';
+import crocoSubmergePath from '../../assets/sprites/croco/croco_submerge.png';
+import crocoBubblePath from '../../assets/sprites/croco/croco_bubble.png';
+
 import zorro_idle from '../../assets/sprites/Zorro/zorro_idle.png';
 import zorro_run from '../../assets/sprites/Zorro/zorro_run.png';
 import zorro_hit from '../../assets/sprites/Zorro/zorro_hit.png';
@@ -209,6 +215,12 @@ export default class MainScene extends Phaser.Scene {
         });
 
         this.load.image('enemy', enemy_sprite);
+
+        // Sprites crocodile
+        this.load.image('croco_idle', crocoSpritePath);
+        this.load.image('croco_attack', crocoAttackPath);
+        this.load.image('croco_submerge', crocoSubmergePath);
+        this.load.image('croco_bubble', crocoBubblePath);
 
         // Cargar spritesheets de zorro (4 frames cada uno, 32x32)
         this.load.spritesheet('zorro_idle', zorro_idle, {
@@ -727,6 +739,19 @@ export default class MainScene extends Phaser.Scene {
         // ENEMIGOS DESDE RUTAS
         // ─────────────────────────────────────────
         this.enemies = this.physics.add.group();
+
+        // Crear cocodrilo boss
+        const croco = new Crocodile(
+            this,
+            'Cocodrilo_Boss',
+            this.playerSpawn.x + 100,  // 100px a la derecha del spawn del pato
+            this.playerSpawn.y,
+            'croco_idle',
+            null
+        );
+        this.enemies.add(croco);
+        this._wireEnemyCollisions(croco);
+
         this.setupEnemiesFromRoutes(SCALE);
 
 
@@ -1001,7 +1026,9 @@ export default class MainScene extends Phaser.Scene {
                 if (!enemy || !enemy.active || enemy.isDead?.()) return;
 
                 // Detección y feedback visual manejados por la propia clase Enemy
-                enemy.updateAwareness(this.duck, time);
+                if (typeof enemy.updateAwareness === 'function') {
+                    enemy.updateAwareness(this.duck, time);
+                }
             });
         }
 
