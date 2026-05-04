@@ -199,6 +199,11 @@ export default class SettingsScene extends Phaser.Scene {
       if (this.pauseUnderlyingScene && this.returnScene) {
         this.scene.stop();
         this.scene.resume(this.returnScene);
+
+        const underlyingScene = this.scene.get(this.returnScene);
+        if (underlyingScene?.closePauseMenu) {
+          underlyingScene.closePauseMenu();
+        }
       } else {
         this.scene.start(this.returnScene);
       }
