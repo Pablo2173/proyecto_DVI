@@ -52,6 +52,12 @@ export default class Crocodile extends Enemy {
         // ── Estado de terreno ──
         this._isSwimming = false;   // flag sincronizado con el tile layer
 
+        // ── Gracia de entrada al agua ──
+        // Durante este tiempo tras entrar en swimming NO se aplica
+        // movimiento evasivo, evitando que el croco rebote hacia tierra.
+        this._swimEntryGraceMs    = 600;  // ms de gracia tras entrar en agua
+        this._swimEntryGraceUntil = 0;    // timestamp hasta el que dura la gracia
+
         // ── Ataque ──
         this.isAttacking    = false;
         this.attackCooldown = 2000;
@@ -129,7 +135,15 @@ export default class Crocodile extends Enemy {
         this._pendingInWater      = null;
         this._terrainPendingSince = 0;
 
-        this._isSwimming = inWater;
+        const wasSwimming = this._isSwimming;
+        this._isSwimming  = inWater;
+
+        // Al entrar en agua: iniciar período de gracia para que el croco
+        // se estabilice dentro antes de aplicar movimiento evasivo
+        if (!wasSwimming && inWater) {
+            this._swimEntryGraceUntil = now + this._swimEntryGraceMs;
+            this.body?.setVelocity(0, 0);
+        }
 
         // Actualizar radio de visión de Enemy según terreno
         this._visionRadius = this._activeAlertRadius();
@@ -194,8 +208,8 @@ export default class Crocodile extends Enemy {
 
     onCombatMovement(target, dist) {
         if (this._isSwimming) {
-            // En agua: alejarse siempre, nunca acercarse
-            this.moveAwayFrom(target);
+            // En agua: alejarse, pero solo si ya pasó la gracia de entrada
+            this._fleeInsideWater(target);
         } else {
             // En tierra: strafing estándar de Enemy
             super.onCombatMovement(target, dist);
@@ -205,7 +219,7 @@ export default class Crocodile extends Enemy {
     onChaseMovement(target, dist) {
         if (this._isSwimming) {
             // En agua: aunque esté fuera del rango, alejarse igualmente
-            this.moveAwayFrom(target);
+            this._fleeInsideWater(target);
         } else {
             // En tierra: persecución estándar de Enemy
             super.onChaseMovement(target, dist);
@@ -214,10 +228,74 @@ export default class Crocodile extends Enemy {
 
     onRetreatMovement(target, dist) {
         if (this._isSwimming) {
-            this.moveAwayFrom(target);
+            this._fleeInsideWater(target);
         } else {
             super.onRetreatMovement(target, dist);
         }
+    }
+
+    // ─────────────────────────────────────────
+    //  HUIDA SEGURA DENTRO DEL AGUA
+    //  Calcula el vector de huida y lo cancela
+    //  si la posición proyectada sale del agua,
+    //  evitando que el croco rebote en la orilla.
+    //  Durante el período de gracia de entrada
+    //  el croco simplemente se queda quieto.
+    // ─────────────────────────────────────────
+
+    _fleeInsideWater(target) {
+        if (!target || typeof target.x !== 'number') {
+            this.body?.setVelocity(0, 0);
+            return;
+        }
+
+        const now = this.scene?.time?.now ?? 0;
+
+        // Período de gracia: quedarse quieto para estabilizarse en el agua
+        if (now < this._swimEntryGraceUntil) {
+            this.body?.setVelocity(0, 0);
+            return;
+        }
+
+        const angle = Phaser.Math.Angle.Between(target.x, target.y, this.x, this.y);
+        const vx    = Math.cos(angle) * this._speed;
+        const vy    = Math.sin(angle) * this._speed;
+
+        // Comprobar si la posición proyectada (1 frame adelante ~16ms) sigue en agua
+        const dt         = 0.016;
+        const projX      = this.x + vx * dt;
+        const projY      = this.y + vy * dt;
+        const tileSize   = 16 * 4;
+        const layer      = this.scene?.zonasAcuaticasLayer;
+        const projInWater = layer
+            ? !!layer.getTileAt(Math.floor(projX / tileSize), Math.floor(projY / tileSize))
+            : false;
+
+        if (!projInWater) {
+            // El vector de huida sacaría al croco del agua → intentar
+            // moverse lateralmente a lo largo de la orilla en su lugar
+            const perpAngle = angle + Math.PI / 2;
+            const pvx = Math.cos(perpAngle) * this._speed * 0.7;
+            const pvy = Math.sin(perpAngle) * this._speed * 0.7;
+
+            const ppX = this.x + pvx * dt;
+            const ppY = this.y + pvy * dt;
+            const perpInWater = layer
+                ? !!layer.getTileAt(Math.floor(ppX / tileSize), Math.floor(ppY / tileSize))
+                : false;
+
+            if (perpInWater) {
+                this.body?.setVelocity(pvx, pvy);
+            } else {
+                // Ambas direcciones salen → quedarse quieto (croco está en esquina)
+                this.body?.setVelocity(0, 0);
+            }
+            return;
+        }
+
+        // Vector de huida válido: aplicar y orientar sprite
+        this.body?.setVelocity(vx, vy);
+        if (Math.abs(vx) > 1) this.setFlipX(vx < 0);
     }
 
     // ─────────────────────────────────────────
