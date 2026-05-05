@@ -729,6 +729,10 @@ export default class AlcantarillasScene extends Phaser.Scene {
             );
             this.enemies.add(croco);
             this._wireEnemyCollisions(croco);
+
+            // Guardar referencia para detectar su muerte en update()
+            this._bosscroco = croco;
+            this._bossDeathHandled = false;
         }
 
         if (this.map.getObjectLayer('routes')) {
@@ -1073,6 +1077,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
                 }
             });
         }
+        this._checkCrocoDeath();
     }
 
     _getActiveInputMode() {
@@ -2229,4 +2234,16 @@ export default class AlcantarillasScene extends Phaser.Scene {
         this.input?.off?.('wheel');
     }
 
+    _checkCrocoDeath() {
+    if (this._bossDeathHandled) return;
+    if (!this._bosscroco) return;
+    if (!this._bosscroco.isDead?.()) return;
+
+    this._bossDeathHandled = true;
+
+    this.time.delayedCall(3000, () => {
+        if (!this.scene.isActive('AlcantarillasScene')) return;
+        this.scene.start('FinishScene');
+    });
+}
 }

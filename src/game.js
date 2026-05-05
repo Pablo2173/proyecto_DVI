@@ -4,6 +4,7 @@ import MenuScene from "./scenes/MenuScene.js";
 import MainScene from "./scenes/MainScene.js";
 import SettingsScene from "./scenes/SettingsScene.js";
 import AlcantarillasScene from "./scenes/AlcantarillasScene.js";
+import FinishScene from "./scenes/FinishScene.js";
 
 async function loadFont() {
   const fontUrl = new URL("../css/typo/return-of-the-boss.ttf", import.meta.url);
@@ -23,7 +24,7 @@ async function loadFont() {
     pixelArt: true,
     antialias: false,    // desactiva suavizado para pixelart
     backgroundColor: '#cacaca',
-    scene: [Boot, MenuScene, MainScene, AlcantarillasScene, SettingsScene],
+    scene: [Boot, MenuScene, MainScene, AlcantarillasScene, SettingsScene, FinishScene],
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH
@@ -35,7 +36,7 @@ async function loadFont() {
       default: 'arcade',
       arcade: {
         gravity: { y: 0 }, // sin gravedad para top-down
-        debug: true // oculta hitboxes y colisiones debug
+        debug: false // oculta hitboxes y colisiones debug
       }
     },
   };
