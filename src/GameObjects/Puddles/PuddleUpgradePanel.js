@@ -10,6 +10,15 @@ export default class PuddleUpgradePanel {
         this.isVisible = false;
         this.upgradeRows = [];
 
+        // Gamepad support
+        this.selectedUpgradeIndex = -1;
+        this.controlMode = 'keyboard';
+        this._previousGamepadButtons = {
+            up: false,
+            down: false,
+            confirm: false
+        };
+
         this._build();
         this._bindInput();
         this.hide();
@@ -269,6 +278,15 @@ export default class PuddleUpgradePanel {
 
         this.isVisible = true;
         this.container.setVisible(true);
+
+        // Detectar modo de control y reiniciar selector
+        this.controlMode = this.getActiveInputMode();
+        if (this.controlMode === 'gamepad') {
+            this.selectedUpgradeIndex = 0;
+        } else {
+            this.selectedUpgradeIndex = -1;
+        }
+
         this._refresh(duck);
     }
 
@@ -289,7 +307,135 @@ export default class PuddleUpgradePanel {
             this.hide();
             return;
         }
+
+        // Detectar modo de control
+        this.controlMode = this.getActiveInputMode();
+
+        // Manejar input de gamepad
+        if (this.controlMode === 'gamepad') {
+            this.checkGamepadInput();
+            this.ensureGamepadSelection();
+        }
+
         this._refresh(duck);
+    }
+
+    checkGamepadInput() {
+        const pad = this.getPrimaryGamepad();
+        if (!pad) {
+            this._previousGamepadButtons.up = false;
+            this._previousGamepadButtons.down = false;
+            this._previousGamepadButtons.confirm = false;
+            return;
+        }
+
+        // D-pad up (12) y D-pad down (13)
+        const upDown = this.isGamepadButtonDown(pad, 12);
+        const downDown = this.isGamepadButtonDown(pad, 13);
+        // Triangle (Y = 3)
+        const confirmDown = this.isGamepadButtonDown(pad, 3);
+
+        if (upDown && !this._previousGamepadButtons.up) {
+            this.selectPreviousUpgrade();
+        }
+
+        if (downDown && !this._previousGamepadButtons.down) {
+            this.selectNextUpgrade();
+        }
+
+        if (confirmDown && !this._previousGamepadButtons.confirm) {
+            this.confirmSelectedUpgrade();
+        }
+
+        this._previousGamepadButtons.up = upDown;
+        this._previousGamepadButtons.down = downDown;
+        this._previousGamepadButtons.confirm = confirmDown;
+    }
+
+    confirmSelectedUpgrade() {
+        if (!this.isVisible || !this.currentPuddle) {
+            return;
+        }
+
+        // Si seleccionó el botón de reclamar (índice 3: el 4to elemento)
+        if (this.selectedUpgradeIndex === 3) {
+            if (typeof this.onClaimReward === 'function') {
+                this.onClaimReward(this.currentPuddle);
+            }
+            return;
+        }
+
+        // Si seleccionó una mejora (0-2)
+        if (this.selectedUpgradeIndex >= 0 && this.selectedUpgradeIndex < 3) {
+            const upgrade = this.currentUpgrades[this.selectedUpgradeIndex];
+            if (upgrade?.id && typeof this.onPurchaseUpgrade === 'function') {
+                this.onPurchaseUpgrade(this.currentPuddle, upgrade.id);
+            }
+        }
+    }
+
+    selectNextUpgrade() {
+        // Hay 3 mejoras + 1 botón de reclamar = 4 opciones totales
+        if (this.selectedUpgradeIndex < 0) {
+            this.selectedUpgradeIndex = 0;
+            return;
+        }
+
+        // Si hay menos de 4 opciones, ajustar el máximo
+        const maxOptions = this.currentUpgrades.length > 0 ? 4 : 0;
+        if (maxOptions === 0) {
+            this.selectedUpgradeIndex = -1;
+            return;
+        }
+
+        this.selectedUpgradeIndex = Math.min(this.selectedUpgradeIndex + 1, maxOptions - 1);
+    }
+
+    selectPreviousUpgrade() {
+        if (this.selectedUpgradeIndex <= 0) {
+            this.selectedUpgradeIndex = 0;
+            return;
+        }
+
+        this.selectedUpgradeIndex = Math.max(this.selectedUpgradeIndex - 1, 0);
+    }
+
+    ensureGamepadSelection() {
+        const maxOptions = this.currentUpgrades.length > 0 ? 4 : 0;
+
+        if (maxOptions === 0) {
+            this.selectedUpgradeIndex = -1;
+            return;
+        }
+
+        if (this.selectedUpgradeIndex < 0) {
+            this.selectedUpgradeIndex = 0;
+            return;
+        }
+
+        if (this.selectedUpgradeIndex >= maxOptions) {
+            this.selectedUpgradeIndex = maxOptions - 1;
+        }
+    }
+
+    getPrimaryGamepad() {
+        if (!this.scene?.input?.gamepad) return null;
+
+        const gamepads = this.scene.input.gamepad.getAll();
+        if (!gamepads || gamepads.length === 0) return null;
+
+        return gamepads.find((pad) => pad && pad.connected) || gamepads[0];
+    }
+
+    isGamepadButtonDown(pad, buttonIndex) {
+        if (!pad || !pad.buttons || !pad.buttons[buttonIndex]) return false;
+
+        const button = pad.buttons[buttonIndex];
+        return !!(button.pressed || (typeof button.value === 'number' && button.value > 0.5));
+    }
+
+    getActiveInputMode() {
+        return this.scene?.registry?.get('activeInputMode') || 'keyboard';
     }
 
     _refresh(duck) {
@@ -319,7 +465,21 @@ export default class PuddleUpgradePanel {
             row.buttonBg.setFillStyle(canBuy ? 0x3f2615 : 0x555555, 0.95);
             row.priceText.setAlpha(canBuy ? 1 : 0.75);
             row.featherIcon.setAlpha(canBuy ? 1 : 0.75);
+
+            // Resaltar si está seleccionado en modo gamepad
+            if (this.controlMode === 'gamepad' && this.selectedUpgradeIndex === index) {
+                row.buttonBg.setStrokeStyle(4, 0xffe8a3, 1);
+            } else {
+                row.buttonBg.setStrokeStyle(3, 0xcda349, 1);
+            }
         });
+
+        // Resaltar el botón de reclamar si está seleccionado
+        if (this.controlMode === 'gamepad' && this.selectedUpgradeIndex === 3) {
+            this.claimButtonBg.setStrokeStyle(4, 0xffe8a3, 1);
+        } else {
+            this.claimButtonBg.setStrokeStyle(3, 0xcda349, 1);
+        }
 
         const canBuyAny = this.currentUpgrades.some(upgrade => {
             const cost = Math.max(0, Number(upgrade?.costFeathers) || 0);

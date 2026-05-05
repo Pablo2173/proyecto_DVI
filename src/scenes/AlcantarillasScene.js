@@ -308,6 +308,14 @@ export default class AlcantarillasScene extends Phaser.Scene {
             this.currentPuddle = null;
             this.previousCheckpointBeforePuddle = null;
             this.puddleUpgradePanel = null;
+            this._previousPauseButtonDown = false;
+            this._pauseMenuButtons = [];
+            this._pauseMenuSelectedIndex = 0;
+            this._pauseMenuContext = 'pause';
+            this._pauseMenuNavRepeatMs = 170;
+            this._lastPauseMenuNavAt = -Infinity;
+            this._pauseMenuActionHeld = false;
+            this._pauseMenuBackHeld = false;
 
             // Limpia listeners anteriores por seguridad al reiniciar la escena
             this.input.removeAllListeners();
@@ -811,7 +819,10 @@ export default class AlcantarillasScene extends Phaser.Scene {
     }
 
     update(time, delta) {
-        if (Phaser.Input.Keyboard.JustDown(this.keyEsc)) {
+        const primaryPad = this._getPrimaryGamepad();
+        const pauseButtonDown = this._isPadButtonDown(primaryPad, 9);
+        if (Phaser.Input.Keyboard.JustDown(this.keyEsc) || (pauseButtonDown && !this._previousPauseButtonDown)) {
+            this._previousPauseButtonDown = pauseButtonDown;
             if (this.scene.isActive('SettingsScene')) {
                 return;
             }
@@ -834,6 +845,18 @@ export default class AlcantarillasScene extends Phaser.Scene {
             }
 
             this.openPauseMenu();
+            return;
+        }
+
+        this._previousPauseButtonDown = pauseButtonDown;
+
+        if (this.pauseOverlay?.visible || this.guideOverlay?.visible || this.exitConfirmOverlay?.visible) {
+            this.updatePauseGamepadMenu();
+
+            if (this.isPaused && this.duck?.body) {
+                this.duck.body.setVelocity(0, 0);
+            }
+
             return;
         }
 
@@ -1315,7 +1338,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
     _onPuddleUpgradePurchase(puddle, upgradeId) {
         if (!puddle || !this.duck) return;
 
-        const purchase = puddle.purchaseUpgrade?.(upgradeId, this.duck);
+        const purchase = puddle.purchaseUpgrade?.(this.duck, upgradeId);
         const success = !!purchase?.success;
         let purchaseMessage = purchase?.message || '';
         if (success) {
@@ -1502,6 +1525,11 @@ export default class AlcantarillasScene extends Phaser.Scene {
         });
 
         this._pauseObjects = [bg, panel, title, ...settingsBtn, ...guideBtn, ...exitBtn];
+        this._pauseMenuButtons = [
+            { bg: settingsBtn[0], text: settingsBtn[1], onClick: () => this.openSettingsFromPause() },
+            { bg: guideBtn[0], text: guideBtn[1], onClick: () => this.openGuide() },
+            { bg: exitBtn[0], text: exitBtn[1], onClick: () => this.openExitConfirm() }
+        ];
 
         this.pauseOverlay = {
             setVisible: (v) => this._pauseObjects.forEach(o => o.setVisible(v)),
@@ -1509,6 +1537,8 @@ export default class AlcantarillasScene extends Phaser.Scene {
         };
 
         this._pauseObjects.forEach(o => o.setVisible(false));
+        this._pauseMenuSelectedIndex = 0;
+        this._refreshPauseMenuSelection();
 
         this._pauseResizeHandler = (gameSize) => {
             const w = gameSize.width;
@@ -1529,6 +1559,150 @@ export default class AlcantarillasScene extends Phaser.Scene {
         };
 
         this.scale.on('resize', this._pauseResizeHandler, this);
+    }
+
+    _getPrimaryGamepad() {
+        if (!this.input?.gamepad) return null;
+
+        const gamepads = this.input.gamepad.getAll();
+        if (!gamepads || gamepads.length === 0) return null;
+
+        return gamepads.find((pad) => pad && pad.connected) || gamepads[0];
+    }
+
+    _getPadAxis(pad, axisIndex) {
+        if (!pad || !Array.isArray(pad.axes) || !pad.axes[axisIndex]) return 0;
+
+        const axis = pad.axes[axisIndex];
+        if (typeof axis.getValue === 'function') return axis.getValue();
+        if (typeof axis.value === 'number') return axis.value;
+        return 0;
+    }
+
+    _isPadButtonDown(pad, buttonIndex) {
+        if (!pad || !pad.buttons || !pad.buttons[buttonIndex]) return false;
+
+        const button = pad.buttons[buttonIndex];
+        return !!(button.pressed || (typeof button.value === 'number' && button.value > 0.5));
+    }
+
+    _getPauseMenuButtonsForCurrentContext() {
+        if (this._pauseMenuContext === 'exit') {
+            return this._exitMenuButtons ?? [];
+        }
+
+        return this._pauseMenuButtons ?? [];
+    }
+
+    _refreshPauseMenuSelection() {
+        const buttons = this._getPauseMenuButtonsForCurrentContext();
+
+        buttons.forEach((button, index) => {
+            if (!button?.bg || !button?.text) return;
+
+            const selected = index === this._pauseMenuSelectedIndex;
+            button.bg.setFillStyle(selected ? 0x222222 : 0x000000, selected ? 0.75 : 0.45);
+            button.bg.setScale(selected ? 1.03 : 1);
+            button.text.setScale(selected ? 1.03 : 1);
+            button.text.setStroke('#000000', selected ? 7 : 5);
+            button.text.setShadow(selected ? 3 : 2, selected ? 3 : 2, '#000000', selected ? 4 : 2, true, true);
+        });
+    }
+
+    _movePauseMenuSelection(delta) {
+        const buttons = this._getPauseMenuButtonsForCurrentContext();
+        if (!buttons.length) return;
+
+        this._pauseMenuSelectedIndex = (this._pauseMenuSelectedIndex + delta + buttons.length) % buttons.length;
+        this._refreshPauseMenuSelection();
+    }
+
+    updatePauseGamepadMenu() {
+        const pad = this._getPrimaryGamepad();
+        if (!pad) {
+            this._pauseMenuActionHeld = false;
+            this._pauseMenuBackHeld = false;
+            this._lastPauseMenuNavAt = -Infinity;
+            return;
+        }
+
+        const now = this.time.now;
+        const deadzone = 0.35;
+        const leftY = this._getPadAxis(pad, 1);
+        const dpadUp = this._isPadButtonDown(pad, 12);
+        const dpadDown = this._isPadButtonDown(pad, 13);
+        const confirmPressed = this._isPadButtonDown(pad, 0);
+        const backPressed = this._isPadButtonDown(pad, 1);
+        const navUp = leftY < -deadzone || dpadUp;
+        const navDown = leftY > deadzone || dpadDown;
+        const buttons = this._getPauseMenuButtonsForCurrentContext();
+
+        if (buttons.length && now - this._lastPauseMenuNavAt >= this._pauseMenuNavRepeatMs) {
+            if (navUp && !navDown) {
+                this._movePauseMenuSelection(-1);
+                this._lastPauseMenuNavAt = now;
+            } else if (navDown && !navUp) {
+                this._movePauseMenuSelection(1);
+                this._lastPauseMenuNavAt = now;
+            }
+        }
+
+        if (this._pauseMenuContext === 'guide') {
+            if (backPressed && !this._pauseMenuBackHeld) {
+                this.closeGuide();
+                this.openPauseMenu();
+            }
+            this._pauseMenuBackHeld = backPressed;
+            this._pauseMenuActionHeld = confirmPressed;
+            return;
+        }
+
+        if (this._pauseMenuContext === 'exit') {
+            const navLeft = this._isPadButtonDown(pad, 14);
+            const navRight = this._isPadButtonDown(pad, 15);
+
+            if (now - this._lastPauseMenuNavAt >= this._pauseMenuNavRepeatMs) {
+                if (navLeft && !navRight) {
+                    this._movePauseMenuSelection(-1);
+                    this._lastPauseMenuNavAt = now;
+                } else if (navRight && !navLeft) {
+                    this._movePauseMenuSelection(1);
+                    this._lastPauseMenuNavAt = now;
+                }
+            }
+
+            if (backPressed && !this._pauseMenuBackHeld) {
+                this.closeExitConfirm();
+                this.openPauseMenu();
+                this._pauseMenuBackHeld = backPressed;
+                this._pauseMenuActionHeld = confirmPressed;
+                return;
+            }
+
+            if (confirmPressed && !this._pauseMenuActionHeld) {
+                const button = buttons[this._pauseMenuSelectedIndex] ?? buttons[0];
+                button?.onClick?.();
+            }
+
+            this._pauseMenuActionHeld = confirmPressed;
+            this._pauseMenuBackHeld = backPressed;
+            return;
+        }
+
+        if (backPressed && !this._pauseMenuBackHeld) {
+            this.closePauseMenu();
+            this._pauseMenuBackHeld = backPressed;
+            this._pauseMenuActionHeld = confirmPressed;
+            return;
+        }
+
+        if (confirmPressed && !this._pauseMenuActionHeld) {
+            const button = buttons[this._pauseMenuSelectedIndex] ?? buttons[0];
+            button?.onClick?.();
+        }
+
+        this._pauseMenuActionHeld = confirmPressed;
+        this._pauseMenuBackHeld = backPressed;
     }
 
     createGuideUI() {
@@ -1790,11 +1964,17 @@ export default class AlcantarillasScene extends Phaser.Scene {
         });
 
         this._exitObjects = [bg, panel, title, desc, ...acceptBtn, ...backBtn];
+        this._exitMenuButtons = [
+            { bg: acceptBtn[0], text: acceptBtn[1], onClick: () => this.confirmExitToMenu() },
+            { bg: backBtn[0], text: backBtn[1], onClick: () => { this.closeExitConfirm(); this.openPauseMenu(); } }
+        ];
         this.exitConfirmOverlay = {
             setVisible: (v) => this._exitObjects.forEach(o => o.setVisible(v)),
             get visible() { return bg.visible; }
         };
         this._exitObjects.forEach(o => o.setVisible(false));
+        this._pauseMenuSelectedIndex = 0;
+        this._refreshPauseMenuSelection();
 
         this._exitResizeHandler = (gameSize) => {
             const w = gameSize.width;
@@ -1819,9 +1999,12 @@ export default class AlcantarillasScene extends Phaser.Scene {
         if (this.isPlayerDead) return;
 
         this.isPaused = true;
+        this._pauseMenuContext = 'pause';
+        this._pauseMenuSelectedIndex = 0;
         this.pauseOverlay?.setVisible(true);
         this.guideOverlay?.setVisible(false);
         this.exitConfirmOverlay?.setVisible(false);
+        this._refreshPauseMenuSelection();
 
         if (this.duck?.body) {
             this.duck.body.setVelocity(0, 0);
@@ -1837,6 +2020,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
 
     openGuide() {
         this.isPaused = true;
+        this._pauseMenuContext = 'guide';
         this.pauseOverlay?.setVisible(false);
         this.exitConfirmOverlay?.setVisible(false);
         this.guideOverlay?.setVisible(true);
@@ -1848,9 +2032,12 @@ export default class AlcantarillasScene extends Phaser.Scene {
 
     openExitConfirm() {
         this.isPaused = true;
+        this._pauseMenuContext = 'exit';
+        this._pauseMenuSelectedIndex = 0;
         this.pauseOverlay?.setVisible(false);
         this.guideOverlay?.setVisible(false);
         this.exitConfirmOverlay?.setVisible(true);
+        this._refreshPauseMenuSelection();
     }
 
     closeExitConfirm() {
