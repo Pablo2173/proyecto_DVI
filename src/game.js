@@ -35,7 +35,7 @@ async function loadFont() {
       default: 'arcade',
       arcade: {
         gravity: { y: 0 }, // sin gravedad para top-down
-        debug: false // oculta hitboxes y colisiones debug
+        debug: true // oculta hitboxes y colisiones debug
       }
     },
   };

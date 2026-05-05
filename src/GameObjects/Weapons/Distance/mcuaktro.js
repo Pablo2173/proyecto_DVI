@@ -12,7 +12,7 @@ export default class Mcuaktro extends Weapon {
             damage:          8,
             attackSpeed:     200,   // cadencia alta
             durability:      50*5, // tienes 70 balas
-            range:           500,
+            range:           800,
             optimalDistance: 350,
             scale:           1,
             spriteAngleOffset: 0,

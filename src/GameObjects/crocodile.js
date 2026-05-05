@@ -23,19 +23,19 @@ export default class Crocodile extends BaseCharacter {
         this._nombre = name;
         this.team = TEAM.ENEMY;
 
-        this.health = 120;
+        this.health = 500;
         this._speed = 200;
-        this.damage = 2;
+        this.damage = 10;
 
-        this.attackRadius = 50;
-        this.alertRadius = 400;
+        this.attackRadius = 80;
+        this.alertRadius = 800;
         this.contactRadius = 100;
         this.minimumApproachRadius = 100;
 
         this._swimAttackRadius = 200;
         this._swimAlertRadius = 200;
         this._swimContactRadius = 140;
-        this._swimChaseSpeedMultiplier = 2;
+        this._swimChaseSpeedMultiplier = 2.2;
 
         this._shootingBurstCooldownMs = 7000;
         this._shootingShotIntervalMs = 400;
@@ -76,8 +76,8 @@ export default class Crocodile extends BaseCharacter {
                 this.body.setCollideWorldBounds(true);
                 this.body.setAllowGravity(false);
                 this.body.setImmovable(false);
-                this.body.setSize(28, 28);
-                this.body.setOffset(2, 2);
+                this.body.setSize(36, 36);
+                this.body.setOffset(24, 24);
             }
         }
 
@@ -189,20 +189,6 @@ export default class Crocodile extends BaseCharacter {
         return this.currentState === this.states.SWIMMING
             ? this._swimChaseSpeedMultiplier
             : 1;
-    }
-
-    _drawDebugRadii() {
-        if (!this._debugGraphics) return;
-        if (!this.showDebugAreas) {
-            this._debugGraphics.clear();
-            return;
-        }
-
-        this._debugGraphics.clear();
-        this._debugGraphics.lineStyle(1, 0xffff00, 0.6);
-        this._debugGraphics.strokeCircle(this.x, this.y, this._activeAlertRadius());
-        this._debugGraphics.lineStyle(1, 0xff0000, 0.6);
-        this._debugGraphics.strokeCircle(this.x, this.y, this._activeAttackRadius());
     }
 
     _idleSprite() {
@@ -597,8 +583,6 @@ export default class Crocodile extends BaseCharacter {
                 this._handleSearch(player, distance, delta);
                 break;
         }
-
-        this._drawDebugRadii();
 
         if (this.weaponBar?.update) this.weaponBar.update();
     }
