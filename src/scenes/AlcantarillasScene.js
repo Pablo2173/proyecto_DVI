@@ -583,6 +583,8 @@ export default class AlcantarillasScene extends Phaser.Scene {
 
             this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon, this.inputManager);
 
+            this._applyStoredConsumables();
+
             //spawner del cuervo
             this.crowSpawner = {
                 holdDurationMs: 40000,
@@ -698,6 +700,22 @@ export default class AlcantarillasScene extends Phaser.Scene {
         // ENEMIGOS Y SPAWNS OPCIONALES
         // ─────────────────────────────────────────
         this.enemies = this.physics.add.group();
+
+        // Crear cocodrilo boss desde Tiled
+        const crocoLayer = this.map.getObjectLayer('cocodrilo');
+        if (crocoLayer && crocoLayer.objects.length > 0) {
+            const crocoObj = crocoLayer.objects[0];
+            const croco = new Crocodile(
+                this,
+                crocoObj.name || 'Cocodrilo_Boss',
+                crocoObj.x * SCALE,
+                crocoObj.y * SCALE,
+                'croco_idle',
+                null
+            );
+            this.enemies.add(croco);
+            this._wireEnemyCollisions(croco);
+        }
 
         if (this.map.getObjectLayer('routes')) {
             this.setupEnemiesFromRoutes(SCALE);
@@ -1073,13 +1091,14 @@ export default class AlcantarillasScene extends Phaser.Scene {
     }
 
     _updateDuckSwimmingState() {
-        if (!this.duck || !this.duck.active || !this.zonasAcuaticasLayer) return;
+        if (!this.duck || !this.duck.active) return;
 
         const tileSize = 16 * 4;
         const tileX = Math.floor(this.duck.x / tileSize);
         const tileY = Math.floor(this.duck.y / tileSize);
 
-        const waterTile = this.zonasAcuaticasLayer.getTileAt(tileX, tileY);
+        // Verificar ambas capas de agua: Zonas acuaticas y Zona acuatica 2
+        const waterTile = this.zonasAcuaticasLayer?.getTileAt(tileX, tileY) || this.zonaAcuatica2Layer?.getTileAt(tileX, tileY);
         const isInWater = !!waterTile;
 
         if (isInWater) {
@@ -1107,7 +1126,15 @@ export default class AlcantarillasScene extends Phaser.Scene {
             };
         }
 
-        return null;
+        const spawnX = Number(this.playerSpawn?.x);
+        const spawnY = Number(this.playerSpawn?.y);
+        if (!Number.isFinite(spawnX) || !Number.isFinite(spawnY)) return null;
+
+        return {
+            x: spawnX,
+            y: spawnY,
+            puddleName: ''
+        };
     }
 
     _restoreCheckpoint(checkpointData) {
@@ -1156,6 +1183,13 @@ export default class AlcantarillasScene extends Phaser.Scene {
         if (!allowedWeapons.has(normalizedWeapon)) return;
 
         this.playerWeapon = normalizedWeapon;
+    }
+
+    _applyStoredConsumables() {
+        const storedConsumables = this.registry?.get('duckConsumables');
+        if (!Array.isArray(storedConsumables)) return;
+
+        this.duck.consumables = JSON.parse(JSON.stringify(storedConsumables));
     }
 
     _setCheckpointFromPuddle(puddle) {
@@ -1236,6 +1270,33 @@ export default class AlcantarillasScene extends Phaser.Scene {
         if (this.duck.state !== DUCK_STATE.SWIMMING && this.duck.state !== DUCK_STATE.DASHING) {
             this.duck.setState(DUCK_STATE.SWIMMING);
         }
+    }
+
+    setupPuddlesFromLayer(scale) {
+        const puddleLayer = this.map.getObjectLayer('charquito');
+
+        this.puddles = [];
+
+        if (!puddleLayer || !Array.isArray(puddleLayer.objects) || puddleLayer.objects.length === 0) {
+            console.log('[AlcantarillasScene] No se encontró la capa "charquito" o está vacía.');
+            return;
+        }
+
+        puddleLayer.objects.forEach((obj, index) => {
+            if (!Array.isArray(obj.polygon) || obj.polygon.length < 3) {
+                return;
+            }
+
+            const points = obj.polygon.map(point => ({
+                x: (obj.x + point.x) * scale,
+                y: (obj.y + point.y) * scale
+            }));
+
+            const puddle = new Puddle(this, points, obj.name || `charco_${index + 1}`);
+            this.puddles.push(puddle);
+        });
+
+        console.log(`[AlcantarillasScene] Capa charquito encontrada con ${this.puddles.length} charco(s).`);
     }
 
     _updateCrowSpawnTimer(time) {
@@ -1353,37 +1414,473 @@ export default class AlcantarillasScene extends Phaser.Scene {
     }
 
     setupPauseInput() {
-        // Pausa desactivada temporalmente en AlcantarillasScene para probar la fase 2.
+        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+            if (!this.guideOverlay || !this.guideOverlay.visible || !this.guideContent) return;
+
+            this.guideScrollY -= deltaY * 0.5;
+            this.guideScrollY = Phaser.Math.Clamp(
+                this.guideScrollY,
+                this.guideMinScrollY,
+                this.guideMaxScrollY
+            );
+
+            this.guideContent.y = this.guideScrollY;
+        });
     }
 
     createPauseMenuUI() {
-        this.pauseOverlay = this.pauseOverlay ?? { visible: false };
+        const W = this.scale.width;
+        const H = this.scale.height;
+
+        this._pauseObjects = [];
+
+        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.65)
+            .setOrigin(0, 0).setScrollFactor(0).setDepth(20000);
+
+        const panel = this.add.rectangle(W / 2, H / 2, 430, 340, 0x1e1b18, 0.96)
+            .setStrokeStyle(4, 0xe6d3a3, 1).setScrollFactor(0).setDepth(20001);
+
+        const title = this.add.text(W / 2, H / 2 - 110, 'PAUSA', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '42px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 6
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20002);
+
+        const makeButton = (x, y, text, callback) => {
+            const buttonBg = this.add.rectangle(x, y, 260, 58, 0x000000, 0.45)
+                .setStrokeStyle(3, 0xffffff, 0.85)
+                .setScrollFactor(0).setDepth(20002)
+                .setInteractive({ useHandCursor: true });
+
+            const buttonText = this.add.text(x, y, text, {
+                fontFamily: 'ReturnOfTheBoss',
+                fontSize: '28px',
+                color: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 5
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(20003)
+                .setInteractive({ useHandCursor: true });
+
+            const hoverOn = () => {
+                buttonBg.setFillStyle(0x222222, 0.75);
+                buttonBg.setScale(1.03);
+                buttonText.setScale(1.03);
+            };
+
+            const hoverOff = () => {
+                buttonBg.setFillStyle(0x000000, 0.45);
+                buttonBg.setScale(1);
+                buttonText.setScale(1);
+            };
+
+            buttonBg.on('pointerover', hoverOn);
+            buttonText.on('pointerover', hoverOn);
+            buttonBg.on('pointerout', hoverOff);
+            buttonText.on('pointerout', hoverOff);
+            buttonBg.on('pointerup', () => callback());
+            buttonText.on('pointerup', () => callback());
+
+            return [buttonBg, buttonText];
+        };
+
+        const settingsBtn = makeButton(W / 2, H / 2 - 20, 'AJUSTES', () => {
+            this.openSettingsFromPause();
+        });
+
+        const guideBtn = makeButton(W / 2, H / 2 + 55, 'GUÍA', () => {
+            this.openGuide();
+        });
+
+        const exitBtn = makeButton(W / 2, H / 2 + 130, 'SALIR', () => {
+            this.openExitConfirm();
+        });
+
+        this._pauseObjects = [bg, panel, title, ...settingsBtn, ...guideBtn, ...exitBtn];
+
+        this.pauseOverlay = {
+            setVisible: (v) => this._pauseObjects.forEach(o => o.setVisible(v)),
+            get visible() { return bg.visible; }
+        };
+
+        this._pauseObjects.forEach(o => o.setVisible(false));
+
+        this._pauseResizeHandler = (gameSize) => {
+            const w = gameSize.width;
+            const h = gameSize.height;
+
+            bg.setSize(w, h);
+            panel.setPosition(w / 2, h / 2);
+            title.setPosition(w / 2, h / 2 - 110);
+
+            settingsBtn[0].setPosition(w / 2, h / 2 - 20);
+            settingsBtn[1].setPosition(w / 2, h / 2 - 20);
+
+            guideBtn[0].setPosition(w / 2, h / 2 + 55);
+            guideBtn[1].setPosition(w / 2, h / 2 + 55);
+
+            exitBtn[0].setPosition(w / 2, h / 2 + 130);
+            exitBtn[1].setPosition(w / 2, h / 2 + 130);
+        };
+
+        this.scale.on('resize', this._pauseResizeHandler, this);
     }
 
     createGuideUI() {
-        this.guideOverlay = this.guideOverlay ?? { visible: false };
+        const W = this.scale.width;
+        const H = this.scale.height;
+
+        this.currentFontSize = this.currentFontSize || 20;
+        this._guideObjects = [];
+
+        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.72)
+            .setOrigin(0, 0).setScrollFactor(0).setDepth(20010);
+
+        const parchment = this.add.rectangle(W / 2, H / 2, 760, 560, 0xd8c08a, 0.98)
+            .setStrokeStyle(5, 0x6a4b1f, 1).setScrollFactor(0).setDepth(20011);
+
+        const title = this.add.text(W / 2, 72, 'GUÍA', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '38px',
+            color: '#3a2412',
+            stroke: '#f5e6c8',
+            strokeThickness: 2
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
+
+        const closeButton = this.add.rectangle(W - 90, 60, 120, 46, 0x000000, 0.4)
+            .setStrokeStyle(3, 0xffffff, 0.8)
+            .setScrollFactor(0).setDepth(20012)
+            .setInteractive({ useHandCursor: true });
+
+        const closeText = this.add.text(W - 90, 60, 'ATRÁS', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '22px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 4
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20013)
+            .setInteractive({ useHandCursor: true });
+
+        const viewportX = W / 2 - 320;
+        const viewportY = H / 2 - 220;
+        const viewportWidth = 640;
+        const viewportHeight = 440;
+
+        const maskShape = this.make.graphics({});
+        maskShape.fillStyle(0xffffff, 1);
+        maskShape.fillRect(viewportX, viewportY, viewportWidth, viewportHeight);
+
+        this.guideContent = this.add.container(viewportX + 24, viewportY + 20);
+        this.guideContent.setMask(maskShape.createGeometryMask());
+
+        const guideItems = [];
+        let currentY = 0;
+
+        const addGuideSection = (titleText, bodyText, textureKey = null) => {
+            const sectionTitle = this.add.text(0, currentY, titleText, {
+                fontFamily: 'Arial Black',
+                fontSize: '28px',
+                color: '#3a2412',
+                stroke: '#f5e6c8',
+                strokeThickness: 1,
+                wordWrap: { width: 560 }
+            });
+
+            guideItems.push(sectionTitle);
+            currentY += 42;
+
+            if (textureKey && this.textures.exists(textureKey)) {
+                const img = this.add.image(70, currentY + 40, textureKey)
+                    .setOrigin(0.5)
+                    .setScale(2.2);
+
+                guideItems.push(img);
+
+                const desc = this.add.text(150, currentY, bodyText, {
+                    fontFamily: 'Arial',
+                    fontSize: `${this.currentFontSize}px`,
+                    color: '#2e1e10',
+                    wordWrap: { width: 420 }
+                });
+
+                guideItems.push(desc);
+                currentY += Math.max(120, desc.height + 20);
+            } else {
+                const desc = this.add.text(0, currentY, bodyText, {
+                    fontFamily: 'Arial',
+                    fontSize: `${this.currentFontSize}px`,
+                    color: '#2e1e10',
+                    wordWrap: { width: 560 }
+                });
+
+                guideItems.push(desc);
+                currentY += desc.height + 30;
+            }
+        };
+
+        addGuideSection(
+            'Bienvenido a la guía',
+            'Aquí puedes escribir la explicación de los objetos, enemigos, mecánicas y controles del juego.'
+        );
+        addGuideSection(
+            'Poción de ataque',
+            'Ejemplo de texto: esta poción aumenta el daño durante un tiempo limitado.',
+            'mask_icon'
+        );
+        addGuideSection(
+            'Llave',
+            'Ejemplo de texto: abre puertas cerradas cuando el jugador se acerca a ellas.',
+            'feather_icon'
+        );
+        addGuideSection(
+            'Pan',
+            'Ejemplo de texto: sirve como recurso o moneda dentro del juego.'
+        );
+
+        this.guideContent.add(guideItems);
+
+        this.guideMaxScrollY = 0;
+        this.guideMinScrollY = Math.min(0, viewportHeight - currentY - 24);
+        this.guideScrollY = this.guideMaxScrollY;
+        this.guideContent.y = this.guideScrollY;
+
+        const scrollHint = this.add.text(W / 2, H - 38, 'Rueda del ratón para desplazarte', {
+            fontFamily: 'Arial',
+            fontSize: '18px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
+
+        const goBack = () => {
+            this.closeGuide();
+            this.openPauseMenu();
+        };
+
+        closeButton.on('pointerup', goBack);
+        closeText.on('pointerup', goBack);
+
+        this._guideObjects = [bg, parchment, title, closeButton, closeText, this.guideContent, scrollHint];
+        this.guideOverlay = {
+            setVisible: (v) => this._guideObjects.forEach(o => o.setVisible(v)),
+            get visible() { return bg.visible; }
+        };
+        this._guideObjects.forEach(o => o.setVisible(false));
+
+        this._guideResizeHandler = (gameSize) => {
+            const w = gameSize.width;
+            const h = gameSize.height;
+
+            bg.setSize(w, h);
+            parchment.setPosition(w / 2, h / 2);
+            title.setPosition(w / 2, 72);
+            closeButton.setPosition(w - 90, 60);
+            closeText.setPosition(w - 90, 60);
+            scrollHint.setPosition(w / 2, h - 38);
+        };
+
+        this.scale.on('resize', this._guideResizeHandler, this);
     }
 
     createExitConfirmUI() {
-        this.exitConfirmOverlay = this.exitConfirmOverlay ?? { visible: false };
+        const W = this.scale.width;
+        const H = this.scale.height;
+
+        this._exitObjects = [];
+
+        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.72)
+            .setOrigin(0, 0).setScrollFactor(0).setDepth(20020);
+
+        const panel = this.add.rectangle(W / 2, H / 2, 540, 260, 0x23170f, 0.98)
+            .setStrokeStyle(4, 0xe6d3a3, 1).setScrollFactor(0).setDepth(20021);
+
+        const title = this.add.text(W / 2, H / 2 - 60, '¿SEGURO QUE QUIERES SALIR?', {
+            fontFamily: 'ReturnOfTheBoss',
+            fontSize: '28px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 5,
+            align: 'center',
+            wordWrap: { width: 460 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20022);
+
+        const desc = this.add.text(W / 2, H / 2 - 5, 'Se perderán todos los avances no guardados.', {
+            fontFamily: 'Arial',
+            fontSize: '22px',
+            color: '#f3e6d0',
+            align: 'center',
+            wordWrap: { width: 430 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(20022);
+
+        const makeButton = (x, y, text, callback) => {
+            const buttonBg = this.add.rectangle(x, y, 180, 56, 0x000000, 0.45)
+                .setStrokeStyle(3, 0xffffff, 0.85)
+                .setScrollFactor(0).setDepth(20022)
+                .setInteractive({ useHandCursor: true });
+
+            const buttonText = this.add.text(x, y, text, {
+                fontFamily: 'ReturnOfTheBoss',
+                fontSize: '24px',
+                color: '#ffffff',
+                stroke: '#000000',
+                strokeThickness: 4
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(20023)
+                .setInteractive({ useHandCursor: true });
+
+            buttonBg.on('pointerup', callback);
+            buttonText.on('pointerup', callback);
+
+            return [buttonBg, buttonText];
+        };
+
+        const acceptBtn = makeButton(W / 2 - 110, H / 2 + 75, 'ACEPTAR', () => {
+            this.confirmExitToMenu();
+        });
+
+        const backBtn = makeButton(W / 2 + 110, H / 2 + 75, 'ATRÁS', () => {
+            this.closeExitConfirm();
+            this.openPauseMenu();
+        });
+
+        this._exitObjects = [bg, panel, title, desc, ...acceptBtn, ...backBtn];
+        this.exitConfirmOverlay = {
+            setVisible: (v) => this._exitObjects.forEach(o => o.setVisible(v)),
+            get visible() { return bg.visible; }
+        };
+        this._exitObjects.forEach(o => o.setVisible(false));
+
+        this._exitResizeHandler = (gameSize) => {
+            const w = gameSize.width;
+            const h = gameSize.height;
+
+            bg.setSize(w, h);
+            panel.setPosition(w / 2, h / 2);
+            title.setPosition(w / 2, h / 2 - 60);
+            desc.setPosition(w / 2, h / 2 - 5);
+
+            acceptBtn[0].setPosition(w / 2 - 110, h / 2 + 75);
+            acceptBtn[1].setPosition(w / 2 - 110, h / 2 + 75);
+
+            backBtn[0].setPosition(w / 2 + 110, h / 2 + 75);
+            backBtn[1].setPosition(w / 2 + 110, h / 2 + 75);
+        };
+
+        this.scale.on('resize', this._exitResizeHandler, this);
     }
 
     openPauseMenu() {
+        if (this.isPlayerDead) return;
+
         this.isPaused = true;
-        if (this.pauseOverlay) this.pauseOverlay.visible = true;
+        this.pauseOverlay?.setVisible(true);
+        this.guideOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(false);
+
+        if (this.duck?.body) {
+            this.duck.body.setVelocity(0, 0);
+        }
     }
 
     closePauseMenu() {
         this.isPaused = false;
-        if (this.pauseOverlay) this.pauseOverlay.visible = false;
+        this.pauseOverlay?.setVisible(false);
+        this.guideOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(false);
+    }
+
+    openGuide() {
+        this.isPaused = true;
+        this.pauseOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(false);
+        this.guideOverlay?.setVisible(true);
     }
 
     closeGuide() {
-        if (this.guideOverlay) this.guideOverlay.visible = false;
+        this.guideOverlay?.setVisible(false);
+    }
+
+    openExitConfirm() {
+        this.isPaused = true;
+        this.pauseOverlay?.setVisible(false);
+        this.guideOverlay?.setVisible(false);
+        this.exitConfirmOverlay?.setVisible(true);
     }
 
     closeExitConfirm() {
-        if (this.exitConfirmOverlay) this.exitConfirmOverlay.visible = false;
+        this.exitConfirmOverlay?.setVisible(false);
+    }
+
+    openSettingsFromPause() {
+        this.pauseOverlay?.setVisible(false);
+
+        this.scene.launch('SettingsScene', {
+            returnScene: 'AlcantarillasScene',
+            pauseUnderlyingScene: true
+        });
+
+        this.scene.pause();
+    }
+
+    confirmExitToMenu() {
+        this.isPaused = false;
+
+        if (this.scene.isActive('SettingsScene')) {
+            this.scene.stop('SettingsScene');
+        }
+
+        this.scene.start('MenuScene');
+    }
+
+    showDeathScreen() {
+        if (!this.deathOverlay || this.deathOverlay.visible) return;
+
+        this.deathOverlay.setVisible(true);
+        this.deathOverlay.setAlpha(0);
+
+        this.tweens.add({
+            targets: this.deathOverlay,
+            alpha: 1,
+            duration: 400,
+            ease: 'Power2'
+        });
+    }
+
+    handlePlayerDeath() {
+        if (this.isPlayerDead) return;
+
+        this.isPlayerDead = true;
+
+        const respawnWeaponKey = this._resolveRespawnWeaponKey();
+        this.registry?.set('duckRespawnWeapon', respawnWeaponKey);
+
+        // Restaurar el checkpoint a la entrada de la alcantarilla si el jugador muere
+        // sin haber llegado a un checkpoint de charquito
+        const checkpoint = this._getCurrentCheckpointData();
+        if (!checkpoint) {
+            // Si no hay checkpoint, guardar la entrada como spawn point
+            this.registry?.set('duckCheckpointSpawn', {
+                x: this.playerSpawn.x,
+                y: this.playerSpawn.y,
+                puddleName: ''
+            });
+        }
+
+        if (this.duck?.body) {
+            this.duck.body.setVelocity(0, 0);
+            this.duck.body.enable = false;
+        }
+
+        if (this.duck?.weapon?.releaseAttack) {
+            this.duck.weapon.releaseAttack();
+        }
+
+        this.showDeathScreen();
+        this.deathSound?.play();
+
+        this.time.delayedCall(2500, () => {
+            this.scene.restart();
+        });
     }
 
     _cleanupScene() {
@@ -1415,6 +1912,24 @@ export default class AlcantarillasScene extends Phaser.Scene {
             this.consumableBar.destroy();
             this.consumableBar = null;
         }
+
+        if (this._onFontSizeChanged) {
+            this.game.events.off('fontSizeChanged', this._onFontSizeChanged, this);
+        }
+
+        if (this._pauseResizeHandler) {
+            this.scale.off('resize', this._pauseResizeHandler, this);
+        }
+
+        if (this._guideResizeHandler) {
+            this.scale.off('resize', this._guideResizeHandler, this);
+        }
+
+        if (this._exitResizeHandler) {
+            this.scale.off('resize', this._exitResizeHandler, this);
+        }
+
+        this.input?.off?.('wheel');
     }
 
 }

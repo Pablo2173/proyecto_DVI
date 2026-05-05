@@ -756,17 +756,21 @@ export default class MainScene extends Phaser.Scene {
         // ─────────────────────────────────────────
         this.enemies = this.physics.add.group();
 
-        // Crear cocodrilo boss
-        const croco = new Crocodile(
-            this,
-            'Cocodrilo_Boss',
-            this.playerSpawn.x + 1000,  // 100px a la derecha del spawn del pato
-            this.playerSpawn.y,
-            'croco_idle',
-            null
-        );
-        this.enemies.add(croco);
-        this._wireEnemyCollisions(croco);
+        // Crear cocodrilo boss desde Tiled
+        const crocoLayer = this.map.getObjectLayer('cocodrilo');
+        if (crocoLayer && crocoLayer.objects.length > 0) {
+            const crocoObj = crocoLayer.objects[0];
+            const croco = new Crocodile(
+                this,
+                crocoObj.name || 'Cocodrilo_Boss',
+                crocoObj.x * SCALE,
+                crocoObj.y * SCALE,
+                'croco_idle',
+                null
+            );
+            this.enemies.add(croco);
+            this._wireEnemyCollisions(croco);
+        }
 
         this.setupEnemiesFromRoutes(SCALE);
 
@@ -1244,13 +1248,14 @@ export default class MainScene extends Phaser.Scene {
     }
 
     _updateDuckSwimmingState() {
-        if (!this.duck || !this.duck.active || !this.zonasAcuaticasLayer) return;
+        if (!this.duck || !this.duck.active) return;
 
         const tileSize = 16 * 4;
         const tileX = Math.floor(this.duck.x / tileSize);
         const tileY = Math.floor(this.duck.y / tileSize);
 
-        const waterTile = this.zonasAcuaticasLayer.getTileAt(tileX, tileY);
+        // Verificar capas de agua (puede haber más de una)
+        const waterTile = this.zonasAcuaticasLayer?.getTileAt(tileX, tileY);
         const isInWater = !!waterTile;
 
         if (isInWater) {

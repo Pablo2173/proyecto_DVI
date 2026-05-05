@@ -2749,6 +2749,83 @@
         }, 
         {
          "draworder":"topdown",
+         "id":16,
+         "name":"cocodrilo",
+         "objects":[
+                {
+                 "gid":2882,
+                 "height":16,
+                 "id":2,
+                 "name":"cocodrilo",
+                 "opacity":1,
+                 "properties":[
+                        {
+                         "name":"name",
+                         "type":"string",
+                         "value":"duck"
+                        }, 
+                        {
+                         "name":"weapon",
+                         "type":"string",
+                         "value":"null"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":16,
+                 "x":2464,
+                 "y":3840
+                }],
+         "offsetx":-204,
+         "offsety":-1456,
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
+        }, 
+        {
+         "draworder":"topdown",
+         "id":17,
+         "name":"charquito",
+         "objects":[
+                {
+                 "height":0,
+                 "id":3,
+                 "name":"",
+                 "opacity":1,
+                 "polygon":[
+                        {
+                         "x":0,
+                         "y":0
+                        }, 
+                        {
+                         "x":0,
+                         "y":-76
+                        }, 
+                        {
+                         "x":70,
+                         "y":-76
+                        }, 
+                        {
+                         "x":70,
+                         "y":-2
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":0,
+                 "x":2236,
+                 "y":2956
+                }],
+         "opacity":1,
+         "type":"objectgroup",
+         "visible":true,
+         "x":0,
+         "y":0
+        }, 
+        {
+         "draworder":"topdown",
          "id":2,
          "name":"enemigos y posiciones",
          "objects":[],
@@ -2787,16 +2864,16 @@
                  "x":2398,
                  "y":2506
                 }],
-         "offsetx":-130,
-         "offsety":636,
+         "offsetx":-134,
+         "offsety":640,
          "opacity":1,
          "type":"objectgroup",
          "visible":true,
          "x":0,
          "y":0
         }],
- "nextlayerid":16,
- "nextobjectid":2,
+ "nextlayerid":18,
+ "nextobjectid":4,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.0",
