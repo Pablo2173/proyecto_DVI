@@ -1,12 +1,8 @@
 import Phaser from 'phaser';
-import Enemy, { StatusEnemy } from './enemy.js';
+import BaseCharacter from './BaseCharacter.js';
+import { TEAM } from './team.js';
 import BubblesCroco from './Projectiles/bubblesCroco.js';
 
-// ─────────────────────────────────────────
-//  ESTADOS PROPIOS DEL COCODRILO
-//  (complementan StatusEnemy; SWIMMING es
-//   el único estado exclusivo de Crocodile)
-// ─────────────────────────────────────────
 const CrocoState = Object.freeze({
     IDLE:     'idle',
     WALKING:  'walking',
@@ -16,243 +12,343 @@ const CrocoState = Object.freeze({
     DEAD:     'dead'
 });
 
-export default class Crocodile extends Enemy {
+export default class Crocodile extends BaseCharacter {
 
-    // ─────────────────────────────────────────
-    //  CONSTRUCTOR
-    // ─────────────────────────────────────────
     constructor(scene, name, x, y, texture, frame = null) {
-        // Enemy espera: scene, name, x, y, texture, frame,
-        //              visionRadius, hp, speed, weapon, movementType, hasFeather
-        // El cocodrilo NO usa arma → null; tampoco suelta pluma → false
-        super(
-            scene,
-            name,
-            x, y,
-            texture ?? 'croco_idle',
-            frame,
-            /*visionRadius*/ 400,   // usaremos alertRadius como visión base
-            /*hp*/           120,
-            /*speed*/        200,
-            /*weapon*/       null,
-            /*movementType*/ null,
-            /*hasFeather*/   false
-        );
+        super(scene, x, y, texture ?? 'croco_idle', frame, TEAM.ENEMY);
 
-        // ── Stats propios ──
+        this._nombre = name;
+        this.team    = TEAM.ENEMY;
+
+        this.health  = 120;
+        this._speed  = 200;
         this.damage  = 2;
 
-        // ── Radios diferenciados por terreno ──
-        this.attackRadius = 200;    // melee (walking)
+        this.attackRadius = 200;
         this.alertRadius  = 400;
 
-        this._swimAttackRadius = 400;   // ranged (swimming)
-        this._swimAlertRadius  = 200;
+        this._swimAttackRadius = 800;
+        this._swimAlertRadius  = 400;
 
-        // ── Estado de terreno ──
-        this._isSwimming = false;   // flag sincronizado con el tile layer
+        this.states       = CrocoState;
+        this.currentState = this.states.IDLE;
 
-        // ── Gracia de entrada al agua ──
-        // Durante este tiempo tras entrar en swimming NO se aplica
-        // movimiento evasivo, evitando que el croco rebote hacia tierra.
-        this._swimEntryGraceMs    = 600;  // ms de gracia tras entrar en agua
-        this._swimEntryGraceUntil = 0;    // timestamp hasta el que dura la gracia
-
-        // ── Ataque ──
         this.isAttacking    = false;
         this.attackCooldown = 2000;
         this.lastAttackTime = 0;
 
-        // ── Búsqueda ──
-        this._lastKnownX = null;
-        this._lastKnownY = null;
+        this.searchTimer   = 0;
+        this._lastKnownX   = null;
+        this._lastKnownY   = null;
 
-        // ── Control de transición de terreno (debounce) ──
         this._terrainDebounceMs   = 120;
         this._pendingInWater      = null;
         this._terrainPendingSince = 0;
 
-        // ── Ajustar física al tamaño del cocodrilo ──
-        if (this.body) {
-            this.body.setSize(28, 28);
-            this.body.setOffset(2, 2);
+        this._swimStrafeDir         = 1;
+        this._swimStrafeAngle       = 0;
+        this._swimStrafeSpeed       = 0.6;
+        this._swimNextStrafeSwitch  = 0;
+
+        this._lastFlipX = false;
+
+        if (scene.physics?.add) {
+            scene.physics.add.existing(this);
+            if (this.body) {
+                this.body.setCollideWorldBounds(true);
+                this.body.setAllowGravity(false);
+                this.body.setImmovable(false);
+                this.body.setSize(28, 28);
+                this.body.setOffset(2, 2);
+            }
         }
 
-        // ── Sprite inicial ──
         this.setTexture('croco_idle');
         this.setScale(3);
         this.setDepth(10);
 
-        // ── Enemy configura _visionRadius = alertRadius ──
-        //    Redefinir para que coincida con el radio según terreno
-        this._visionRadius = this.alertRadius;
-        // Ángulo de visión: 360° para que detecte en todas direcciones
-        this._visionAngle = Math.PI * 2;
-
-        // ── Debug radios (siempre visibles) ──
         this._debugGraphics = scene.add.graphics();
         this._debugGraphics.setDepth(999);
     }
 
-    // ─────────────────────────────────────────
-    //  DETECCIÓN DE AGUA
-    // ─────────────────────────────────────────
+    _transitionTo(newState) {
+        if (this.currentState === newState) return;
+        this.currentState = newState;
+        this._onEnterState(newState);
+    }
+
+    _onEnterState(state) {
+        switch (state) {
+            case this.states.IDLE:
+                this.setTexture('croco_idle');
+                this.body?.setVelocity(0, 0);
+                break;
+            case this.states.WALKING:
+                this.setTexture('croco_idle');
+                break;
+            case this.states.SWIMMING:
+                this.setTexture('croco_submerge');
+                this._swimStrafeAngle = 0;
+                break;
+            case this.states.ALERTED:
+                break;
+            case this.states.SEARCH:
+                break;
+            case this.states.DEAD:
+                this._handleDeath();
+                break;
+        }
+    }
 
     _isInWater() {
-        const layer = this.scene?.zonasAcuaticasLayer;
-        if (!layer) return false;
-
-        const tileSize = 16 * 4; // tileWidth * SCALE
+        const tileSize = 16 * 4;
         const tileX    = Math.floor(this.x / tileSize);
         const tileY    = Math.floor(this.y / tileSize);
 
-        return !!layer.getTileAt(tileX, tileY);
+        const layer1 = this.scene?.zonasAcuaticasLayer;
+        const layer2 = this.scene?.zonaAcuatica2Layer;
+
+        return !!(
+            (layer1 && layer1.getTileAt(tileX, tileY)) ||
+            (layer2 && layer2.getTileAt(tileX, tileY))
+        );
     }
 
     _updateTerrainState(now) {
-        if (this._state === StatusEnemy.DEAD) return;
+        if (this.currentState === this.states.DEAD) return;
 
-        const inWater = this._isInWater();
+        const inWater    = this._isInWater();
+        const isSwimming = this.currentState === this.states.SWIMMING;
 
-        // Si el terreno coincide con el estado actual, resetear cualquier cambio pendiente
-        if (inWater === this._isSwimming) {
+        if (inWater === isSwimming) {
             this._pendingInWater      = null;
             this._terrainPendingSince = 0;
             return;
         }
 
-        // Nuevo valor de terreno detectado — iniciar o continuar debounce
         if (this._pendingInWater !== inWater) {
             this._pendingInWater      = inWater;
             this._terrainPendingSince = now;
             return;
         }
 
-        // El cambio pendiente lleva menos tiempo del umbral → esperar
         if (now - this._terrainPendingSince < this._terrainDebounceMs) return;
 
-        // El cambio se ha mantenido estable el tiempo suficiente → aplicar transición
         this._pendingInWater      = null;
         this._terrainPendingSince = 0;
 
-        const wasSwimming = this._isSwimming;
-        this._isSwimming  = inWater;
-
-        // Al entrar en agua: iniciar período de gracia para que el croco
-        // se estabilice dentro antes de aplicar movimiento evasivo
-        if (!wasSwimming && inWater) {
-            this._swimEntryGraceUntil = now + this._swimEntryGraceMs;
-            this.body?.setVelocity(0, 0);
+        if (inWater) {
+            this._transitionTo(this.states.SWIMMING);
+        } else {
+            this._transitionTo(this.states.WALKING);
         }
-
-        // Actualizar radio de visión de Enemy según terreno
-        this._visionRadius = this._activeAlertRadius();
-
-        // Sincronizar sprite de terreno
-        this._idleSprite();
     }
 
-    // ─────────────────────────────────────────
-    //  RADIOS ACTIVOS SEGÚN TERRENO
-    // ─────────────────────────────────────────
-
     _activeAttackRadius() {
-        return this._isSwimming ? this._swimAttackRadius : this.attackRadius;
+        return this.currentState === this.states.SWIMMING
+            ? this._swimAttackRadius
+            : this.attackRadius;
     }
 
     _activeAlertRadius() {
-        return this._isSwimming ? this._swimAlertRadius : this.alertRadius;
+        return this.currentState === this.states.SWIMMING
+            ? this._swimAlertRadius
+            : this.alertRadius;
     }
-
-    // ─────────────────────────────────────────
-    //  DIBUJO DE RADIOS (siempre visibles)
-    // ─────────────────────────────────────────
 
     _drawDebugRadii() {
         if (!this._debugGraphics) return;
-
         this._debugGraphics.clear();
-
-        // Radio de alerta — amarillo
         this._debugGraphics.lineStyle(1, 0xffff00, 0.6);
         this._debugGraphics.strokeCircle(this.x, this.y, this._activeAlertRadius());
-
-        // Radio de ataque — rojo
         this._debugGraphics.lineStyle(1, 0xff0000, 0.6);
         this._debugGraphics.strokeCircle(this.x, this.y, this._activeAttackRadius());
     }
 
-    // ─────────────────────────────────────────
-    //  SPRITE BASE SEGÚN TERRENO
-    // ─────────────────────────────────────────
-
     _idleSprite() {
-        this.setTexture(this._isSwimming ? 'croco_submerge' : 'croco_idle');
+        this.setTexture(this._isInWater() ? 'croco_submerge' : 'croco_idle');
     }
 
     _attackSprite() {
-        this.setTexture(this._isSwimming ? 'croco_bubble' : 'croco_attack');
+        this.setTexture(this._isInWater() ? 'croco_bubble' : 'croco_attack');
     }
 
-    // ─────────────────────────────────────────
-    //  HOOKS DE Enemy — COMPORTAMIENTO DE COMBATE
-    // ─────────────────────────────────────────
-
-    /**
-     * En WALKING: strafing estándar de Enemy (no se sobreescribe).
-     * En SWIMMING: Enemy llamará a onRetreatMovement cuando esté
-     *              demasiado cerca, pero nosotros queremos alejarse
-     *              siempre que esté en radio de alerta. Se gestiona
-     *              en onCombatMovement y onChaseMovement.
-     */
-
-    onCombatMovement(target, dist) {
-        if (this._isSwimming) {
-            // En agua: alejarse, pero solo si ya pasó la gracia de entrada
-            this._fleeInsideWater(target);
-        } else {
-            // En tierra: strafing estándar de Enemy
-            super.onCombatMovement(target, dist);
+    _safeSetFlipX(value) {
+        if (value !== this._lastFlipX) {
+            this._lastFlipX = value;
+            this.setFlipX(value);
         }
     }
 
-    onChaseMovement(target, dist) {
-        if (this._isSwimming) {
-            // En agua: aunque esté fuera del rango, alejarse igualmente
-            this._fleeInsideWater(target);
-        } else {
-            // En tierra: persecución estándar de Enemy
-            super.onChaseMovement(target, dist);
+    _handleIdle(distance) {
+        this.body?.setVelocity(0, 0);
+        this._idleSprite();
+
+        if (distance <= this._activeAlertRadius()) {
+            this._transitionTo(this.states.ALERTED);
         }
     }
 
-    onRetreatMovement(target, dist) {
-        if (this._isSwimming) {
-            this._fleeInsideWater(target);
-        } else {
-            super.onRetreatMovement(target, dist);
+    _handleAlerted(player, distance, now) {
+        this._lastKnownX = player.x;
+        this._lastKnownY = player.y;
+
+        if (distance <= this._activeAttackRadius() && !this.isAttacking && now >= this.lastAttackTime + this.attackCooldown) {
+            this._executeAttack(player, now);
+            return;
+        }
+
+        if (!this.isAttacking) {
+            this._moveTowards(player);
+            this._idleSprite();
+        }
+
+        if (distance > this._activeAlertRadius()) {
+            this.searchTimer = 3000;
+            this._transitionTo(this.states.SEARCH);
         }
     }
 
-    // ─────────────────────────────────────────
-    //  HUIDA SEGURA DENTRO DEL AGUA
-    //  Calcula el vector de huida y lo cancela
-    //  si la posición proyectada sale del agua,
-    //  evitando que el croco rebote en la orilla.
-    //  Durante el período de gracia de entrada
-    //  el croco simplemente se queda quieto.
-    // ─────────────────────────────────────────
+    _handleSwimming(player, distance, now) {
+        if (distance <= this._activeAttackRadius() && !this.isAttacking && now >= this.lastAttackTime + this.attackCooldown) {
+            this._executeAttack(player, now);
+            return;
+        }
 
-    _fleeInsideWater(target) {
+        if (!this.isAttacking) {
+            if (distance <= this._activeAlertRadius()) {
+                this._fleeFrom(player);
+            } else {
+                this._swimNeutralMovement(now);
+            }
+            this._idleSprite();
+        }
+    }
+
+    _swimNeutralMovement(now) {
+        if (now >= this._swimNextStrafeSwitch) {
+            this._swimStrafeDir        *= -1;
+            this._swimNextStrafeSwitch  = now + Phaser.Math.Between(1200, 2400);
+        }
+
+        this._swimStrafeAngle += this._swimStrafeSpeed * this._swimStrafeDir * 0.016;
+
+        const vx = Math.cos(this._swimStrafeAngle) * this._speed * 0.4;
+        const vy = Math.sin(this._swimStrafeAngle) * this._speed * 0.4;
+
+        this.body?.setVelocity(vx, vy);
+
+        if (Math.abs(vx) > 8) {
+            this._safeSetFlipX(vx < 0);
+        }
+    }
+
+    _handleSearch(player, distance, delta) {
+        if (distance <= this._activeAlertRadius()) {
+            this._transitionTo(this.states.ALERTED);
+            return;
+        }
+
+        if (this._lastKnownX !== null) {
+            const target = { x: this._lastKnownX, y: this._lastKnownY };
+            this._moveTowardsPoint(target);
+            this._idleSprite();
+        }
+
+        this.searchTimer -= delta;
+        if (this.searchTimer <= 0) {
+            this._lastKnownX = null;
+            this._lastKnownY = null;
+            this._transitionTo(this.states.IDLE);
+        }
+    }
+
+    _executeAttack(player, now) {
+        this.isAttacking    = true;
+        this.lastAttackTime = now;
+
+        this.body?.setVelocity(0, 0);
+        this._attackSprite();
+
+        if (this.currentState === this.states.SWIMMING) {
+            this._fireBubble(player);
+        } else {
+            player.takeDamage(this.damage);
+            this.scene?.cameras?.main?.shake?.(200, 0.008);
+        }
+
+        this.scene?.time?.delayedCall(500, () => {
+            if (!this.active || this.currentState === this.states.DEAD) return;
+            this.isAttacking = false;
+            this._idleSprite();
+        });
+    }
+
+    _fireBubble(player) {
+        if (!player || typeof player.x !== 'number') return;
+
+        const bubble = new BubblesCroco(this.scene, this.x, this.y, {
+            team:   TEAM.ENEMY,
+            damage: this.damage
+        });
+
+        const angle = Phaser.Math.Angle.Between(this.x, this.y, player.x, player.y);
+        const speed = 700;
+        const vx    = Math.cos(angle) * speed;
+        const vy    = Math.sin(angle) * speed;
+
+        if (bubble.body) {
+            bubble.body.setVelocity(vx, vy);
+        }
+
+        if (this.scene?.physics && player) {
+            this.scene.physics.add.overlap(bubble, player, () => {
+                if (!bubble.active) return;
+                player.takeDamage(this.damage);
+                bubble.destroy();
+            });
+        }
+
+        this.scene?.time?.delayedCall(4000, () => {
+            if (bubble?.active) bubble.destroy();
+        });
+    }
+
+    _moveTowards(target) {
         if (!target || typeof target.x !== 'number') {
             this.body?.setVelocity(0, 0);
             return;
         }
+        this.scene.physics.moveToObject(this, target, this._speed);
 
-        const now = this.scene?.time?.now ?? 0;
+        const dx = target.x - this.x;
+        if (Math.abs(dx) > 8) {
+            this._safeSetFlipX(dx < 0);
+        }
+    }
 
-        // Período de gracia: quedarse quieto para estabilizarse en el agua
-        if (now < this._swimEntryGraceUntil) {
+    _moveTowardsPoint(point) {
+        if (!point || typeof point.x !== 'number') {
+            this.body?.setVelocity(0, 0);
+            return;
+        }
+
+        const dist = Phaser.Math.Distance.Between(this.x, this.y, point.x, point.y);
+        if (dist < 16) {
+            this.body?.setVelocity(0, 0);
+            return;
+        }
+
+        this.scene.physics.moveTo(this, point.x, point.y, this._speed);
+
+        const dx = point.x - this.x;
+        if (Math.abs(dx) > 8) {
+            this._safeSetFlipX(dx < 0);
+        }
+    }
+
+    _fleeFrom(target) {
+        if (!target || typeof target.x !== 'number') {
             this.body?.setVelocity(0, 0);
             return;
         }
@@ -260,149 +356,34 @@ export default class Crocodile extends Enemy {
         const angle = Phaser.Math.Angle.Between(target.x, target.y, this.x, this.y);
         const vx    = Math.cos(angle) * this._speed;
         const vy    = Math.sin(angle) * this._speed;
-
-        // Comprobar si la posición proyectada (1 frame adelante ~16ms) sigue en agua
-        const dt         = 0.016;
-        const projX      = this.x + vx * dt;
-        const projY      = this.y + vy * dt;
-        const tileSize   = 16 * 4;
-        const layer      = this.scene?.zonasAcuaticasLayer;
-        const projInWater = layer
-            ? !!layer.getTileAt(Math.floor(projX / tileSize), Math.floor(projY / tileSize))
-            : false;
-
-        if (!projInWater) {
-            // El vector de huida sacaría al croco del agua → intentar
-            // moverse lateralmente a lo largo de la orilla en su lugar
-            const perpAngle = angle + Math.PI / 2;
-            const pvx = Math.cos(perpAngle) * this._speed * 0.7;
-            const pvy = Math.sin(perpAngle) * this._speed * 0.7;
-
-            const ppX = this.x + pvx * dt;
-            const ppY = this.y + pvy * dt;
-            const perpInWater = layer
-                ? !!layer.getTileAt(Math.floor(ppX / tileSize), Math.floor(ppY / tileSize))
-                : false;
-
-            if (perpInWater) {
-                this.body?.setVelocity(pvx, pvy);
-            } else {
-                // Ambas direcciones salen → quedarse quieto (croco está en esquina)
-                this.body?.setVelocity(0, 0);
-            }
-            return;
-        }
-
-        // Vector de huida válido: aplicar y orientar sprite
         this.body?.setVelocity(vx, vy);
-        if (Math.abs(vx) > 1) this.setFlipX(vx < 0);
-    }
 
-    // ─────────────────────────────────────────
-    //  ATAQUE — SOBREESCRIBE movementAlerted
-    //  para inyectar el sistema de ataque propio
-    //  (melee / proyectil) sin arma de Enemy
-    // ─────────────────────────────────────────
-
-    movementAlerted(target) {
-        if (!this.isAlerted() || !target) return;
-
-        const now      = this.scene.time.now;
-        const dist     = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
-        const alertR   = this._activeAlertRadius();
-        const attackR  = this._activeAttackRadius();
-
-        // Atacar si está en rango de ataque, sin cooldown activo y sin estar atacando ya
-        if (dist <= attackR && !this.isAttacking && now >= this.lastAttackTime + this.attackCooldown) {
-            this._executeAttack(target, now);
-            return;
-        }
-
-        // Movimiento según terreno (hooks de arriba)
-        if (!this.isAttacking) {
-            if (dist < attackR * 0.65) {
-                this.onRetreatMovement(target, dist);
-            } else if (dist > alertR) {
-                // Fuera de radio de alerta → dejar que Enemy gestione la búsqueda
-                // delegando en super para que active SEARCH si procede
-                super.movementAlerted(target);
-                return;
-            } else {
-                this.onCombatMovement(target, dist);
-            }
-            this._idleSprite();
+        if (Math.abs(vx) > 8) {
+            this._safeSetFlipX(vx < 0);
         }
     }
 
-    // ─────────────────────────────────────────
-    //  ATAQUE
-    // ─────────────────────────────────────────
-
-    _executeAttack(player, now) {
-        this.isAttacking    = true;
-        this.lastAttackTime = now;
-
-        // Detener movimiento durante el ataque
-        this.body?.setVelocity(0, 0);
-
-        // Sprite de ataque según terreno
-        this._attackSprite();
-
-        if (this._isSwimming) {
-            // ── Ranged: lanzar proyectil BubblesCroco ──
-            this._shootBubble(player);
-        } else {
-            // ── Melee: daño directo al jugador ──
-            player.takeDamage(this.damage);
-            this.scene?.cameras?.main?.shake?.(200, 0.008);
-        }
-
-        // Finalizar ataque tras 500ms
-        this.scene?.time?.delayedCall(500, () => {
-            if (!this.active || this._state === StatusEnemy.DEAD) return;
-
-            this.isAttacking = false;
-
-            // Restaurar sprite según terreno actual
-            this._idleSprite();
-        });
-    }
-
-    // ─────────────────────────────────────────
-    //  PROYECTIL (SWIMMING)
-    // ─────────────────────────────────────────
-
-    _shootBubble(player) {
-        if (!player) return;
-
-        // Asegurar que el grupo de proyectiles existe en la escena
-        if (!this.scene.projectiles) return;
-
-        const bubble = new BubblesCroco(this.scene, this.x, this.y, { team: 'enemy' });
-        this.scene.projectiles.add(bubble);
-
-        // Dirigir el proyectil hacia el jugador
-        const angle = Phaser.Math.Angle.Between(this.x, this.y, player.x, player.y);
-        const speed = 300;
-        bubble.body?.setVelocity(Math.cos(angle) * speed, Math.sin(angle) * speed);
-    }
-
-    // ─────────────────────────────────────────
-    //  HOOKS DE CICLO DE VIDA DE Enemy
-    // ─────────────────────────────────────────
-
-    onDead(_context) {
+    _handleDeath() {
         console.log(`${this._nombre} ha muerto`);
+
+        this.body?.setVelocity(0, 0);
+        if (this.body) {
+            this.body.enable = false;
+        }
 
         this.setTexture('croco_idle');
         this.setAlpha(0.5);
 
         this._debugGraphics?.destroy();
+
+        this.scene?.time?.delayedCall(5000, () => {
+            if (this?.scene) this.destroy();
+        });
     }
 
-    // ─────────────────────────────────────────
-    //  DAÑO
-    // ─────────────────────────────────────────
+    canTakeDamage() {
+        return super.canTakeDamage() && this.currentState !== this.states.DEAD;
+    }
 
     afterTakeDamage(damage, previousHealth, newHealth) {
         console.log(`${this._nombre} recibió ${damage} de daño. HP: ${newHealth}`);
@@ -415,66 +396,49 @@ export default class Crocodile extends Enemy {
         }
     }
 
-    // ─────────────────────────────────────────
-    //  PREUPDATE — FSM PRINCIPAL
-    //  Enemy.preUpdate gestiona knockback,
-    //  routing de estados y weaponBar.
-    //  Aquí añadimos: terreno, debug radios
-    //  y el override de _updateVisualState.
-    // ─────────────────────────────────────────
+    onHealthDepleted() {
+        this._transitionTo(this.states.DEAD);
+    }
+
+    isDead() {
+        return this.currentState === this.states.DEAD;
+    }
 
     preUpdate(time, delta) {
+        super.preUpdate?.(time, delta);
+
         if (!this.active) return;
-        if (this._state === StatusEnemy.DEAD) return;
+        if (this.currentState === this.states.DEAD) return;
 
         const player = this.scene?.duck;
         if (!player || !player.active) return;
 
-        // Actualizar estado de terreno (agua / tierra) antes del tick de Enemy
         this._updateTerrainState(time);
 
-        // Delegar FSM, knockback, detección, etc. a Enemy
-        super.preUpdate(time, delta);
+        const distance = Phaser.Math.Distance.Between(this.x, this.y, player.x, player.y);
 
-        // Actualizar awareness con radio activo según terreno
-        // (Enemy.preUpdate no llama a updateAwareness; lo hacemos aquí
-        //  si la escena no lo gestiona externamente)
-        // this.updateAwareness(player, time); // ← descomentar si la escena no lo llama
+        switch (this.currentState) {
+            case this.states.IDLE:
+                this._handleIdle(distance);
+                break;
 
-        // Dibujar radios en cada frame (siempre visibles)
+            case this.states.ALERTED:
+            case this.states.WALKING:
+                this._handleAlerted(player, distance, time);
+                break;
+
+            case this.states.SWIMMING:
+                this._handleSwimming(player, distance, time);
+                break;
+
+            case this.states.SEARCH:
+                this._handleSearch(player, distance, delta);
+                break;
+        }
+
         this._drawDebugRadii();
-    }
 
-    // ─────────────────────────────────────────
-    //  OVERRIDE DE VISUAL STATE
-    //  Enemy._updateVisualState usa spriteBaseKey
-    //  y animaciones estándar. El cocodrilo
-    //  gestiona su propio sprite según terreno.
-    // ─────────────────────────────────────────
-
-    _updateVisualState(time) {
-        if (this._state === StatusEnemy.DEAD) return;
-        if (this.isAttacking) return; // el ataque ya puso su propio sprite
-
-        this._idleSprite();
-    }
-
-    // ─────────────────────────────────────────
-    //  STATIC PRELOAD
-    // ─────────────────────────────────────────
-
-    static preload(scene) {
-        BubblesCroco.preload(scene);
-    }
-
-    // ─────────────────────────────────────────
-    //  DESTROY
-    // ─────────────────────────────────────────
-
-    destroy(fromScene) {
-        this._debugGraphics?.destroy();
-        this._debugGraphics = null;
-        super.destroy(fromScene);
+        if (this.weaponBar?.update) this.weaponBar.update();
     }
 }
 

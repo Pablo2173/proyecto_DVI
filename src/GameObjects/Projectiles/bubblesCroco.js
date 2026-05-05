@@ -1,7 +1,7 @@
 import Projectile from './projectile.js';
 import balaTexture from '../../../assets/sprites/Projectiles/bubbles_croco.png';
 
-export default class Bala extends Projectile {
+export default class BubblesCroco extends Projectile {
     constructor(scene, x, y, config = {}) {
         super(scene, x, y, 'bubbles_croco', config);
         this.setScale(5);

@@ -12,6 +12,7 @@ import Escoba from '../GameObjects/Weapons/Melee/escoba.js';
 // Proyectiles
 import Flecha from '../GameObjects/Projectiles/flecha.js';
 import Bala from '../GameObjects/Projectiles/bala.js';
+import BubblesCroco from '../GameObjects/Projectiles/bubblesCroco.js';
 
 // Drops
 import DropWeapon from '../GameObjects/Consumables/Drops/dropWeapon.js';
@@ -253,6 +254,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
         Ramita.preload(this);
         Flecha.preload(this);
         Bala.preload(this);
+        BubblesCroco.preload(this);
         Escoba.preload(this);
 
         Bread.preload(this);
