@@ -23,7 +23,7 @@ export default class Crocodile extends BaseCharacter {
         this._nombre = name;
         this.team = TEAM.ENEMY;
 
-        this.health = 5;
+        this.health = 500;
         this._speed = 200;
         this.damage = 10;
 
