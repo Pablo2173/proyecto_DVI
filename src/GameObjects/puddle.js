@@ -110,7 +110,7 @@ export default class Puddle {
         if (!applyResult.success) return applyResult;
 
         // 4. Cobrar las plumas y marcar como comprada
-        duck.feathers -= cost;
+        duck.spendFeathers?.(cost);
         upgrade.purchased = true;
         this.hasPurchasedUpgrade = true;
 
