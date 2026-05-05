@@ -18,6 +18,8 @@ export default class Crocodile extends BaseCharacter {
     constructor(scene, name, x, y, texture, frame = null) {
         super(scene, x, y, texture ?? 'croco_idle', frame, TEAM.ENEMY);
 
+        this.showDebugAreas = false;
+
         this._nombre = name;
         this.team = TEAM.ENEMY;
 
@@ -25,23 +27,24 @@ export default class Crocodile extends BaseCharacter {
         this._speed = 200;
         this.damage = 2;
 
-        this.attackRadius = 200;
-        this.alertRadius = 800;
+        this.attackRadius = 50;
+        this.alertRadius = 400;
         this.contactRadius = 100;
+        this.minimumApproachRadius = 100;
 
-        this._swimAttackRadius = 800;
-        this._swimAlertRadius = 400;
+        this._swimAttackRadius = 200;
+        this._swimAlertRadius = 200;
         this._swimContactRadius = 140;
-        this._swimChaseSpeedMultiplier = 1.6;
+        this._swimChaseSpeedMultiplier = 2;
 
         this._shootingBurstCooldownMs = 7000;
-        this._shootingShotIntervalMs = 500;
-        this._shootingMaxShots = 5;
+        this._shootingShotIntervalMs = 400;
+        this._shootingMaxShots = 6;
         this._shootingBurstShots = 0;
         this._shootingNextShotTime = 0;
         this._lastShootingBurstTime = -Infinity;
 
-        this._tailSwipeCooldownMs = 900;
+        this._tailSwipeCooldownMs = 2000;
         this._lastTailSwipeTime = -Infinity;
 
         this._swimContactDamageMs = 1000;
@@ -86,8 +89,11 @@ export default class Crocodile extends BaseCharacter {
         this._debugGraphics.setDepth(999);
     }
 
-    _transitionTo(newState) {
+    _transitionTo(newState, force = false) {
         if (this.currentState === newState) return;
+        if (this.currentState === this.states.SHOOTING && newState !== this.states.SHOOTING && !force) {
+            return;
+        }
         if (this.currentState === this.states.SHOOTING && newState !== this.states.SHOOTING) {
             this._resetShootingBurst();
         }
@@ -187,6 +193,11 @@ export default class Crocodile extends BaseCharacter {
 
     _drawDebugRadii() {
         if (!this._debugGraphics) return;
+        if (!this.showDebugAreas) {
+            this._debugGraphics.clear();
+            return;
+        }
+
         this._debugGraphics.clear();
         this._debugGraphics.lineStyle(1, 0xffff00, 0.6);
         this._debugGraphics.strokeCircle(this.x, this.y, this._activeAlertRadius());
@@ -222,8 +233,47 @@ export default class Crocodile extends BaseCharacter {
         this._lastKnownX = player.x;
         this._lastKnownY = player.y;
 
+        // En tierra: comportamiento de coletazo estacionario
+        if (this.currentState === this.states.WALKING) {
+            // Si está atacando y el jugador se aleja, salir del ataque
+            if (this.isAttacking && distance > this._activeAttackRadius()) {
+                this.isAttacking = false;
+                this._idleSprite();
+            }
+
+            if (distance <= this._activeAttackRadius()) {
+                this.body?.setVelocity(0, 0);
+                this._handleContactDamage(player, distance, now);
+                return;
+            }
+
+            if (distance > this._activeAlertRadius()) {
+                if (now >= this._lastShootingBurstTime + this._shootingBurstCooldownMs) {
+                    this._beginShootingBurst(now);
+                    return;
+                }
+
+                if (!this.isAttacking) {
+                    this._moveTowards(player, this._activeChaseSpeedMultiplier());
+                    this._idleSprite();
+                }
+                return;
+            }
+
+            if (!this.isAttacking) {
+                this._moveTowards(player, this._activeChaseSpeedMultiplier());
+                this._idleSprite();
+            }
+            return;
+        }
+
+        // En agua o estado ALERTED: comportamiento de persecución normal
         if (distance <= this._activeAttackRadius()) {
-            this._moveTowards(player, this._activeChaseSpeedMultiplier());
+            if (distance < this.minimumApproachRadius) {
+                this._moveAwayFrom(player);
+            } else {
+                this._moveTowards(player, this._activeChaseSpeedMultiplier());
+            }
             this._idleSprite();
             this._handleContactDamage(player, distance, now);
             return;
@@ -250,7 +300,11 @@ export default class Crocodile extends BaseCharacter {
 
     _handleSwimming(player, distance, now) {
         if (distance <= this._activeAttackRadius()) {
-            this._moveTowards(player, this._activeChaseSpeedMultiplier());
+            if (distance < this.minimumApproachRadius) {
+                this._moveAwayFrom(player);
+            } else {
+                this._moveTowards(player, this._activeChaseSpeedMultiplier());
+            }
             this._idleSprite();
             this._handleContactDamage(player, distance, now);
             return;
@@ -276,16 +330,6 @@ export default class Crocodile extends BaseCharacter {
     }
 
     _handleShooting(player, distance, now) {
-        if (distance <= this._activeAlertRadius()) {
-            this._transitionTo(this.states.ALERTED);
-            return;
-        }
-
-        if (distance <= this._activeAttackRadius()) {
-            this._transitionTo(this.states.ALERTED);
-            return;
-        }
-
         if (now < this._shootingNextShotTime) return;
 
         if (this._shootingBurstShots >= this._shootingMaxShots) {
@@ -353,7 +397,7 @@ export default class Crocodile extends BaseCharacter {
     _endShootingBurst(now) {
         this._lastShootingBurstTime = now;
         this._resetShootingBurst();
-        this._transitionTo(this.states.ALERTED);
+        this._transitionTo(this.states.ALERTED, true);
     }
 
     _resetShootingBurst() {
@@ -390,7 +434,7 @@ export default class Crocodile extends BaseCharacter {
         player.takeDamage(this.damage);
         this.scene?.cameras?.main?.shake?.(160, 0.006);
 
-        this.scene?.time?.delayedCall(300, () => {
+        this.scene?.time?.delayedCall(700, () => {
             if (!this.active || this.currentState === this.states.DEAD) return;
             this.isAttacking = false;
             this._idleSprite();
@@ -402,7 +446,8 @@ export default class Crocodile extends BaseCharacter {
 
         const bubble = new BubblesCroco(this.scene, this.x, this.y, {
             team: TEAM.ENEMY,
-            damage: this.damage
+            damage: this.damage,
+            range: 3000
         });
 
         const angle = Phaser.Math.Angle.Between(this.x, this.y, player.x, player.y);
@@ -425,6 +470,22 @@ export default class Crocodile extends BaseCharacter {
         this.scene?.time?.delayedCall(4000, () => {
             if (bubble?.active) bubble.destroy();
         });
+    }
+
+    _moveAwayFrom(target) {
+        if (!target || typeof target.x !== 'number') {
+            this.body?.setVelocity(0, 0);
+            return;
+        }
+
+        const angle = Phaser.Math.Angle.Between(target.x, target.y, this.x, this.y);
+        const vx = Math.cos(angle) * this._speed * this._activeChaseSpeedMultiplier();
+        const vy = Math.sin(angle) * this._speed * this._activeChaseSpeedMultiplier();
+        this.body?.setVelocity(vx, vy);
+
+        if (Math.abs(vx) > 8) {
+            this._safeSetFlipX(vx < 0);
+        }
     }
 
     _moveTowards(target, speedMultiplier = 1) {
