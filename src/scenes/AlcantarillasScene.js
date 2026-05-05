@@ -129,7 +129,7 @@ import carGreenBack from '../../assets/tilesets/car-green-back.png';
 import carBlueBack from '../../assets/tilesets/car-blue-back.png';
 import truckRedFront from '../../assets/tilesets/truck-red-front.png';
 import wallsFloor from '../../assets/tilesets/walls_floor.png';
-import waterCoastsAnimation from '../../assets/tilesets/water_coasts_animation.png';
+import waterCoastsAnimation from '../../assets/tilesets/Water_coasts_animation.png';
 import doorsLevelChest from '../../assets/tilesets/doors_lever_chest_animation.png';
 
 // Hints
