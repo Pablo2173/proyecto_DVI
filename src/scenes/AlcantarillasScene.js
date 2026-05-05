@@ -2280,6 +2280,8 @@ export default class AlcantarillasScene extends Phaser.Scene {
         });
     });
 
+    }
+
     createBossUI() {
         // 1. Posición bajada a 230 para estar debajo del ConsumableBar (que llega hasta ~164)
         // Centramos en X y bajamos en Y
@@ -2353,5 +2355,4 @@ export default class AlcantarillasScene extends Phaser.Scene {
             }
         }
     }
-}
 }
