@@ -561,6 +561,27 @@ export default class Crocodile extends BaseCharacter {
 
         const distance = Phaser.Math.Distance.Between(this.x, this.y, player.x, player.y);
 
+        // --- NUEVO: LÓGICA DE LA BARRA DE VIDA DEL JEFE ---
+        const bossActivateRadius = 600; // Distancia a la que aparece la barra de vida
+
+        if (distance < bossActivateRadius && !this.isDead()) {
+            // Si el UI existe y no está activo aún, lo mostramos
+            if (this.scene.showBossUI && !this._bossUIActive) {
+                this.scene.showBossUI(this);
+                this._bossUIActive = true;
+            }
+            // Actualizamos los corazones según la vida actual
+            if (this.scene.updateBossUI) {
+                this.scene.updateBossUI(this.health);
+            }
+        } else if (this.isDead() && this._bossUIActive) {
+            // Si muere, forzamos a que desaparezca el UI
+            if (this.scene.updateBossUI) {
+                this.scene.updateBossUI(0); 
+            }
+            this._bossUIActive = false;
+        }
+
         switch (this.currentState) {
             case this.states.IDLE:
                 this._handleIdle(distance);
