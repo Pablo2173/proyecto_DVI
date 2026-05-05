@@ -87,57 +87,47 @@ export default class Puddle {
         };
     }
 
-    purchaseUpgrade(upgradeId, duck) {
-        if (this.isRemoved) {
-            return { success: false, reason: 'removed', message: 'Puddle no longer available.' };
-        }
-        if (this.hasPurchasedUpgrade) {
-            return { success: false, reason: 'already_purchased', message: 'Only one upgrade can be purchased.' };
-        }
-        if (!duck || !duck.active) {
-            return { success: false, reason: 'invalid_duck', message: 'Duck is not available.' };
+    purchaseUpgrade(duck, upgradeId) {
+        const upgrade = this.upgrades.find(u => u.id === upgradeId);
+        
+        // 1. Verificar si existe o ya se compró
+        if (!upgrade || upgrade.purchased) {
+            return { success: false, reason: 'invalid_upgrade', message: 'Esta mejora ya no está disponible.' };
         }
 
-        const upgrade = (this.upgrades || []).find(item => item?.id === upgradeId && item.purchased !== true);
-        if (!upgrade) {
-            return { success: false, reason: 'not_found', message: 'Upgrade not found.' };
-        }
-
-        const cost = Math.max(0, Number(upgrade.costFeathers) || 0);
-        if (!duck.hasFeathers?.(cost)) {
-            return { success: false, reason: 'not_enough_feathers', message: 'Not enough feathers.' };
-        }
-
-        const feathersBeforePurchase = Number(duck.feathers) || 0;
-        const spent = duck.spendFeathers?.(cost);
-        if (!spent) {
-            return { success: false, reason: 'payment_failed', message: 'Could not spend feathers.' };
-        }
-
-        const applyResult = applyPuddleUpgradeToDuck(upgrade, duck);
-        if (!applyResult?.success) {
-            duck.setFeathers?.(feathersBeforePurchase);
-            return {
-                success: false,
-                reason: applyResult?.reason || 'apply_failed',
-                message: applyResult?.message || 'Upgrade could not be applied.'
+        // 2. Comprobar si tiene suficientes plumas (Requisito: No dejar comprar si no tiene)
+        const cost = upgrade.costFeathers;
+        if (duck.feathers < cost) {
+            return { 
+                success: false, 
+                reason: 'not_enough_feathers', 
+                message: `¡Necesitas ${cost} plumas! Solo tienes ${duck.feathers}.` 
             };
         }
 
+        // 3. Aplicar la mejora
+        const applyResult = applyPuddleUpgradeToDuck(upgrade, duck);
+        if (!applyResult.success) return applyResult;
+
+        // 4. Cobrar las plumas y marcar como comprada
+        duck.feathers -= cost;
         upgrade.purchased = true;
         this.hasPurchasedUpgrade = true;
-        this.isRemoved = true;
+
+        // 5. SUBIR DE PRECIO LAS DEMÁS (Lógica de inflación)
+        // Cada vez que compras algo, las que quedan disponibles suben, por ejemplo, +2 plumas
+        const inflacion = 2;
         this.upgrades.forEach(item => {
-            if (item?.id !== upgrade.id) {
-                item.purchased = true;
+            if (!item.purchased) {
+                item.costFeathers += inflacion;
             }
         });
 
         return {
             success: true,
             reason: 'ok',
-            message: applyResult?.message || 'Upgrade purchased.',
-            removePuddle: true,
+            message: '¡Mejora obtenida! Las demás ahora son más caras.',
+            removePuddle: false, // Cambiamos a false para que el charco no desaparezca y deje comprar más
             spentFeathers: cost,
             remainingFeathers: duck.feathers
         };

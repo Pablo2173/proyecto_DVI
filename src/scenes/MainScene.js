@@ -140,6 +140,9 @@ import movementSign from '../../assets/hints/movement_sign.png';
 //Plumas
 import feather_icon from '../../assets/sprites/UI/pluma.png';
 
+// InputManager
+import InputManager from '../managers/InputManager.js';
+
 export default class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
@@ -320,403 +323,419 @@ export default class MainScene extends Phaser.Scene {
 
     create() {
         const SCALE = 4;
-        //PARAR música del menú
-        const menuMusic = this.sound.get("menu_music");
+        try {
+            //PARAR música del menú
+            const menuMusic = this.sound.get("menu_music");
 
-        if (menuMusic) {
-            menuMusic.stop();
-        }
-        // ─────────────────────────────────────────
-        // CONFIG GENERAL DE LA ESCENA
-        // ─────────────────────────────────────────
-        this.isPlayerDead = false;
-        this.playerSpawn = null;
-        this.playerWeapon = 'cuchillo';
-        this.positionText = null;
-        this.puddles = [];
-        this.currentPuddle = null;
-        this.previousCheckpointBeforePuddle = null;
-        this.puddleUpgradePanel = null;
+            if (menuMusic) {
+                menuMusic.stop();
+            }
+            // ─────────────────────────────────────────
+            // CONFIG GENERAL DE LA ESCENA
+            // ─────────────────────────────────────────
+            this.isPlayerDead = false;
+            this.playerSpawn = null;
+            this.playerWeapon = 'cuchillo';
+            this.positionText = null;
+            this.puddles = [];
+            this.currentPuddle = null;
+            this.previousCheckpointBeforePuddle = null;
+            this.puddleUpgradePanel = null;
 
-        // Limpia listeners anteriores por seguridad al reiniciar la escena
-        this.input.removeAllListeners();
+            // Limpia listeners anteriores por seguridad al reiniciar la escena
+            this.input.removeAllListeners();
 
-        this.isPaused = false;
-        this.pauseOverlay = null;
-        this.guideOverlay = null;
-        this.exitConfirmOverlay = null;
+            // ─────────────────────────────────────────
+            // MAPA
+            // ─────────────────────────────────────────
+            this.map = this.make.tilemap({
+                key: 'level1',
+                tileWidth: 16,
+                tileHeight: 16
+            });
 
-        // Leer fontSize guardado — se usa en los textos de la Guía
-        const _savedSettings = JSON.parse(localStorage.getItem('settings')) ?? {};
-        this.currentFontSize = _savedSettings.fontSize ?? 28;
+            const tilesetNames = [
+                'dark-grass-middle-middle', 'sidewalk-1', 'asphalt-road-1', 'asphalt-road-3',
+                'asphalt-road-2', 'sidewalk-5', 'dirtpath-1', 'dirtpath-8', 'dirtpath-9',
+                'dirtpath-10', 'dirtpath-11', 'dirtpath-15', 'dirtpath-12', 'dirtpath-13',
+                'dirtpath-14', 'dirtpath-2', 'dirtpath-5', 'dirtpath-4', 'dirtpath-6',
+                'house-2', 'wood-fence-left-middle', 'wood-fence-right-middle',
+                'wood-fence-interior-corner-1', 'wood-fence-bottom-middle',
+                'wood-fence-interior-corner-2', 'wood-fence-interior-corner-3',
+                'wood-fence-top-left-corner', 'apartment-building', 'grocery-store',
+                'tree-1', 'small-bushes-blue-berries', 'water-fountain',
+                'wood-fence-interior-corner-4', 'tall-grass-middle', 'bush',
+                'Overworld', 'objects', 'car-green-back', 'car-blue-back', 'truck-red-front'
+            ];
 
-        // Actualizar currentFontSize cuando el jugador cambia el ajuste desde SettingsScene
-        this._onFontSizeChanged = (size) => { this.currentFontSize = size; };
-        this.game.events.on('fontSizeChanged', this._onFontSizeChanged, this);
+            const tilesets = tilesetNames.map(name => this.map.addTilesetImage(name, name));
 
-        this.guideScrollY = 0;
-        this.guideMinScrollY = 0;
-        this.guideMaxScrollY = 0;
-        this.guideContent = null;
-        this.guideScrollStep = 50;
+            this.baseLayer = this.map.createLayer('base', tilesets, 0, 0);
+            this.baseLayer.setScale(SCALE);
 
-        this.keyEsc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+            this.patrones1Layer = this.map.createLayer('Capa de patrones 1', tilesets, 0, 0);
+            this.patrones1Layer.setScale(SCALE);
 
-        // ─────────────────────────────────────────
-        // MAPA
-        // ─────────────────────────────────────────
-        this.map = this.make.tilemap({
-            key: 'level1',
-            tileWidth: 16,
-            tileHeight: 16
-        });
+            this.patrones2Layer = this.map.createLayer('Capa de patrones 2', tilesets, 0, 0);
+            this.patrones2Layer.setScale(SCALE);
 
-        const tilesetNames = [
-            'dark-grass-middle-middle', 'sidewalk-1', 'asphalt-road-1', 'asphalt-road-3',
-            'asphalt-road-2', 'sidewalk-5', 'dirtpath-1', 'dirtpath-8', 'dirtpath-9',
-            'dirtpath-10', 'dirtpath-11', 'dirtpath-15', 'dirtpath-12', 'dirtpath-13',
-            'dirtpath-14', 'dirtpath-2', 'dirtpath-5', 'dirtpath-4', 'dirtpath-6',
-            'house-2', 'wood-fence-left-middle', 'wood-fence-right-middle',
-            'wood-fence-interior-corner-1', 'wood-fence-bottom-middle',
-            'wood-fence-interior-corner-2', 'wood-fence-interior-corner-3',
-            'wood-fence-top-left-corner', 'apartment-building', 'grocery-store',
-            'tree-1', 'small-bushes-blue-berries', 'water-fountain',
-            'wood-fence-interior-corner-4', 'tall-grass-middle', 'bush',
-            'Overworld', 'objects', 'car-green-back', 'car-blue-back', 'truck-red-front'
-        ];
+            this.carreteraLayer = this.map.createLayer('carretera', tilesets, 0, 0);
+            this.carreteraLayer.setScale(SCALE);
 
-        const tilesets = tilesetNames.map(name => this.map.addTilesetImage(name, name));
+            this.desnivelLayer = this.map.createLayer('Desnivel', tilesets, 0, 0);
+            this.desnivelLayer.setScale(SCALE);
 
-        this.baseLayer = this.map.createLayer('base', tilesets, 0, 0);
-        this.baseLayer.setScale(SCALE);
+            this.zonasAcuaticasLayer = this.map.createLayer('Zonas aquaticas', tilesets, 0, 0);
+            this.zonasAcuaticasLayer.setScale(SCALE);
 
-        this.patrones1Layer = this.map.createLayer('Capa de patrones 1', tilesets, 0, 0);
-        this.patrones1Layer.setScale(SCALE);
+            this.sombreado1Layer = this.map.createLayer('Sombreado1', tilesets, 0, 0);
+            this.sombreado1Layer.setScale(SCALE);
 
-        this.patrones2Layer = this.map.createLayer('Capa de patrones 2', tilesets, 0, 0);
-        this.patrones2Layer.setScale(SCALE);
+            this.colisionLayer = this.map.createLayer('Zonas con colision', tilesets, 0, 0);
+            this.colisionLayer.setScale(SCALE);
 
-        this.carreteraLayer = this.map.createLayer('carretera', tilesets, 0, 0);
-        this.carreteraLayer.setScale(SCALE);
+            this.estetica1Layer = this.map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
+            this.estetica1Layer.setScale(SCALE);
 
-        this.desnivelLayer = this.map.createLayer('Desnivel', tilesets, 0, 0);
-        this.desnivelLayer.setScale(SCALE);
+            this.puertaAbiertaLayer = this.map.createLayer('puerta', tilesets, 0, 0);
+            this.puertaAbiertaLayer.setScale(SCALE);
 
-        this.zonasAcuaticasLayer = this.map.createLayer('Zonas aquaticas', tilesets, 0, 0);
-        this.zonasAcuaticasLayer.setScale(SCALE);
+            this.puertaCerradaLayer = this.map.createLayer('puertaCerrada', tilesets, 0, 0);
+            this.puertaCerradaLayer.setScale(SCALE);
 
-        this.sombreado1Layer = this.map.createLayer('Sombreado1', tilesets, 0, 0);
-        this.sombreado1Layer.setScale(SCALE);
+            this.vallaLayer = this.map.createLayer('Valla', tilesets, 0, 0);
+            this.vallaLayer.setScale(SCALE);
 
-        this.colisionLayer = this.map.createLayer('Zonas con colision', tilesets, 0, 0);
-        this.colisionLayer.setScale(SCALE);
+            this.sombreado2Layer = this.map.createLayer('Sombreado2', tilesets, 0, 0);
+            this.sombreado2Layer.setScale(SCALE);
+            this.sombreado2Layer.setDepth(200);
 
-        this.estetica1Layer = this.map.createLayer('Objetos estéticos sin colision', tilesets, 0, 0);
-        this.estetica1Layer.setScale(SCALE);
+            this.estetica2Layer = this.map.createLayer('Objetos estéticos sin colision 2', tilesets, 0, 0);
+            this.estetica2Layer.setScale(SCALE);
+            this.estetica2Layer.setDepth(201); //le he añadido esto para que el patete este por debajo
 
-        this.puertaAbiertaLayer = this.map.createLayer('puerta', tilesets, 0, 0);
-        this.puertaAbiertaLayer.setScale(SCALE);
+            this.techo1Layer = this.map.createLayer('Techo1', tilesets, 0, 0);
+            this.techo1Layer.setScale(SCALE);
+            this.techo1Layer.setDepth(202);
 
-        this.puertaCerradaLayer = this.map.createLayer('puertaCerrada', tilesets, 0, 0);
-        this.puertaCerradaLayer.setScale(SCALE);
+            // CAPA DE HINTS (PISTAS VISUALES)
+            const hintsLayer = this.map.getObjectLayer('hints');
+            if (hintsLayer && hintsLayer.objects) {
+                hintsLayer.objects.forEach(obj => {
+                    if (obj.visible !== false) {
+                        // Leer atributo personalizado 'texture'
+                        let textureName = null;
+                        if (obj.properties) {
+                            const textureProp = obj.properties.find(p => p.name === 'texture');
+                            if (textureProp) textureName = textureProp.value;
+                        }
 
-        this.vallaLayer = this.map.createLayer('Valla', tilesets, 0, 0);
-        this.vallaLayer.setScale(SCALE);
-
-        this.sombreado2Layer = this.map.createLayer('Sombreado2', tilesets, 0, 0);
-        this.sombreado2Layer.setScale(SCALE);
-        this.sombreado2Layer.setDepth(200);
-
-        this.estetica2Layer = this.map.createLayer('Objetos estéticos sin colision 2', tilesets, 0, 0);
-        this.estetica2Layer.setScale(SCALE);
-        this.estetica2Layer.setDepth(201); //le he añadido esto para que el patete este por debajo
-
-        this.techo1Layer = this.map.createLayer('Techo1', tilesets, 0, 0);
-        this.techo1Layer.setScale(SCALE);
-        this.techo1Layer.setDepth(202);
-
-        // CAPA DE HINTS (PISTAS VISUALES)
-        const hintsLayer = this.map.getObjectLayer('hints');
-        if (hintsLayer && hintsLayer.objects) {
-            hintsLayer.objects.forEach(obj => {
-                if (obj.visible !== false) {
-                    // Leer atributo personalizado 'texture'
-                    let textureName = null;
-                    if (obj.properties) {
-                        const textureProp = obj.properties.find(p => p.name === 'texture');
-                        if (textureProp) textureName = textureProp.value;
+                        if (textureName && this.textures.exists(textureName)) {
+                            const hint = this.add.image(obj.x * SCALE, (obj.y - obj.height) * SCALE, textureName);
+                            hint.setOrigin(0, 0);
+                            hint.setDisplaySize(obj.width * SCALE, obj.height * SCALE);
+                            hint.setAlpha(0.7);
+                            //hint.setDepth(100);
+                        }
                     }
+                });
+            }
 
-                    if (textureName && this.textures.exists(textureName)) {
-                        const hint = this.add.image(obj.x * SCALE, (obj.y - obj.height) * SCALE, textureName);
-                        hint.setOrigin(0, 0);
-                        hint.setDisplaySize(obj.width * SCALE, obj.height * SCALE);
-                        hint.setAlpha(0.7);
-                        //hint.setDepth(100);
+            const duckLayer = this.map.getObjectLayer('duck');
+            if (!duckLayer || duckLayer.objects.length === 0) {
+                throw new Error('Falta la capa de objetos duck o esta vacia. Debes definir el jugador desde el mapa.');
+            }
+
+            const duckObj = duckLayer.objects.find(obj => (obj.name || '').trim().toLowerCase() === 'duck');
+            if (!duckObj) {
+                throw new Error('Falta un objeto llamado duck dentro de la capa duck.');
+            }
+
+            this.playerSpawn = {
+                x: duckObj.x * SCALE,
+                y: duckObj.y * SCALE
+            };
+
+            this._applyStoredCheckpointSpawn();
+
+            if (duckObj.properties) {
+                const duckProps = {};
+                duckObj.properties.forEach(p => duckProps[p.name] = p.value);
+                if (Object.prototype.hasOwnProperty.call(duckProps, 'weapon')) {
+                    const weaponFromMap = duckProps.weapon;
+
+                    if (weaponFromMap === null) {
+                        this.playerWeapon = 'ramita';
+                    } else if (typeof weaponFromMap === 'string') {
+                        const normalizedWeapon = weaponFromMap.trim().toLowerCase();
+                        this.playerWeapon = normalizedWeapon === '' || normalizedWeapon === 'null'
+                            ? 'ramita'
+                            : normalizedWeapon;
+                    } else {
+                        this.playerWeapon = weaponFromMap;
                     }
                 }
-            });
-        }
+            }
 
-        const duckLayer = this.map.getObjectLayer('duck');
-        if (!duckLayer || duckLayer.objects.length === 0) {
-            throw new Error('Falta la capa de objetos duck o esta vacia. Debes definir el jugador desde el mapa.');
-        }
+            this._applyStoredRespawnWeapon();
 
-        const duckObj = duckLayer.objects.find(obj => (obj.name || '').trim().toLowerCase() === 'duck');
-        if (!duckObj) {
-            throw new Error('Falta un objeto llamado duck dentro de la capa duck.');
-        }
+            // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
+            // Esto evita depender de propiedades "collides" en cada tile del tileset.
+            this.colisionLayer.setCollisionByExclusion([-1], true);
+            this.puertaCerradaLayer.setCollisionByExclusion([-1], true);
+            this.vallaLayer.setCollisionByExclusion([-1], true);
+            this.desnivelLayer.setCollisionByExclusion([-1], true);
+            this.zonasAcuaticasLayer.setCollisionByExclusion([-1], true);
 
-        this.playerSpawn = {
-            x: duckObj.x * SCALE,
-            y: duckObj.y * SCALE
-        };
+            const worldWidth = this.map.widthInPixels * SCALE;
+            const worldHeight = this.map.heightInPixels * SCALE;
 
-        this._applyStoredCheckpointSpawn();
+            this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
+            this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
+            // Esto es para arreglar que el dash atraviesa paredes al ir muy rapido
+            this.physics.world.setFPS(120);
+            this.physics.world.TILE_BIAS = Math.max(this.physics.world.TILE_BIAS, 48);
 
-        if (duckObj.properties) {
-            const duckProps = {};
-            duckObj.properties.forEach(p => duckProps[p.name] = p.value);
-            if (Object.prototype.hasOwnProperty.call(duckProps, 'weapon')) {
-                const weaponFromMap = duckProps.weapon;
+            // ─────────────────────────────────────────
+            // ANIMACIONES
+            // ─────────────────────────────────────────
+            if (!this.anims.exists('duck-idle')) {
+                this.anims.create({
+                    key: 'duck-idle',
+                    frames: this.anims.generateFrameNumbers('idle_duck', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
 
-                if (weaponFromMap === null) {
-                    this.playerWeapon = 'ramita';
-                } else if (typeof weaponFromMap === 'string') {
-                    const normalizedWeapon = weaponFromMap.trim().toLowerCase();
-                    this.playerWeapon = normalizedWeapon === '' || normalizedWeapon === 'null'
-                        ? 'ramita'
-                        : normalizedWeapon;
-                } else {
-                    this.playerWeapon = weaponFromMap;
+            if (!this.anims.exists('duck-walk')) {
+                this.anims.create({
+                    key: 'duck-walk',
+                    frames: this.anims.generateFrameNumbers('duck_walk', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('duck-cuack')) {
+                this.anims.create({
+                    key: 'duck-cuack',
+                    frames: this.anims.generateFrameNumbers('duck-cuack', { start: 0, end: 0 }),
+                    frameRate: 8,
+                    repeat: 0
+                });
+            }
+
+            if (!this.anims.exists('duck-dash')) {
+                this.anims.create({
+                    key: 'duck-dash',
+                    frames: this.anims.generateFrameNumbers('duck-dash', { start: 0, end: 3 }),
+                    frameRate: 16,
+                    repeat: 0
+                });
+            }
+
+            if (!this.anims.exists('duck-swimming')) {
+                this.anims.create({
+                    key: 'duck-swimming',
+                    frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('zorro-idle') && this.textures.exists('zorro_idle')) {
+                this.anims.create({
+                    key: 'zorro-idle',
+                    frames: this.anims.generateFrameNumbers('zorro_idle', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('zorro-run') && this.textures.exists('zorro_run')) {
+                this.anims.create({
+                    key: 'zorro-run',
+                    frames: this.anims.generateFrameNumbers('zorro_run', { start: 0, end: 3 }),
+                    frameRate: 12,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('mapache-idle') && this.textures.exists('mapache_idle')) {
+                this.anims.create({
+                    key: 'mapache-idle',
+                    frames: this.anims.generateFrameNumbers('mapache_idle', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('mapache-run') && this.textures.exists('mapache_run')) {
+                this.anims.create({
+                    key: 'mapache-run',
+                    frames: this.anims.generateFrameNumbers('mapache_run', { start: 0, end: 3 }),
+                    frameRate: 12,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('cuervo-idle') && this.textures.exists('cuervo_idle')) {
+                this.anims.create({
+                    key: 'cuervo-idle',
+                    frames: this.anims.generateFrameNumbers('cuervo_idle', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('cuervo-run') && this.textures.exists('cuervo_run')) {
+                this.anims.create({
+                    key: 'cuervo-run',
+                    frames: this.anims.generateFrameNumbers('cuervo_run', { start: 0, end: 3 }),
+                    frameRate: 12,
+                    repeat: -1
+                });
+            }
+
+            if (!this.anims.exists('rana-idle') && this.textures.exists('rana_idle')) {
+                this.anims.create({
+                    key: 'rana-idle',
+                    frames: this.anims.generateFrameNumbers('rana_idle', { start: 0, end: 3 }),
+                    frameRate: 8,
+                    repeat: -1
+                });
+            }
+
+
+            /* if (!this.anims.exists('duck-swimming') && this.textures.exists('duck-swimming')) {
+                 this.anims.create({
+                     key: 'duck-swimming',
+                     frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
+                     frameRate: 8,
+                     repeat: -1
+                 });
+             }*/
+
+            // ─────────────────────────────────────────
+            // AUDIO
+            // ─────────────────────────────────────────
+            this.cuackSound = this.sound.add('cuack', { volume: 1 });
+            this.deathSound = this.sound.add('death_sound', { volume: 1 });
+
+            // ─────────────────────────────────────────
+            // GRUPOS
+            // ─────────────────────────────────────────
+            this.dropItems = this.add.group();
+            this.consumableItems = this.add.group();
+            this.projectiles = this.add.group();
+
+            // ─────────────────────────────────────────
+            // INPUT MANAGER
+            // ─────────────────────────────────────────
+            this.inputManager = new InputManager(this);
+            this.wasAttackHeld = false;
+
+            // ─────────────────────────────────────────
+            // PLAYER
+            // ─────────────────────────────────────────
+
+            this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon, this.inputManager);
+
+            //spawner del cuervo
+            this.crowSpawner = {
+                holdDurationMs: 40000,
+                holdStartTime: null,
+                lastWeaponKey: this._getCurrentDuckWeaponKey(),
+                spawnedForCurrentWeapon: false
+            };
+
+            // ─────────────────────────────────────────
+            // UI
+            // ─────────────────────────────────────────
+            this.breadCount = 0;
+            this.consumableBar = new ConsumableBar(this, this.duck, this.inputManager);
+            this.enemiesKilled = 0;
+
+            // ─────────────────────────────────────────
+            // OVERLAY DE MUERTE
+            // ─────────────────────────────────────────
+            this.deathOverlay = this.add.container(0, 0).setScrollFactor(0).setDepth(10000);
+            this.deathOverlay.setVisible(false);
+
+            const deathBg = this.add.rectangle(
+                0,
+                0,
+                this.scale.width,
+                this.scale.height,
+                0x000000,
+                0.82
+            ).setOrigin(0, 0);
+
+            const deathText = this.add.text(
+                this.scale.width / 2,
+                this.scale.height / 2,
+                'YOU DIED',
+                {
+                    fontFamily: 'Arial Black',
+                    fontSize: '72px',
+                    color: '#b30000',
+                    stroke: '#000000',
+                    strokeThickness: 8
                 }
+            ).setOrigin(0.5);
+
+            this.deathOverlay.add([deathBg, deathText]);
+
+            // Si la ventana cambia, reajustamos overlay
+            if (this._onResize) {
+                this.scale.off('resize', this._onResize, this);
             }
-        }
+            this._onResize = (gameSize) => {
+                deathBg.setSize(gameSize.width, gameSize.height);
+                deathText.setPosition(gameSize.width / 2, gameSize.height / 2);
+            };
+            this.scale.on('resize', this._onResize, this);
 
-        this._applyStoredRespawnWeapon();
+            // Limpieza segura al reiniciar/destruir la escena
+            this.events.once('shutdown', this._cleanupScene, this);
+            this.events.once('destroy', this._cleanupScene, this);
 
-        // Si esta capa es solo para colisión, marcamos colisión en todo tile no vacío.
-        // Esto evita depender de propiedades "collides" en cada tile del tileset.
-        this.colisionLayer.setCollisionByExclusion([-1], true);
-        this.puertaCerradaLayer.setCollisionByExclusion([-1], true);
-        this.vallaLayer.setCollisionByExclusion([-1], true);
-        this.desnivelLayer.setCollisionByExclusion([-1], true);
-        this.zonasAcuaticasLayer.setCollisionByExclusion([-1], true);
-
-        const worldWidth = this.map.widthInPixels * SCALE;
-        const worldHeight = this.map.heightInPixels * SCALE;
-
-        this.physics.world.setBounds(0, 0, worldWidth, worldHeight);
-        this.cameras.main.setBounds(0, 0, worldWidth, worldHeight);
-        // Esto es para arreglar que el dash atraviesa paredes al ir muy rapido
-        this.physics.world.setFPS(120);
-        this.physics.world.TILE_BIAS = Math.max(this.physics.world.TILE_BIAS, 48);
-
-        // ─────────────────────────────────────────
-        // ANIMACIONES
-        // ─────────────────────────────────────────
-        if (!this.anims.exists('duck-idle')) {
-            this.anims.create({
-                key: 'duck-idle',
-                frames: this.anims.generateFrameNumbers('idle_duck', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
+            // Al reanudar desde SettingsScene: re-aplicar ajustes de audio y volver al menú de pausa
+            this.events.on('resume', () => {
+                this.applyGameAudioSettings();
+                this.openPauseMenu();
             });
-        }
-
-        if (!this.anims.exists('duck-walk')) {
-            this.anims.create({
-                key: 'duck-walk',
-                frames: this.anims.generateFrameNumbers('duck_walk', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('duck-cuack')) {
-            this.anims.create({
-                key: 'duck-cuack',
-                frames: this.anims.generateFrameNumbers('duck-cuack', { start: 0, end: 0 }),
-                frameRate: 8,
-                repeat: 0
-            });
-        }
-
-        if (!this.anims.exists('duck-dash')) {
-            this.anims.create({
-                key: 'duck-dash',
-                frames: this.anims.generateFrameNumbers('duck-dash', { start: 0, end: 3 }),
-                frameRate: 16,
-                repeat: 0
-            });
-        }
-
-        if (!this.anims.exists('duck-swimming')) {
-            this.anims.create({
-                key: 'duck-swimming',
-                frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('zorro-idle') && this.textures.exists('zorro_idle')) {
-            this.anims.create({
-                key: 'zorro-idle',
-                frames: this.anims.generateFrameNumbers('zorro_idle', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('zorro-run') && this.textures.exists('zorro_run')) {
-            this.anims.create({
-                key: 'zorro-run',
-                frames: this.anims.generateFrameNumbers('zorro_run', { start: 0, end: 3 }),
-                frameRate: 12,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('mapache-idle') && this.textures.exists('mapache_idle')) {
-            this.anims.create({
-                key: 'mapache-idle',
-                frames: this.anims.generateFrameNumbers('mapache_idle', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('mapache-run') && this.textures.exists('mapache_run')) {
-            this.anims.create({
-                key: 'mapache-run',
-                frames: this.anims.generateFrameNumbers('mapache_run', { start: 0, end: 3 }),
-                frameRate: 12,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('cuervo-idle') && this.textures.exists('cuervo_idle')) {
-            this.anims.create({
-                key: 'cuervo-idle',
-                frames: this.anims.generateFrameNumbers('cuervo_idle', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('cuervo-run') && this.textures.exists('cuervo_run')) {
-            this.anims.create({
-                key: 'cuervo-run',
-                frames: this.anims.generateFrameNumbers('cuervo_run', { start: 0, end: 3 }),
-                frameRate: 12,
-                repeat: -1
-            });
-        }
-
-        if (!this.anims.exists('rana-idle') && this.textures.exists('rana_idle')) {
-            this.anims.create({
-                key: 'rana-idle',
-                frames: this.anims.generateFrameNumbers('rana_idle', { start: 0, end: 3 }),
-                frameRate: 8,
-                repeat: -1
-            });
-        }
-
-
-        /* if (!this.anims.exists('duck-swimming') && this.textures.exists('duck-swimming')) {
-             this.anims.create({
-                 key: 'duck-swimming',
-                 frames: this.anims.generateFrameNumbers('duck-swimming', { start: 0, end: 3 }),
-                 frameRate: 8,
-                 repeat: -1
-             });
-         }*/
-
-        // ─────────────────────────────────────────
-        // AUDIO
-        // ─────────────────────────────────────────
-        this.cuackSound = this.sound.add('cuack', { volume: 1 });
-        this.deathSound = this.sound.add('death_sound', { volume: 1 });
-
-        // ─────────────────────────────────────────
-        // GRUPOS
-        // ─────────────────────────────────────────
-        this.dropItems = this.add.group();
-        this.consumableItems = this.add.group();
-        this.projectiles = this.add.group();
-
-        // ─────────────────────────────────────────
-        // PLAYER
-        // ─────────────────────────────────────────
-
-        this.duck = new Duck(this, this.playerSpawn.x, this.playerSpawn.y, this.playerWeapon);
-
-        //spawner del cuervo
-        this.crowSpawner = {
-            holdDurationMs: 40000,
-            holdStartTime: null,
-            lastWeaponKey: this._getCurrentDuckWeaponKey(),
-            spawnedForCurrentWeapon: false
-        };
-
-        // ─────────────────────────────────────────
-        // UI
-        // ─────────────────────────────────────────
-        this.breadCount = 0;
-        this.consumableBar = new ConsumableBar(this, this.duck);
-        this.enemiesKilled = 0;
-
-
-
-        // ─────────────────────────────────────────
-        // OVERLAY DE MUERTE
-        // ─────────────────────────────────────────
-        this.deathOverlay = this.add.container(0, 0).setScrollFactor(0).setDepth(10000);
-        this.deathOverlay.setVisible(false);
-
-        const deathBg = this.add.rectangle(
-            0,
-            0,
-            this.scale.width,
-            this.scale.height,
-            0x000000,
-            0.82
-        ).setOrigin(0, 0);
-
-        const deathText = this.add.text(
-            this.scale.width / 2,
-            this.scale.height / 2,
-            'YOU DIED',
-            {
-                fontFamily: 'Arial Black',
-                fontSize: '72px',
-                color: '#b30000',
-                stroke: '#000000',
-                strokeThickness: 8
+        } catch (err) {
+            console.error('[MainScene] Error en create():', err);
+            try {
+                const msg = (err && err.stack) ? err.stack : String(err);
+                const overlay = document.createElement('div');
+                overlay.style.position = 'fixed';
+                overlay.style.left = '0';
+                overlay.style.top = '0';
+                overlay.style.width = '100%';
+                overlay.style.height = '100%';
+                overlay.style.background = 'rgba(0,0,0,0.95)';
+                overlay.style.color = '#fff';
+                overlay.style.zIndex = '99999';
+                overlay.style.padding = '20px';
+                overlay.style.overflow = 'auto';
+                overlay.innerText = 'Error al cargar la escena de juego:\n\n' + msg;
+                document.body.appendChild(overlay);
+            } catch (inner) {
+                console.error('[MainScene] Error mostrando overlay de fallo', inner);
             }
-        ).setOrigin(0.5);
 
-        this.deathOverlay.add([deathBg, deathText]);
-
-        // Si la ventana cambia, reajustamos overlay
-        if (this._onResize) {
-            this.scale.off('resize', this._onResize, this);
+            // Intentar volver al menú para que el jugador no quede atrapado
+            try { this.scene.start('MenuScene'); } catch (e) { console.error(e); }
+            return;
         }
-        this._onResize = (gameSize) => {
-            deathBg.setSize(gameSize.width, gameSize.height);
-            deathText.setPosition(gameSize.width / 2, gameSize.height / 2);
-        };
-        this.scale.on('resize', this._onResize, this);
-
-        // Limpieza segura al reiniciar/destruir la escena
-        this.events.once('shutdown', this._cleanupScene, this);
-        this.events.once('destroy', this._cleanupScene, this);
 
         // ─────────────────────────────────────────
         // INPUTS
         // ─────────────────────────────────────────
+
         this.input.on('pointerdown', (pointer) => {
             if (this.isPlayerDead || this.isPaused) return;
             if (pointer?.button !== 0) return;
@@ -738,7 +757,7 @@ export default class MainScene extends Phaser.Scene {
         });
 
         // Tecla E: usada exclusivamente para recoger items de tipo 'interact' (DropMask)
-        this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+        // Ahora manejada por InputManager.isInteractPressed()
 
         // ─────────────────────────────────────────
         // ENEMIGOS DESDE RUTAS
@@ -860,16 +879,36 @@ export default class MainScene extends Phaser.Scene {
         this.cameras.main.centerOn(this.playerSpawn.x, this.playerSpawn.y);
         this.input.activePointer.worldX = this.playerSpawn.x;
         this.input.activePointer.worldY = this.playerSpawn.y;
+        this.virtualPointerX = this.scale.width * 0.5;
+        this.virtualPointerY = this.scale.height * 0.5;
+
+        this._lastActiveInputMode = null;
+        this.aimAssistCross = this.add.graphics();
+        this.aimAssistCross.setScrollFactor(0);
+        this.aimAssistCross.setDepth(10001);
+        this.aimAssistCross.setVisible(false);
+        this._syncActiveInputModeFeedback();
 
         //GUI MENUS
         this.createPauseMenuUI();
         this.createGuideUI();
         this.createExitConfirmUI();
-        this.setupPauseInput();     
+
+        // Inicializar teclas de entrada
+        this.keyEsc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+        this.keyQ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
+
+        // ─────────────────────────────────────────
+        // MÚSICA DEL JUEGO
+        // ─────────────────────────────────────────
+        this._startGameMusic();
+
+        this.setupPauseInput();
     }
 
     update(time, delta) {
-        if (Phaser.Input.Keyboard.JustDown(this.keyEsc)) {
+        const pauseJustDown = Phaser.Input.Keyboard.JustDown(this.keyEsc) || Phaser.Input.Keyboard.JustDown(this.keyQ);
+        if (pauseJustDown) {
             if (this.scene.isActive('SettingsScene')) {
                 return;
             }
@@ -904,6 +943,13 @@ export default class MainScene extends Phaser.Scene {
             return;
         }
 
+        // Actualizar InputManager si existe
+        if (this.inputManager) {
+            this.inputManager.update();
+        }
+
+        this._syncActiveInputModeFeedback();
+
         // ─────────────────────────────────────────
         // ESTADO SWIMMING SEGÚN CAPA ACUÁTICA
         // ─────────────────────────────────────────
@@ -923,7 +969,7 @@ export default class MainScene extends Phaser.Scene {
         // La recogida del mundo tiene prioridad sobre el consumo de inventario con E.
         // ─────────────────────────────────────────
         if (this.duck && this.duck.active) {
-            const eJustDown = Phaser.Input.Keyboard.JustDown(this.keyE);
+            const eJustDown = this.inputManager ? this.inputManager.isInteractPressed() : false;
 
             this.consumableItems.getChildren().forEach(item => {
                 if (!item || !item.active) return;
@@ -971,6 +1017,64 @@ export default class MainScene extends Phaser.Scene {
             const camera = this.cameras.main;
             const screenW = this.scale.width;
             const screenH = this.scale.height;
+
+            // Joystick derecho -> mover un puntero virtual en pantalla
+            // para reutilizar la misma lógica de cámara y apuntado del ratón.
+            if (this.inputManager) {
+                const aimInput = this.inputManager.getAimInput();
+                const hasAimInput = Math.abs(aimInput.x) > 0.001 || Math.abs(aimInput.y) > 0.001;
+
+                if (hasAimInput) {
+                    const baseVirtualPointerSpeed = 1500; // px/s
+                    const dt = Math.max(0, delta) / 1000;
+
+                    // Aumenta la respuesta cuando el stick se aleja del centro.
+                    const aimMagnitude = Phaser.Math.Clamp(Math.hypot(aimInput.x, aimInput.y), 0, 1);
+                    const responseCurve = 0.45 + Math.pow(aimMagnitude, 1.3);
+                    const virtualPointerSpeed = baseVirtualPointerSpeed * responseCurve;
+
+                    const centerX = screenW * 0.5;
+                    const centerY = screenH * 0.5;
+
+                    let newX = this.virtualPointerX + aimInput.x * virtualPointerSpeed * dt;
+                    let newY = this.virtualPointerY + aimInput.y * virtualPointerSpeed * dt;
+
+                    // Determinar si el arma es cuerpo a cuerpo o a distancia
+                    const currentWeapon = this.duck?.weapon;
+                    const isMeleeWeapon = currentWeapon && !currentWeapon.isRanged;
+
+                    if (isMeleeWeapon) {
+                        // Arma melee: limitar al rango del arma desde el centro
+                        const maxRadius = currentWeapon.range || 250;
+                        const distance = Phaser.Math.Distance.Between(newX, newY, centerX, centerY);
+                        if (distance > maxRadius) {
+                            const angle = Math.atan2(newY - centerY, newX - centerX);
+                            newX = centerX + Math.cos(angle) * maxRadius;
+                            newY = centerY + Math.sin(angle) * maxRadius;
+                        }
+                    } else {
+                        // Arma ranged o sin arma: limitar solo a los bordes de pantalla
+                        newX = Phaser.Math.Clamp(newX, 0, screenW);
+                        newY = Phaser.Math.Clamp(newY, 0, screenH);
+                    }
+
+                    this.virtualPointerX = newX;
+                    this.virtualPointerY = newY;
+
+                    if (pointer?.position?.set) {
+                        pointer.position.set(this.virtualPointerX, this.virtualPointerY);
+                    } else {
+                        pointer.x = this.virtualPointerX;
+                        pointer.y = this.virtualPointerY;
+                    }
+                } else {
+                    // Si no hay stick derecho, seguir al ratón real.
+                    this.virtualPointerX = pointer.x;
+                    this.virtualPointerY = pointer.y;
+                }
+            }
+
+            this._updateAimAssistCross(pointer);
 
             // Mantener worldX/worldY del puntero actualizados incluso si no hay movimiento del mouse.
             pointer.updateWorldPoint(camera);
@@ -1020,18 +1124,31 @@ export default class MainScene extends Phaser.Scene {
         }
 
         // ─────────────────────────────────────────
-        // ATAQUE CONTINUO MIENTRAS SE MANTIENE CLICK
+        // ATAQUE CONTINUO MIENTRAS SE MANTIENE CLICK O GATILLO
         // Para armas con carga (arco), attack() debe
         // gestionar internamente no reiniciarse mal.
+        // Ahora también soporta gamepad (RT/RB)
         // ─────────────────────────────────────────
-        if (
-            this.input.activePointer.leftButtonDown() &&
+        const attackHeld = !!(
+            this.inputManager &&
+            this.inputManager.isAttackPressed() &&
             this.duck &&
             this.duck.active &&
             this.duck.weapon
+        );
+
+        if (
+            attackHeld
         ) {
             this.duck.weapon.attack();
         }
+
+        // Disparar al soltar (ej. arco cargable), también para gamepad.
+        if (!attackHeld && this.wasAttackHeld && this.duck && this.duck.active && this.duck.weapon?.releaseAttack) {
+            this.duck.weapon.releaseAttack();
+        }
+
+        this.wasAttackHeld = attackHeld;
 
         this._updateCrowSpawnTimer(time);
 
@@ -1051,7 +1168,68 @@ export default class MainScene extends Phaser.Scene {
                 }
             });
         }
+    }
 
+    _getActiveInputMode() {
+        return this.registry?.get('activeInputMode') || 'keyboard';
+    }
+
+    _syncActiveInputModeFeedback() {
+        const activeInputMode = this._getActiveInputMode();
+
+        if (activeInputMode === this._lastActiveInputMode) return;
+
+        this._lastActiveInputMode = activeInputMode;
+
+        if (this.input?.setDefaultCursor) {
+            this.input.setDefaultCursor(activeInputMode === 'gamepad' ? 'none' : 'default');
+        }
+
+        if (this.aimAssistCross) {
+            this.aimAssistCross.setVisible(activeInputMode === 'gamepad');
+        }
+    }
+
+    _updateAimAssistCross(pointer) {
+        if (!this.aimAssistCross) return;
+
+        const activeInputMode = this._getActiveInputMode();
+        const isGamepadMode = activeInputMode === 'gamepad';
+
+        this.aimAssistCross.setVisible(isGamepadMode);
+        if (!isGamepadMode || !pointer) return;
+
+        this.aimAssistCross.clear();
+        this.aimAssistCross.setPosition(pointer.x, pointer.y);
+
+        // Círculos concéntricos (más finos que la cruz)
+        this.aimAssistCross.lineStyle(3, 0x5a0000, 0.22);
+        this.aimAssistCross.strokeCircle(0, 0, 8);
+
+        this.aimAssistCross.lineStyle(2, 0xff3b3b, 0.78);
+        this.aimAssistCross.strokeCircle(0, 0, 14);
+
+        // Cruz de fondo (gruesa)
+        this.aimAssistCross.lineStyle(10, 0x5a0000, 0.22);
+        this.aimAssistCross.beginPath();
+        this.aimAssistCross.moveTo(-25, 0);
+        this.aimAssistCross.lineTo(25, 0);
+        this.aimAssistCross.moveTo(0, -25);
+        this.aimAssistCross.lineTo(0, 25);
+        this.aimAssistCross.strokePath();
+
+        // Cruz roja brillante
+        this.aimAssistCross.lineStyle(5, 0xff3b3b, 0.78);
+        this.aimAssistCross.beginPath();
+        this.aimAssistCross.moveTo(-23, 0);
+        this.aimAssistCross.lineTo(23, 0);
+        this.aimAssistCross.moveTo(0, -23);
+        this.aimAssistCross.lineTo(0, 23);
+        this.aimAssistCross.strokePath();
+
+        // Centro rellenado
+        this.aimAssistCross.fillStyle(0xff5555, 0.85);
+        this.aimAssistCross.fillCircle(0, 0, 4);
     }
 
     _updateDuckSwimmingState() {
@@ -1108,19 +1286,32 @@ export default class MainScene extends Phaser.Scene {
     _onPuddleUpgradePurchase(puddle, upgradeId) {
         if (!puddle || !this.duck) return;
 
-        const purchase = puddle.purchaseUpgrade?.(upgradeId, this.duck);
+        // Llamamos a purchaseUpgrade (pasando el duck primero, como definimos en puddle.js)
+        const purchase = puddle.purchaseUpgrade?.(this.duck, upgradeId);
+        
         const success = !!purchase?.success;
         let purchaseMessage = purchase?.message || '';
+
         if (success) {
             const spentFeathers = Number(purchase?.spentFeathers) || 0;
             const remainingFeathers = Number(purchase?.remainingFeathers);
             if (Number.isFinite(remainingFeathers)) {
-                purchaseMessage = `${purchaseMessage} (-${spentFeathers} feather, left: ${remainingFeathers})`;
+                purchaseMessage = `${purchaseMessage} (-${spentFeathers} plumas, quedan: ${remainingFeathers})`;
+            }
+
+            // IMPORTANTE: Refrescamos el panel entero para mostrar los nuevos precios de las demás mejoras
+            this.puddleUpgradePanel?.show(puddle, this.duck);
+
+            // Si el charquito debe desaparecer tras la compra (en este caso lo pusimos en false en puddle.js)
+            if (purchase.removePuddle) {
+                this._removePuddle(puddle);
+                this.puddleUpgradePanel?.hide();
+                this.currentPuddle = null;
             }
         }
 
+        // Mostramos el mensaje (ya sea de éxito o de "¡No tienes suficientes plumas!")
         this.puddleUpgradePanel?.showPurchaseResult(success, purchaseMessage);
-        if (!success) return;
     }
 
     _onPuddleClaimReward(puddle) {
@@ -1140,7 +1331,7 @@ export default class MainScene extends Phaser.Scene {
         }
 
         this.puddleUpgradePanel?.hide();
-        this.puddleUpgradePanel?.showPurchaseResult(true, `Reward claimed! (+${rewardFeathers} feathers)`);
+        this.puddleUpgradePanel?.showPurchaseResult(true, `¡Recompensa obtenida! (+${rewardFeathers} plumas)`);
     }
 
     // ─────────────────────────────────────────
@@ -2138,7 +2329,7 @@ export default class MainScene extends Phaser.Scene {
 
         console.log(`[MainScene] Capa charquito encontrada con ${this.puddles.length} charco(s).`);
     }
-    
+
     setupPauseInput() {
         this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
             if (!this.guideOverlay || !this.guideOverlay.visible || !this.guideContent) return;
@@ -2171,7 +2362,7 @@ export default class MainScene extends Phaser.Scene {
         const panel = this.add.rectangle(W / 2, H / 2, 430, 340, 0x1e1b18, 0.96)
             .setStrokeStyle(4, 0xe6d3a3, 1).setScrollFactor(SF).setDepth(20001);
 
-        const title = this.add.text(W / 2, H / 2 - 110, 'PAUSA', {
+        const title = this.add.text(W / 2, H / 2 - 150, 'PAUSA', {
             fontFamily: 'ReturnOfTheBoss',
             fontSize: '42px',
             color: '#ffffff',
@@ -2187,12 +2378,12 @@ export default class MainScene extends Phaser.Scene {
 
             const buttonText = this.add.text(x, y, text, {
                 fontFamily: 'ReturnOfTheBoss',
-                fontSize: '28px',
+                fontSize: '25px',
                 color: '#ffffff',
                 stroke: '#000000',
                 strokeThickness: 5
             }).setOrigin(0.5).setScrollFactor(SF).setDepth(20003)
-              .setInteractive({ useHandCursor: true });
+                .setInteractive({ useHandCursor: true });
 
             const hoverOn = () => {
                 buttonBg.setFillStyle(0x222222, 0.75);
@@ -2216,19 +2407,26 @@ export default class MainScene extends Phaser.Scene {
             return [buttonBg, buttonText];
         };
 
-        const settingsBtn = makeButton(W / 2, H / 2 - 20, 'AJUSTES', () => {
+        const resumeBtn = makeButton(W / 2, H / 2 - 55, 'VOLVER AL JUEGO', () => {
+            this.closePauseMenu();
+        });
+
+        const settingsBtn = makeButton(W / 2, H / 2 + 20, 'AJUSTES', () => {
             this.openSettingsFromPause();
         });
 
-        const guideBtn = makeButton(W / 2, H / 2 + 55, 'GUÍA', () => {
+        const guideBtn = makeButton(W / 2, H / 2 + 95, 'GUÍA', () => {
             this.openGuide();
         });
 
-        const exitBtn = makeButton(W / 2, H / 2 + 130, 'SALIR', () => {
+        const exitBtn = makeButton(W / 2, H / 2 + 170, 'SALIR AL MENÚ', () => {
             this.openExitConfirm();
         });
 
-        this._pauseObjects = [bg, panel, title, ...settingsBtn, ...guideBtn, ...exitBtn];
+        // Panel más alto para acomodar 4 botones
+        panel.setSize(430, 430);
+
+        this._pauseObjects = [bg, panel, title, ...resumeBtn, ...settingsBtn, ...guideBtn, ...exitBtn];
 
         // Usamos un objeto proxy para mantener la API .setVisible() que usa el resto del código
         this.pauseOverlay = {
@@ -2245,189 +2443,227 @@ export default class MainScene extends Phaser.Scene {
 
             bg.setSize(w, h);
             panel.setPosition(w / 2, h / 2);
-            title.setPosition(w / 2, h / 2 - 110);
+            title.setPosition(w / 2, h / 2 - 150);
 
-            settingsBtn[0].setPosition(w / 2, h / 2 - 20);
-            settingsBtn[1].setPosition(w / 2, h / 2 - 20);
+            resumeBtn[0].setPosition(w / 2, h / 2 - 55);
+            resumeBtn[1].setPosition(w / 2, h / 2 - 55);
 
-            guideBtn[0].setPosition(w / 2, h / 2 + 55);
-            guideBtn[1].setPosition(w / 2, h / 2 + 55);
+            settingsBtn[0].setPosition(w / 2, h / 2 + 20);
+            settingsBtn[1].setPosition(w / 2, h / 2 + 20);
 
-            exitBtn[0].setPosition(w / 2, h / 2 + 130);
-            exitBtn[1].setPosition(w / 2, h / 2 + 130);
+            guideBtn[0].setPosition(w / 2, h / 2 + 95);
+            guideBtn[1].setPosition(w / 2, h / 2 + 95);
+
+            exitBtn[0].setPosition(w / 2, h / 2 + 170);
+            exitBtn[1].setPosition(w / 2, h / 2 + 170);
         };
 
         this.scale.on('resize', this._pauseResizeHandler, this);
     }
 
     createGuideUI() {
-        const W = this.scale.width;
-        const H = this.scale.height;
+    const W = this.scale.width;
+    const H = this.scale.height;
 
-        // Igual que pauseOverlay: sin Container, setScrollFactor(0) individual
-        // para que los hitboxes de input coincidan con la posición visual en pantalla.
-        this._guideObjects = [];
+    this._guideObjects = [];
 
-        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.72)
-            .setOrigin(0, 0).setScrollFactor(0).setDepth(20010);
+    const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.78)
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setDepth(20010);
 
-        const parchment = this.add.rectangle(W / 2, H / 2, 760, 560, 0xd8c08a, 0.98)
-            .setStrokeStyle(5, 0x6a4b1f, 1).setScrollFactor(0).setDepth(20011);
+    const parchment = this.add.rectangle(W / 2, H / 2, 820, 580, 0xf0dfa8, 0.98)
+        .setStrokeStyle(6, 0x6a4b1f, 1)
+        .setScrollFactor(0)
+        .setDepth(20011);
 
-        const title = this.add.text(W / 2, 72, 'GUÍA', {
-            fontFamily: 'ReturnOfTheBoss',
-            fontSize: '38px',
-            color: '#3a2412',
-            stroke: '#f5e6c8',
-            strokeThickness: 2
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
+    const title = this.add.text(W / 2, H / 2 - 268, 'GUÍA DEL DUCKLER', {
+        fontFamily: 'ReturnOfTheBoss',
+        fontSize: '36px',
+        color: '#3a2412',
+        stroke: '#f5e6c8',
+        strokeThickness: 2
+    })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(20012);
 
-        const closeButton = this.add.rectangle(W - 90, 60, 120, 46, 0x000000, 0.4)
-            .setStrokeStyle(3, 0xffffff, 0.8)
-            .setScrollFactor(0).setDepth(20012)
-            .setInteractive({ useHandCursor: true });
+    const closeButton = this.add.rectangle(W / 2, H / 2 + 255, 120, 42, 0x3a2412, 0.85)
+        .setStrokeStyle(3, 0xe4c46a, 1)
+        .setScrollFactor(0)
+        .setDepth(20012)
+        .setInteractive({ useHandCursor: true });
 
-        const closeText = this.add.text(W - 90, 60, 'ATRÁS', {
-            fontFamily: 'ReturnOfTheBoss',
-            fontSize: '22px',
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(20013)
-          .setInteractive({ useHandCursor: true });
+    const closeText = this.add.text(W / 2, H / 2 + 255, 'ATRÁS', {
+        fontFamily: 'ReturnOfTheBoss',
+        fontSize: '22px',
+        color: '#f4d97b',
+        stroke: '#000000',
+        strokeThickness: 4
+    })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(20013)
+        .setInteractive({ useHandCursor: true });
 
-        const viewportX = W / 2 - 320;
-        const viewportY = H / 2 - 220;
-        const viewportWidth = 640;
-        const viewportHeight = 440;
+    const viewportW = 760;
+    const viewportH = 460;
+    const viewportX = W / 2 - viewportW / 2;
+    const viewportY = H / 2 - 230;
 
-        const maskShape = this.make.graphics({});
-        maskShape.fillStyle(0xffffff, 1);
-        maskShape.fillRect(viewportX, viewportY, viewportWidth, viewportHeight);
+    const maskShape = this.add.graphics().setScrollFactor(0).setVisible(false);
+    maskShape.fillStyle(0xffffff, 1);
+    maskShape.fillRect(viewportX, viewportY, viewportW, viewportH);
 
-        this.guideContent = this.add.container(viewportX + 24, viewportY + 20);
-        this.guideContent.setMask(maskShape.createGeometryMask());
+    this.guideContent = this.add.container(viewportX + 16, viewportY + 8)
+        .setScrollFactor(0)
+        .setDepth(20012);
 
-        const guideItems = [];
+    this.guideContent.setMask(maskShape.createGeometryMask());
 
-        let currentY = 0;
+    const guideItems = [];
+    let currentY = 0;
+    const CONTENT_W = viewportW - 32;
+    const fontSize = this.currentFontSize ?? 22;
 
-        const addGuideSection = (titleText, bodyText, textureKey = null) => {
-            const sectionTitle = this.add.text(0, currentY, titleText, {
-                fontFamily: 'Arial Black',
-                fontSize: '28px',
-                color: '#3a2412',
-                stroke: '#f5e6c8',
-                strokeThickness: 1,
-                wordWrap: { width: 560 }
-            });
+    const addToGuide = (obj) => {
+        obj.setScrollFactor(0);
+        guideItems.push(obj);
+        return obj;
+    };
 
-            guideItems.push(sectionTitle);
-            currentY += 42;
+    const addHeader = (text) => {
+        const headerBg = addToGuide(this.add.rectangle(0, currentY, CONTENT_W, 36, 0x5a3a10, 0.85).setOrigin(0, 0));
+        const headerText = addToGuide(this.add.text(10, currentY + 4, text, {
+            fontFamily: 'ReturnOfTheBoss', fontSize: '22px', color: '#f4d97b', stroke: '#000000', strokeThickness: 3
+        }).setOrigin(0, 0));
+        currentY += 44;
+    };
 
-            if (textureKey && this.textures.exists(textureKey)) {
-                const img = this.add.image(70, currentY + 40, textureKey)
-                    .setOrigin(0.5)
-                    .setScale(2.2);
+    // Parámetros: nombre, descripcion, keyTextura, esSpritesheet, escala, moverX, moverY
+    const addEntry = (name, description, textureKey = null, isSheet = false, imgScale = 3, offsetX = 0, offsetY = 0) => {
+        const rowH = 90;
+        const imgColW = 90;
+        const textX = textureKey ? imgColW + 8 : 0;
+        const textW = CONTENT_W - textX - 8;
 
-                guideItems.push(img);
+        const rowBg = addToGuide(this.add.rectangle(0, currentY, CONTENT_W, rowH, 0x000000, 0.07).setOrigin(0, 0));
 
-                const desc = this.add.text(150, currentY, bodyText, {
-                    fontFamily: 'Arial',
-                    fontSize: `${this.currentFontSize}px`,
-                    color: '#2e1e10',
-                    wordWrap: { width: 420 }
-                });
+        if (textureKey && this.textures.exists(textureKey)) {
+            const posX = (imgColW / 2) + offsetX;
+            const posY = currentY + (rowH / 2) + offsetY;
 
-                guideItems.push(desc);
-
-                currentY += Math.max(120, desc.height + 20);
+            let img;
+            if (isSheet) {
+                img = this.add.sprite(posX, posY, textureKey, 0).setOrigin(0.5).setScale(imgScale);
             } else {
-                const desc = this.add.text(0, currentY, bodyText, {
-                    fontFamily: 'Arial',
-                    fontSize: `${this.currentFontSize}px`,
-                    color: '#2e1e10',
-                    wordWrap: { width: 560 }
-                });
-
-                guideItems.push(desc);
-                currentY += desc.height + 30;
+                img = this.add.image(posX, posY, textureKey).setOrigin(0.5).setScale(imgScale);
             }
-        };
-
-        addGuideSection(
-            'Bienvenido a la guía',
-            'Aquí puedes escribir la explicación de los objetos, enemigos, mecánicas y controles del juego.'
-        );
-
-        addGuideSection(
-            'Poción de ataque',
-            'Ejemplo de texto: esta poción aumenta el daño durante un tiempo limitado.',
-            'mask_icon'
-        );
-
-        addGuideSection(
-            'Llave',
-            'Ejemplo de texto: abre puertas cerradas cuando el jugador se acerca a ellas.',
-            'feather_icon'
-        );
-
-        addGuideSection(
-            'Pan',
-            'Ejemplo de texto: sirve como recurso o moneda dentro del juego.'
-        );
-
-        this.guideContent.add(guideItems);
-
-        const contentHeight = currentY + 20;
-        this.guideMinScrollY = viewportY + viewportHeight - contentHeight;
-        this.guideMaxScrollY = viewportY + 20;
-
-        if (this.guideMinScrollY > this.guideMaxScrollY) {
-            this.guideMinScrollY = this.guideMaxScrollY;
+            addToGuide(img);
         }
 
-        this.guideScrollY = this.guideMaxScrollY;
+        const nameText = addToGuide(this.add.text(textX, currentY + 8, name, {
+            fontFamily: 'Arial Black', fontSize: '17px', color: '#3a2412', stroke: '#f0dfa8', strokeThickness: 1, wordWrap: { width: textW }
+        }).setOrigin(0, 0));
+
+        const descText = addToGuide(this.add.text(textX, currentY + 30, description, {
+            fontFamily: 'Arial', fontSize: `${fontSize}px`, color: '#2e1e10', wordWrap: { width: textW }, lineSpacing: 2
+        }).setOrigin(0, 0));
+
+        const actualH = Math.max(rowH, nameText.height + descText.height + 24);
+        rowBg.setSize(CONTENT_W, actualH);
+        currentY += actualH + 4;
+    };
+
+    const addTextEntry = (name, description) => addEntry(name, description, null);
+
+    // ── CONTENIDO CON TEXTOS ORIGINALES ─────────────────────────
+
+    addHeader('❤️  RECURSOS — VIDA Y MONEDA');
+    // Para ajustar imágenes: (Nombre, Desc, TextureKey, isSheet, Scale, OffsetX, OffsetY)
+    addEntry('Plumas — TUS VIDAS', 'Las plumas son la vida del pato. Cada golpe que recibes te quita plumas. Si se agotan, el pato muere. Recógelas del suelo (caen de enemigos derrotados) y gástalas en mejoras de los charcos.', 'feather_icon', false, 0.12, 0, 20);
+    addEntry('Pan — LA MONEDA', 'El pan es la moneda del juego. Úsalo para comprar armas, pociones y objetos especiales en la tienda. Recoge todo el pan que veas por el escenario.', 'bread_item', false, 4, 0, 0);
+
+    addHeader('⚔️  ARMAS DE MELÉ');
+    addEntry('Ramita', 'El arma inicial. Daño muy bajo pero ataque rápido. Cámbiala en cuanto encuentres algo mejor.', null);
+    addEntry('Cuchillo', 'Arma equilibrada. Buen daño y velocidad de ataque. Ideal para el combate cuerpo a cuerpo ágil.', null);
+    addEntry('Escoba', 'Algo más de alcance que el cuchillo. Buena para mantener a los enemigos a distancia mientras atacas.', null);
+    addEntry('Mazo', 'Daño alto pero golpe lento. Úsalo contra enemigos con mucha vida o cuando necesites un golpe contundente.', null);
+
+    addHeader('🏹  ARMAS DE DISTANCIA');
+    addEntry('Arco', 'Dispara flechas hacia el cursor. Mantén pulsado el botón para cargar un disparo más potente. Bueno contra enemigos rápidos.', null);
+    addEntry('Mcuaktro', 'Metralleta de balas rápidas. Alta cadencia de fuego. Arrasa con grupos de enemigos pero gasta munición deprisa.', null);
+
+    addHeader('🧪  CONSUMIBLES');
+    addEntry('Poción de ataque', 'Duplica tu daño durante 30 segundos. Úsala justo antes de un jefe o una horda de enemigos.', 'attack_potion', false, 3.2, 0, 0);
+    addEntry('Poción de velocidad', 'Duplica tu velocidad de movimiento durante 15 segundos. Perfecta para huir, reposicionarte o explorar rápido.', 'speed_potion', false, 3.2, 0, 0);
+    addEntry('Poción velocidad de ataque', 'Reduce a la mitad el tiempo entre ataques durante 20 segundos. Letal combinada con el arco o la metralleta.', 'speed_attack_potion', false, 3.2, 0, 0);
+    addEntry('Cola de zorro', 'Genera un aura invisible que destruye todos los proyectiles enemigos cercanos durante 8 segundos. Imprescindible contra el cocodrilo.', 'fox_tail', false, 0.12, 0, 0);
+    addEntry('Máscara', 'Te vuelve invisible a los enemigos. Los que te perseguían perderán el rastro. Muy útil para escapar de situaciones complicadas.', 'mask_icon', false, 3, 0, 0);
+    addEntry('Llave', 'Abre puertas cerradas. Acércate a una puerta con la llave en el inventario y se abrirá sola. Úsala para acceder a zonas secretas.', null);
+
+    addHeader('👾  ENEMIGOS');
+    addEntry('Zorro', 'Rápido y ágil. Persigue al pato en línea recta. Poco HP. Usa el dash para esquivarlo y atácalo por la espalda.', 'zorro_idle', true, 2.9, 0, 0);
+    addEntry('Mapache', 'Más lento que el zorro pero más resistente. A veces se detiene y te tira objetos. Mantén la distancia.', 'mapache_idle', true, 2.9, 0, 0);
+    addEntry('Cuervo', 'Aparece si llevas demasiado tiempo con la misma arma sin cambiarla. Vuela por encima de obstáculos. Cambia de arma para evitar que aparezca.', 'cuervo_idle', true, 2.9, 0, 10);
+    addEntry('Rana', 'Se queda quieta y de repente da saltos enormes. Muy difícil de predecir. Atácala cuando esté posada en el suelo.', 'rana_idle', true, 2.5, 0, 0);
+    addEntry('Cocodrilo — JEFE', 'El boss del nivel. Se sumerge en el agua y ataca desde debajo lanzando burbujas. Atácalo cuando emerja. La Cola de Zorro destruye sus proyectiles.', 'croco_idle', false, 1, 0, 10);
+
+    addHeader('💧  CHARCOS Y AGUA');
+    addTextEntry('Natación', 'Entrar en agua activa el modo natación: te mueves más lento pero puedes sumergirte para esquivar ataques. Útil contra el cocodrilo.');
+    addTextEntry('Mejoras de charco', 'Algunos charcos tienen mejoras desbloqueables a cambio de plumas. Interactúa con ellos pulsando E para ver las opciones disponibles.');
+
+    addHeader('🏪  TIENDA');
+    addTextEntry('Cómo comprar', 'Acércate al tendero y pulsa E para abrir la tienda. Puedes comprar armas, pociones y objetos especiales a cambio de pan. Los objetos rotan, así que vuelve a visitarla.');
+
+    // ──────────────────────────────────────────────────────────
+
+    this.guideContent.add(guideItems);
+    const contentHeight = currentY + 30;
+    this.guideMaxScrollY = viewportY + 8;
+    this.guideMinScrollY = Math.min(this.guideMaxScrollY, viewportY + viewportH - contentHeight);
+    this.guideScrollY = this.guideMaxScrollY;
+    this.guideContent.y = this.guideScrollY;
+
+    const scrollHint = this.add.text(W / 2, H / 2 + 310, '▲▼ Rueda del ratón para hacer scroll', {
+        fontFamily: 'ReturnOfTheBoss', fontSize: '18px', color: '#f4d97b', stroke: '#000000', strokeThickness: 4
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
+
+    const goBack = () => { this.closeGuide(); this.openPauseMenu(); };
+    closeButton.on('pointerup', goBack);
+    closeText.on('pointerup', goBack);
+
+    this._guideObjects = [bg, parchment, title, closeButton, closeText, this.guideContent, scrollHint];
+
+    this.guideOverlay = {
+        setVisible: (v) => {
+            this._guideObjects.forEach(o => o.setVisible(v));
+            if (v) { this.guideScrollY = this.guideMaxScrollY; this.guideContent.y = this.guideScrollY; }
+        },
+        get visible() { return bg.visible; }
+    };
+
+    this._guideObjects.forEach(o => o.setVisible(false));
+
+    if (this._guideWheelHandler) this.input.off('wheel', this._guideWheelHandler, this);
+    this._guideWheelHandler = (pointer, gameObjects, deltaX, deltaY) => {
+        if (!this.guideOverlay?.visible) return;
+        this.guideScrollY = Phaser.Math.Clamp(this.guideScrollY - deltaY * 0.6, this.guideMinScrollY, this.guideMaxScrollY);
         this.guideContent.y = this.guideScrollY;
+    };
+    this.input.on('wheel', this._guideWheelHandler, this);
 
-        const scrollHint = this.add.text(W / 2, H - 38, 'Usa la rueda del ratón para hacer scroll', {
-            fontFamily: 'Arial',
-            fontSize: '20px',
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 4
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
-
-        const goBack = () => {
-            this.closeGuide();
-            this.openPauseMenu();
-        };
-
-        closeButton.on('pointerup', goBack);
-        closeText.on('pointerup', goBack);
-
-        // Recopilar todos los objetos de la guía en un array con proxy .setVisible()
-        this._guideObjects = [bg, parchment, title, closeButton, closeText, this.guideContent, scrollHint];
-        this.guideOverlay = {
-            setVisible: (v) => this._guideObjects.forEach(o => o.setVisible(v)),
-            get visible() { return bg.visible; }
-        };
-        this._guideObjects.forEach(o => o.setVisible(false));
-
-        this._guideResizeHandler = (gameSize) => {
-            const w = gameSize.width;
-            const h = gameSize.height;
-
-            bg.setSize(w, h);
-            parchment.setPosition(w / 2, h / 2);
-            title.setPosition(w / 2, 72);
-            closeButton.setPosition(w - 90, 60);
-            closeText.setPosition(w - 90, 60);
-            scrollHint.setPosition(w / 2, h - 38);
-        };
-
-        this.scale.on('resize', this._guideResizeHandler, this);
-    }
+    this._guideResizeHandler = (gameSize) => {
+        const { width: w, height: h } = gameSize;
+        bg.setSize(w, h);
+        parchment.setPosition(w / 2, h / 2);
+        title.setPosition(w / 2, h / 2 - 268);
+        closeButton.setPosition(w / 2, h / 2 + 255);
+        closeText.setPosition(w / 2, h / 2 + 255);
+        scrollHint.setPosition(w / 2, h / 2 + 310);
+    };
+    this.scale.on('resize', this._guideResizeHandler, this);
+}
 
     createExitConfirmUI() {
         const W = this.scale.width;
@@ -2472,7 +2708,7 @@ export default class MainScene extends Phaser.Scene {
                 stroke: '#000000',
                 strokeThickness: 4
             }).setOrigin(0.5).setScrollFactor(0).setDepth(20023)
-              .setInteractive({ useHandCursor: true });
+                .setInteractive({ useHandCursor: true });
 
             buttonBg.on('pointerup', callback);
             buttonText.on('pointerup', callback);
@@ -2538,10 +2774,9 @@ export default class MainScene extends Phaser.Scene {
     }
 
     openGuide() {
-        this.isPaused = true;
-        this.pauseOverlay?.setVisible(false);
-        this.exitConfirmOverlay?.setVisible(false);
+        this.closePauseMenu();
         this.guideOverlay?.setVisible(true);
+        this.isPaused = true;
     }
 
     closeGuide() {
@@ -2557,6 +2792,57 @@ export default class MainScene extends Phaser.Scene {
 
     closeExitConfirm() {
         this.exitConfirmOverlay?.setVisible(false);
+    }
+
+    _startGameMusic() {
+        const settings = JSON.parse(localStorage.getItem('settings')) ?? {};
+        const volume = settings.gameVolume ?? 1;
+        const muted = settings.mute ?? false;
+
+        // Si el volumen es 0 o está silenciado, no arrancar
+        if (volume <= 0) return;
+
+        // Si ya existe, solo ajustar volumen
+        let music = this.sound.get('game_sound');
+        if (music) {
+            music.setVolume(volume);
+            if (!music.isPlaying) music.play();
+            return;
+        }
+
+        if (!this.cache.audio.exists('game_sound')) return;
+
+        music = this.sound.add('game_sound', { loop: true, volume });
+        this.gameMusic = music;
+        this.sound.mute = muted;
+
+        const startMusic = () => {
+            if (this.gameMusic && !this.gameMusic.isPlaying) {
+                this.sound.context.resume().then(() => this.gameMusic?.play());
+            }
+        };
+
+        this.input.once('pointerdown', startMusic);
+        this.input.keyboard.once('keydown', startMusic);
+    }
+
+    applyGameAudioSettings() {
+        const settings = JSON.parse(localStorage.getItem('settings')) ?? {};
+        const volume = settings.gameVolume ?? 1;
+        const muted = settings.mute ?? false;
+
+        this.sound.mute = muted;
+
+        const music = this.sound.get('game_sound') ?? this.gameMusic;
+        if (!music) return;
+
+        if (volume <= 0) {
+            music.stop();
+            return;
+        }
+
+        music.setVolume(volume);
+        if (!music.isPlaying) music.play();
     }
 
     openSettingsFromPause() {
@@ -2575,6 +2861,12 @@ export default class MainScene extends Phaser.Scene {
 
         if (this.scene.isActive('SettingsScene')) {
             this.scene.stop('SettingsScene');
+        }
+
+        // Parar la música del juego antes de volver al menú
+        const gameMusic = this.sound.get('game_sound') ?? this.gameMusic;
+        if (gameMusic) {
+            gameMusic.stop();
         }
 
         this.scene.start('MenuScene');

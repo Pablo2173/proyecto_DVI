@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 
 export default class ConsumableBar {
-    constructor(scene, duck) {
+    constructor(scene, duck, inputManager = null) {
         this.scene = scene;
         this.duck = duck;
+        this.inputManager = inputManager;
 
         const screenWidth = this.scene.scale.width;
 
@@ -27,7 +28,13 @@ export default class ConsumableBar {
         this.resourceCenterY = this.panelY + this.panelHeight / 2;
 
         this.selectedSlotIndex = -1;
+        this.controlMode = 'keyboard';
         this.slots = [];
+        this._previousGamepadButtons = {
+            left: false,
+            right: false,
+            use: false
+        };
 
         this.buildHUD();
         this.setupKeyboardInput();
@@ -307,8 +314,8 @@ export default class ConsumableBar {
             {
                 fontFamily: 'ReturnOfTheBoss',
                 fontSize: '20px',
-                color: '#f8e7b5',        // blanco
-                stroke: '#000000',       // dorado
+                color: '#f8e7b5',
+                stroke: '#000000',
                 strokeThickness: 4
             }
         );
@@ -317,6 +324,46 @@ export default class ConsumableBar {
         this.controlsText.setScrollFactor(0);
         this.controlsText.setDepth(9102);
         this.controlsText.setAlpha(0.92);
+
+        // ── Botón de ajustes (⚙) en la esquina superior derecha del HUD ──
+        const btnX = this.divider.x - 50; // a la izquierda del separador
+        const btnY = this.panelY + this.panelHeight / 2; // centrado vertical
+
+        this.settingsBtnBg = this.scene.add.rectangle(btnX, btnY, 58, 58, 0x000000, 0.4)
+            .setStrokeStyle(3, 0xe4c46a, 0.9)
+            .setScrollFactor(0)
+            .setDepth(9200)
+            .setInteractive({ useHandCursor: true });
+
+        this.settingsBtnText = this.scene.add.text(btnX, btnY, '⚙', {
+            fontFamily: 'Arial',
+            fontSize: '36px',
+            color: '#f4d97b',
+            stroke: '#000000',
+            strokeThickness: 3
+        })
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(9201)
+            .setInteractive({ useHandCursor: true });
+
+        const openPause = () => {
+            if (this.scene?.openPauseMenu) {
+                this.scene.openPauseMenu();
+            }
+        };
+
+        this.settingsBtnBg.on('pointerup', openPause);
+        this.settingsBtnText.on('pointerup', openPause);
+
+        this.settingsBtnBg.on('pointerover', () => {
+            this.settingsBtnBg.setFillStyle(0x333333, 0.7);
+            this.settingsBtnText.setScale(1.1);
+        });
+        this.settingsBtnBg.on('pointerout', () => {
+            this.settingsBtnBg.setFillStyle(0x000000, 0.4);
+            this.settingsBtnText.setScale(1);
+        });
     }
     // ─────────────────────────────────────────
     // INPUT
@@ -332,16 +379,129 @@ export default class ConsumableBar {
     }
 
     checkKeyboardInput() {
-        if (this.scene.input.keyboard.checkDown(this.key1, 250)) this.useSlot(0);
-        if (this.scene.input.keyboard.checkDown(this.key2, 250)) this.useSlot(1);
-        if (this.scene.input.keyboard.checkDown(this.key3, 250)) this.useSlot(2);
-        if (this.scene.input.keyboard.checkDown(this.key4, 250)) this.useSlot(3);
-        if (this.scene.input.keyboard.checkDown(this.key5, 250)) this.useSlot(4);
-        if (this.scene.input.keyboard.checkDown(this.key6, 250)) this.useSlot(5);
+        let handled = false;
+
+        if (this.scene.input.keyboard.checkDown(this.key1, 250)) {
+            this.controlMode = 'keyboard';
+            this.useSlot(0);
+            handled = true;
+        }
+        if (this.scene.input.keyboard.checkDown(this.key2, 250)) {
+            this.controlMode = 'keyboard';
+            this.useSlot(1);
+            handled = true;
+        }
+        if (this.scene.input.keyboard.checkDown(this.key3, 250)) {
+            this.controlMode = 'keyboard';
+            this.useSlot(2);
+            handled = true;
+        }
+        if (this.scene.input.keyboard.checkDown(this.key4, 250)) {
+            this.controlMode = 'keyboard';
+            this.useSlot(3);
+            handled = true;
+        }
+        if (this.scene.input.keyboard.checkDown(this.key5, 250)) {
+            this.useSlot(4);
+            handled = true;
+        }
+        if (this.scene.input.keyboard.checkDown(this.key6, 250)) {
+            this.useSlot(5);
+            handled = true;
+        }
+
+        return handled;
+    }
+
+    checkGamepadInput() {
+        const pad = this.getPrimaryGamepad();
+        if (!pad) {
+            this._previousGamepadButtons.left = false;
+            this._previousGamepadButtons.right = false;
+            this._previousGamepadButtons.use = false;
+            return;
+        }
+
+        const leftDown = this.isGamepadButtonDown(pad, 14);
+        const rightDown = this.isGamepadButtonDown(pad, 15);
+        const useDown = this.isGamepadButtonDown(pad, 2) || this.isGamepadButtonDown(pad, 3);
+        let handled = false;
+
+        if (leftDown && !this._previousGamepadButtons.left) {
+            this.selectPreviousSlot();
+            handled = true;
+        }
+
+        if (rightDown && !this._previousGamepadButtons.right) {
+            this.selectNextSlot();
+            handled = true;
+        }
+
+        if (useDown && !this._previousGamepadButtons.use) {
+            this.useSelectedItem();
+            handled = true;
+        }
+
+        this._previousGamepadButtons.left = leftDown;
+        this._previousGamepadButtons.right = rightDown;
+        this._previousGamepadButtons.use = useDown;
+
+        return handled;
+    }
+
+    getPrimaryGamepad() {
+        if (!this.scene?.input?.gamepad) return null;
+
+        const gamepads = this.scene.input.gamepad.getAll();
+        if (!gamepads || gamepads.length === 0) return null;
+
+        return gamepads.find((pad) => pad && pad.connected) || gamepads[0];
+    }
+
+    isGamepadButtonDown(pad, buttonIndex) {
+        if (!pad || !pad.buttons || !pad.buttons[buttonIndex]) return false;
+
+        const button = pad.buttons[buttonIndex];
+        return !!(button.pressed || (typeof button.value === 'number' && button.value > 0.5));
     }
 
     selectSlot(slotIndex) {
+        if (slotIndex < -1 || slotIndex >= this.slotCount) return;
         this.selectedSlotIndex = slotIndex;
+    }
+
+    selectNextSlot() {
+        const consumableCount = this.duck.consumables?.length ?? 0;
+        const maxSelectableIndex = Math.min(this.slotCount, consumableCount) - 1;
+
+        if (maxSelectableIndex < 0) {
+            this.selectedSlotIndex = -1;
+            return;
+        }
+
+        if (this.selectedSlotIndex < 0) {
+            this.selectedSlotIndex = 0;
+            return;
+        }
+
+        this.selectedSlotIndex = Math.min(this.selectedSlotIndex + 1, maxSelectableIndex);
+    }
+
+    selectPreviousSlot() {
+        const consumableCount = this.duck.consumables?.length ?? 0;
+        const maxSelectableIndex = Math.min(this.slotCount, consumableCount) - 1;
+
+        if (maxSelectableIndex < 0) {
+            this.selectedSlotIndex = -1;
+            return;
+        }
+
+        if (this.selectedSlotIndex < 0) {
+            this.selectedSlotIndex = 0;
+            return;
+        }
+
+        this.selectedSlotIndex = Math.max(this.selectedSlotIndex - 1, 0);
     }
 
     useSlot(slotIndex) {
@@ -359,7 +519,8 @@ export default class ConsumableBar {
             this.duck.activateInvisibility();
             this.duck.consumables.splice(this.selectedSlotIndex, 1);
             this.pulseSlot(this.selectedSlotIndex);
-            this.update();
+            this.refreshSlots();
+            this.refreshResources();
             return;
         }
 
@@ -373,9 +534,41 @@ export default class ConsumableBar {
     update() {
         if (!this.duck) return;
 
-        this.checkKeyboardInput();
+        const keyboardHandled = this.checkKeyboardInput();
+        const gamepadHandled = this.checkGamepadInput();
+
+        this.controlMode = this.getActiveInputMode();
+
+        if (this.controlMode === 'gamepad') {
+            this.ensureGamepadSelection();
+        }
+
         this.refreshSlots();
         this.refreshResources();
+        this.refreshControlsHint();
+    }
+
+    getActiveInputMode() {
+        return this.scene?.registry?.get('activeInputMode') || 'keyboard';
+    }
+
+    ensureGamepadSelection() {
+        const consumableCount = this.duck.consumables?.length ?? 0;
+        const maxSelectableIndex = Math.min(this.slotCount, consumableCount) - 1;
+
+        if (maxSelectableIndex < 0) {
+            this.selectedSlotIndex = -1;
+            return;
+        }
+
+        if (this.selectedSlotIndex < 0) {
+            this.selectedSlotIndex = 0;
+            return;
+        }
+
+        if (this.selectedSlotIndex > maxSelectableIndex) {
+            this.selectedSlotIndex = maxSelectableIndex;
+        }
     }
 
     refreshSlots() {
@@ -414,7 +607,7 @@ export default class ConsumableBar {
             slot.inner.setFillStyle(0x000000, 0.18);
         });
 
-        if (this.selectedSlotIndex >= 0 && this.selectedSlotIndex < this.slots.length) {
+        if (this.controlMode === 'gamepad' && this.selectedSlotIndex >= 0 && this.selectedSlotIndex < this.slots.length) {
             const selectedSlot = this.slots[this.selectedSlotIndex];
             selectedSlot.background.setStrokeStyle(4, 0xffe8a3, 1);
         }
@@ -449,6 +642,16 @@ export default class ConsumableBar {
         this.breadIcon?.setScale(this.breadIconBaseScale ?? 4);
     }
 
+    refreshControlsHint() {
+        if (!this.controlsText) return;
+
+        if (this.controlMode === 'gamepad') {
+            this.controlsText.setText('MODO MANDO : D-PAD IZQ/DER SELECCIONAR · X USAR · CLICK ATACAR · C CUACK');
+        } else {
+            this.controlsText.setText('MODO TECLADO : WASD MOVER · ESPACIO DASH · E INTERACTUAR · CLICK ATACAR · C CUACK');
+        }
+    }
+
     // ─────────────────────────────────────────
     // CONSUMABLES
     // ─────────────────────────────────────────
@@ -463,7 +666,8 @@ export default class ConsumableBar {
         }
 
         this.pulseSlot(slotIndex);
-        this.update();
+        this.refreshSlots();
+        this.refreshResources();
     }
 
     useConsumable(consumable) {
@@ -694,6 +898,8 @@ export default class ConsumableBar {
         this.useHintText?.destroy();
         this.extraItemsText?.destroy();
         this.controlsText?.destroy();
+        this.settingsBtnBg?.destroy();
+        this.settingsBtnText?.destroy();
 
         this.slots.forEach(slot => {
             slot.background?.destroy();
