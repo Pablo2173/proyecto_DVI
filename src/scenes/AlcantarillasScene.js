@@ -47,6 +47,9 @@ import crocoSpritePath from '../../assets/sprites/croco/croco_idle.png';
 import crocoAttackPath from '../../assets/sprites/croco/croco_attack.png';
 import crocoSubmergePath from '../../assets/sprites/croco/croco_submerge.png';
 import crocoBubblePath from '../../assets/sprites/croco/croco_bubble.png';
+import crocoIcon from '../../assets/sprites/croco/croco_icon.png';
+import crocoLife from '../../assets/sprites/croco/corazon.png';
+import crocoHalfLife from '../../assets/sprites/croco/mitad_corazon.png';
 
 import zorro_idle from '../../assets/sprites/Zorro/zorro_idle.png';
 import zorro_run from '../../assets/sprites/Zorro/zorro_run.png';
@@ -197,6 +200,10 @@ export default class AlcantarillasScene extends Phaser.Scene {
         this.load.image('croco_attack', crocoAttackPath);
         this.load.image('croco_submerge', crocoSubmergePath);
         this.load.image('croco_bubble', crocoBubblePath);
+        this.load.image('croco_icon', crocoIcon);
+        this.load.image('croco_Life', crocoLife);
+        this.load.image('croco_HalfLife', crocoHalfLife);
+
 
         // Cargar spritesheets de zorro (4 frames cada uno, 32x32)
         this.load.spritesheet('zorro_idle', zorro_idle, {
@@ -828,6 +835,8 @@ export default class AlcantarillasScene extends Phaser.Scene {
         this.createPauseMenuUI();
         this.createGuideUI();
         this.createExitConfirmUI();
+
+        this.createBossUI();
 
         this.keyEsc = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
 
@@ -2229,4 +2238,77 @@ export default class AlcantarillasScene extends Phaser.Scene {
         this.input?.off?.('wheel');
     }
 
+    createBossUI() {
+        // 1. Posición bajada a 230 para estar debajo del ConsumableBar (que llega hasta ~164)
+        // Centramos en X y bajamos en Y
+        this.bossUI = this.add.container(this.cameras.main.centerX, 230).setScrollFactor(0);
+        this.bossUI.setDepth(1000); // Un valor muy alto para asegurar que esté por encima de todo
+
+        // 2. Nombre del Jefe (Un poco más grande: fontSize 32px y escala 1.2)
+        this.bossNameText = this.add.text(0, -50, "Tito The Cocodrile", {
+            fontFamily: 'ReturnOfTheBoss', 
+            fontSize: '28px',
+            fill: '#000000',     
+            stroke: '#ffffff',   
+            strokeThickness: 6   
+        }).setOrigin(0.5).setScale(1.2);
+
+        // 3. Icono del Cocodrilo (Escala aumentada a 1.5)
+        // Lo movemos un poco más a la izquierda para que no choque con los corazones grandes
+        this.bossIcon = this.add.image(-160, 0, 'croco_icon').setScale(1.5); 
+
+        // 4. Crear los 5 corazones (Aumentamos escala a 1.5 y separación a 55)
+        this.bossHearts = [];
+        for (let i = 0; i < 5; i++) {
+            // Usamos exactamente 'croco_Life' (ojo con la L mayúscula)
+            let heart = this.add.image(-80 + (i * 55), 0, 'croco_Life').setScale(1.5); 
+            this.bossHearts.push(heart);
+            this.bossUI.add(heart);
+        }
+
+        this.bossUI.add([this.bossNameText, this.bossIcon]);
+        this.bossUI.setVisible(false);
+    }
+
+    showBossUI(boss) {
+        this.currentBoss = boss;
+        this.bossUI.setVisible(true);
+        this.updateBossUI(boss.health);
+    }
+
+    updateBossUI(currentHealth) {
+        if (!this.bossUI || !this.bossUI.visible) return;
+
+        if (currentHealth <= 0) {
+            this.bossUI.setVisible(false); 
+            return;
+        }
+
+        const hpPorCorazon = 100;
+
+        for (let i = 0; i < 5; i++) {
+            let heartFullThreshold = (i + 1) * hpPorCorazon;  
+            let heartHalfThreshold = (i * hpPorCorazon) + 50; 
+
+            if (currentHealth >= heartFullThreshold) {
+                this.bossHearts[i].setTexture('croco_Life');
+                // Mantenemos la escala normal para el corazón entero
+                this.bossHearts[i].setScale(0.1); 
+                this.bossHearts[i].setVisible(true);
+                
+            } else if (currentHealth >= heartHalfThreshold) {
+                this.bossHearts[i].setTexture('croco_HalfLife');
+                
+                // ---> AQUÍ ESTÁ LA SOLUCIÓN <---
+                // Baja este número hasta que coincida con el tamaño del corazón entero. 
+                // Prueba con 0.8, 1.0, o 1.2 dependiendo de qué tan grande sea tu imagen original.
+                this.bossHearts[i].setScale(0.1); 
+                
+                this.bossHearts[i].setVisible(true);
+                
+            } else {
+                this.bossHearts[i].setVisible(false); 
+            }
+        }
+    }
 }
