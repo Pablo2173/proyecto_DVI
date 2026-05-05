@@ -460,6 +460,10 @@ export default class MenuScene extends Phaser.Scene {
     // evita dobles clicks
     this.input.enabled = false;
 
+    // Nueva partida: limpia el respawn guardado para volver al spawn inicial del mapa
+    this.registry.set('duckCheckpointSpawn', null);
+    this.registry.set('duckRespawnWeapon', null);
+
     const w = this.scale.width;
     const h = this.scale.height;
 

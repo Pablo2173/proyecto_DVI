@@ -2241,9 +2241,34 @@ export default class AlcantarillasScene extends Phaser.Scene {
 
     this._bossDeathHandled = true;
 
+    // Espera 3 segundos (tiempo de animación de muerte del jefe) y luego
+    // hace un fade out suave antes de cambiar a FinishScene
     this.time.delayedCall(3000, () => {
         if (!this.scene.isActive('AlcantarillasScene')) return;
-        this.scene.start('FinishScene');
+
+        const W = this.scale.width;
+        const H = this.scale.height;
+        const FADE_DURATION = 1000;
+
+        // Overlay negro para el fade out — se dibuja encima de todo
+        const fadeRect = this.add.rectangle(0, 0, W, H, 0x000000, 0)
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(99999);
+
+        // Bloquear input durante la transición
+        this.input.enabled = false;
+
+        this.tweens.add({
+            targets: fadeRect,
+            alpha: 1,
+            duration: FADE_DURATION,
+            ease: 'Power2.easeIn',
+            onComplete: () => {
+                if (!this.scene.isActive('AlcantarillasScene')) return;
+                this.scene.start('FinishScene');
+            }
+        });
     });
 }
 }
