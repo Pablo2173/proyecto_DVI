@@ -24,7 +24,7 @@ import mazoUrl from "../../assets/sounds/mazo.mp3?url";
 import escobaUrl from "../../assets/sounds/escoba.mp3?url";
 import armaUrl from "../../assets/sounds/m4.mp3?url";
 import deathUrl from "../../assets/sounds/death.mp3?url";
-
+import gameMusicUrl from "../../assets/sounds/game_music.mp3?url";
 
 
 
@@ -75,6 +75,7 @@ export default class Boot extends Phaser.Scene {
     this.load.audio('escoba_sound', escobaUrl);
     this.load.audio('arma_sound', armaUrl);
     this.load.audio('death_sound', deathUrl);
+     this.load.audio('game_sound', gameMusicUrl);
 
     // ───────── MENU ─────────
     this.load.image("sky", skyUrl);

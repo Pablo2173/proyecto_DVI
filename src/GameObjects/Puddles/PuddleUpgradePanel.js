@@ -134,12 +134,17 @@ export default class PuddleUpgradePanel {
                 strokeThickness: 5
             });
 
+            // Calculamos el espacio máximo para el texto restando el ancho del botón y un poco de margen
+            const maxTextWidth = rowWidth - buttonWidth - 40;
+
             const descText = this.scene.add.text(rowX + 14, rowY + 56, '', {
                 fontFamily: 'ReturnOfTheBoss',
                 fontSize: '22px',
                 color: '#f8e7b5',
                 stroke: '#000000',
-                strokeThickness: 4
+                strokeThickness: 4,
+                wordWrap: { width: maxTextWidth, useAdvancedWrap: true }, // <-- AQUÍ ESTÁ LA MAGIA
+                lineSpacing: 2 // Añadido para que las líneas no se peguen mucho
             });
 
             const buttonBg = this.scene.add.rectangle(
@@ -193,7 +198,7 @@ export default class PuddleUpgradePanel {
             strokeThickness: 5
         }).setOrigin(0.5, 0);
 
-        this.rewardText = this.scene.add.text(x + width / 2, dividerY + 58, '¡adiós al punto de control!', {
+        this.rewardText = this.scene.add.text(x + width / 2, dividerY + 58, '¡Adiós al punto de control PERO GANAS PLUMAS!', {
             fontFamily: 'ReturnOfTheBoss',
             fontSize: '22px',
             color: '#ffffff',
@@ -309,7 +314,7 @@ export default class PuddleUpgradePanel {
 
             row.nameText.setText(String(upgrade.label || '').toUpperCase());
             row.descText.setText(upgrade.description || '');
-            row.priceText.setText(String(cost));
+            row.priceText.setText(`- ${cost}`);
 
             row.buttonBg.setFillStyle(canBuy ? 0x3f2615 : 0x555555, 0.95);
             row.priceText.setAlpha(canBuy ? 1 : 0.75);
