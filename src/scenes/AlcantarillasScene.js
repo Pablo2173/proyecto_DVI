@@ -1414,18 +1414,22 @@ export default class AlcantarillasScene extends Phaser.Scene {
     }
 
     setupPauseInput() {
-        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY) => {
+        if (this._guideWheelHandler) {
+            this.input.off('wheel', this._guideWheelHandler, this);
+        }
+
+        this._guideWheelHandler = (pointer, gameObjects, deltaX, deltaY) => {
             if (!this.guideOverlay || !this.guideOverlay.visible || !this.guideContent) return;
 
-            this.guideScrollY -= deltaY * 0.5;
             this.guideScrollY = Phaser.Math.Clamp(
-                this.guideScrollY,
+                this.guideScrollY - deltaY * 0.6,
                 this.guideMinScrollY,
                 this.guideMaxScrollY
             );
-
             this.guideContent.y = this.guideScrollY;
-        });
+        };
+
+        this.input.on('wheel', this._guideWheelHandler, this);
     }
 
     createPauseMenuUI() {
@@ -1531,155 +1535,197 @@ export default class AlcantarillasScene extends Phaser.Scene {
         const W = this.scale.width;
         const H = this.scale.height;
 
-        this.currentFontSize = this.currentFontSize || 20;
         this._guideObjects = [];
 
-        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.72)
-            .setOrigin(0, 0).setScrollFactor(0).setDepth(20010);
+        const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.78)
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(20010);
 
-        const parchment = this.add.rectangle(W / 2, H / 2, 760, 560, 0xd8c08a, 0.98)
-            .setStrokeStyle(5, 0x6a4b1f, 1).setScrollFactor(0).setDepth(20011);
+        const parchment = this.add.rectangle(W / 2, H / 2, 820, 580, 0xf0dfa8, 0.98)
+            .setStrokeStyle(6, 0x6a4b1f, 1)
+            .setScrollFactor(0)
+            .setDepth(20011);
 
-        const title = this.add.text(W / 2, 72, 'GUÍA', {
+        const title = this.add.text(W / 2, H / 2 - 268, 'GUÍA DEL DUCKLER', {
             fontFamily: 'ReturnOfTheBoss',
-            fontSize: '38px',
+            fontSize: '36px',
             color: '#3a2412',
             stroke: '#f5e6c8',
             strokeThickness: 2
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
+        })
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(20012);
 
-        const closeButton = this.add.rectangle(W - 90, 60, 120, 46, 0x000000, 0.4)
-            .setStrokeStyle(3, 0xffffff, 0.8)
-            .setScrollFactor(0).setDepth(20012)
+        const closeButton = this.add.rectangle(W / 2, H / 2 + 255, 120, 42, 0x3a2412, 0.85)
+            .setStrokeStyle(3, 0xe4c46a, 1)
+            .setScrollFactor(0)
+            .setDepth(20012)
             .setInteractive({ useHandCursor: true });
 
-        const closeText = this.add.text(W - 90, 60, 'ATRÁS', {
+        const closeText = this.add.text(W / 2, H / 2 + 255, 'ATRÁS', {
             fontFamily: 'ReturnOfTheBoss',
             fontSize: '22px',
-            color: '#ffffff',
+            color: '#f4d97b',
             stroke: '#000000',
             strokeThickness: 4
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(20013)
+        })
+            .setOrigin(0.5)
+            .setScrollFactor(0)
+            .setDepth(20013)
             .setInteractive({ useHandCursor: true });
 
-        const viewportX = W / 2 - 320;
-        const viewportY = H / 2 - 220;
-        const viewportWidth = 640;
-        const viewportHeight = 440;
+        const viewportW = 760;
+        const viewportH = 460;
+        const viewportX = W / 2 - viewportW / 2;
+        const viewportY = H / 2 - 230;
 
-        const maskShape = this.make.graphics({});
+        const maskShape = this.add.graphics().setScrollFactor(0).setVisible(false);
         maskShape.fillStyle(0xffffff, 1);
-        maskShape.fillRect(viewportX, viewportY, viewportWidth, viewportHeight);
+        maskShape.fillRect(viewportX, viewportY, viewportW, viewportH);
 
-        this.guideContent = this.add.container(viewportX + 24, viewportY + 20);
+        this.guideContent = this.add.container(viewportX + 16, viewportY + 8)
+            .setScrollFactor(0)
+            .setDepth(20012);
+
         this.guideContent.setMask(maskShape.createGeometryMask());
 
         const guideItems = [];
         let currentY = 0;
+        const CONTENT_W = viewportW - 32;
+        const fontSize = this.currentFontSize ?? 22;
 
-        const addGuideSection = (titleText, bodyText, textureKey = null) => {
-            const sectionTitle = this.add.text(0, currentY, titleText, {
-                fontFamily: 'Arial Black',
-                fontSize: '28px',
-                color: '#3a2412',
-                stroke: '#f5e6c8',
-                strokeThickness: 1,
-                wordWrap: { width: 560 }
-            });
-
-            guideItems.push(sectionTitle);
-            currentY += 42;
-
-            if (textureKey && this.textures.exists(textureKey)) {
-                const img = this.add.image(70, currentY + 40, textureKey)
-                    .setOrigin(0.5)
-                    .setScale(2.2);
-
-                guideItems.push(img);
-
-                const desc = this.add.text(150, currentY, bodyText, {
-                    fontFamily: 'Arial',
-                    fontSize: `${this.currentFontSize}px`,
-                    color: '#2e1e10',
-                    wordWrap: { width: 420 }
-                });
-
-                guideItems.push(desc);
-                currentY += Math.max(120, desc.height + 20);
-            } else {
-                const desc = this.add.text(0, currentY, bodyText, {
-                    fontFamily: 'Arial',
-                    fontSize: `${this.currentFontSize}px`,
-                    color: '#2e1e10',
-                    wordWrap: { width: 560 }
-                });
-
-                guideItems.push(desc);
-                currentY += desc.height + 30;
-            }
+        const addToGuide = (obj) => {
+            obj.setScrollFactor(0);
+            guideItems.push(obj);
+            return obj;
         };
 
-        addGuideSection(
-            'Bienvenido a la guía',
-            'Aquí puedes escribir la explicación de los objetos, enemigos, mecánicas y controles del juego.'
-        );
-        addGuideSection(
-            'Poción de ataque',
-            'Ejemplo de texto: esta poción aumenta el daño durante un tiempo limitado.',
-            'mask_icon'
-        );
-        addGuideSection(
-            'Llave',
-            'Ejemplo de texto: abre puertas cerradas cuando el jugador se acerca a ellas.',
-            'feather_icon'
-        );
-        addGuideSection(
-            'Pan',
-            'Ejemplo de texto: sirve como recurso o moneda dentro del juego.'
-        );
+        const addHeader = (text) => {
+            const headerBg = addToGuide(this.add.rectangle(0, currentY, CONTENT_W, 36, 0x5a3a10, 0.85).setOrigin(0, 0));
+            const headerText = addToGuide(this.add.text(10, currentY + 4, text, {
+                fontFamily: 'ReturnOfTheBoss', fontSize: '22px', color: '#f4d97b', stroke: '#000000', strokeThickness: 3
+            }).setOrigin(0, 0));
+            currentY += 44;
+        };
+
+        const addEntry = (name, description, textureKey = null, isSheet = false, imgScale = 3, offsetX = 0, offsetY = 0) => {
+            const rowH = 90;
+            const imgColW = 90;
+            const textX = textureKey ? imgColW + 8 : 0;
+            const textW = CONTENT_W - textX - 8;
+
+            const rowBg = addToGuide(this.add.rectangle(0, currentY, CONTENT_W, rowH, 0x000000, 0.07).setOrigin(0, 0));
+
+            if (textureKey && this.textures.exists(textureKey)) {
+                const posX = (imgColW / 2) + offsetX;
+                const posY = currentY + (rowH / 2) + offsetY;
+
+                let img;
+                if (isSheet) {
+                    img = this.add.sprite(posX, posY, textureKey, 0).setOrigin(0.5).setScale(imgScale);
+                } else {
+                    img = this.add.image(posX, posY, textureKey).setOrigin(0.5).setScale(imgScale);
+                }
+                addToGuide(img);
+            }
+
+            const nameText = addToGuide(this.add.text(textX, currentY + 8, name, {
+                fontFamily: 'Arial Black', fontSize: '17px', color: '#3a2412', stroke: '#f0dfa8', strokeThickness: 1, wordWrap: { width: textW }
+            }).setOrigin(0, 0));
+
+            const descText = addToGuide(this.add.text(textX, currentY + 30, description, {
+                fontFamily: 'Arial', fontSize: `${fontSize}px`, color: '#2e1e10', wordWrap: { width: textW }, lineSpacing: 2
+            }).setOrigin(0, 0));
+
+            const actualH = Math.max(rowH, nameText.height + descText.height + 24);
+            rowBg.setSize(CONTENT_W, actualH);
+            currentY += actualH + 4;
+        };
+
+        const addTextEntry = (name, description) => addEntry(name, description, null);
+
+        addHeader('❤️  RECURSOS — VIDA Y MONEDA');
+        addEntry('Plumas — TUS VIDAS', 'Las plumas son la vida del pato. Cada golpe que recibes te quita plumas. Si se agotan, el pato muere. Recógelas del suelo (caen de enemigos derrotados) y gástalas en mejoras de los charcos.', 'feather_icon', false, 0.12, 0, 20);
+        addEntry('Pan — LA MONEDA', 'El pan es la moneda del juego. Úsalo para comprar armas, pociones y objetos especiales en la tienda. Recoge todo el pan que veas por el escenario.', 'bread_item', false, 4, 0, 0);
+
+        addHeader('⚔️  ARMAS DE MELÉ');
+        addEntry('Ramita', 'El arma inicial. Daño muy bajo pero ataque rápido. Cámbiala en cuanto encuentres algo mejor.', null);
+        addEntry('Cuchillo', 'Arma equilibrada. Buen daño y velocidad de ataque. Ideal para el combate cuerpo a cuerpo ágil.', null);
+        addEntry('Escoba', 'Algo más de alcance que el cuchillo. Buena para mantener a los enemigos a distancia mientras atacas.', null);
+        addEntry('Mazo', 'Daño alto pero golpe lento. Úsalo contra enemigos con mucha vida o cuando necesites un golpe contundente.', null);
+
+        addHeader('🏹  ARMAS DE DISTANCIA');
+        addEntry('Arco', 'Dispara flechas hacia el cursor. Mantén pulsado el botón para cargar un disparo más potente. Bueno contra enemigos rápidos.', null);
+        addEntry('Mcuaktro', 'Metralleta de balas rápidas. Alta cadencia de fuego. Arrasa con grupos de enemigos pero gasta munición deprisa.', null);
+
+        addHeader('🧪  CONSUMIBLES');
+        addEntry('Poción de ataque', 'Duplica tu daño durante 30 segundos. Úsala justo antes de un jefe o una horda de enemigos.', 'attack_potion', false, 3.2, 0, 0);
+        addEntry('Poción de velocidad', 'Duplica tu velocidad de movimiento durante 15 segundos. Perfecta para huir, reposicionarte o explorar rápido.', 'speed_potion', false, 3.2, 0, 0);
+        addEntry('Poción velocidad de ataque', 'Reduce a la mitad el tiempo entre ataques durante 20 segundos. Letal combinada con el arco o la metralleta.', 'speed_attack_potion', false, 3.2, 0, 0);
+        addEntry('Cola de zorro', 'Genera un aura invisible que destruye todos los proyectiles enemigos cercanos durante 8 segundos. Imprescindible contra el cocodrilo.', 'fox_tail', false, 0.12, 0, 0);
+        addEntry('Máscara', 'Te vuelve invisible a los enemigos. Los que te perseguían perderán el rastro. Muy útil para escapar de situaciones complicadas.', 'mask_icon', false, 3, 0, 0);
+        addEntry('Llave', 'Abre puertas cerradas. Acércate a una puerta con la llave en el inventario y se abrirá sola. Úsala para acceder a zonas secretas.', null);
+
+        addHeader('👾  ENEMIGOS');
+        addEntry('Zorro', 'Rápido y ágil. Persigue al pato en línea recta. Poco HP. Usa el dash para esquivarlo y atácalo por la espalda.', 'zorro_idle', true, 2.9, 0, 0);
+        addEntry('Mapache', 'Más lento que el zorro pero más resistente. A veces se detiene y te tira objetos. Mantén la distancia.', 'mapache_idle', true, 2.9, 0, 0);
+        addEntry('Cuervo', 'Aparece si llevas demasiado tiempo con la misma arma sin cambiarla. Vuela por encima de obstáculos. Cambia de arma para evitar que aparezca.', 'cuervo_idle', true, 2.9, 0, 10);
+        addEntry('Rana', 'Se queda quieta y de repente da saltos enormes. Muy difícil de predecir. Atácala cuando esté posada en el suelo.', 'rana_idle', true, 2.5, 0, 0);
+        addEntry('Cocodrilo — JEFE', 'El boss del nivel. Se sumerge en el agua y ataca desde debajo lanzando burbujas. Atácalo cuando emerja. La Cola de Zorro destruye sus proyectiles.', 'croco_idle', false, 1, 0, 10);
+
+        addHeader('💧  CHARCOS Y AGUA');
+        addTextEntry('Natación', 'Entrar en agua activa el modo natación: te mueves más lento pero puedes sumergirte para esquivar ataques. Útil contra el cocodrilo.');
+        addTextEntry('Mejoras de charco', 'Algunos charcos tienen mejoras desbloqueables a cambio de plumas. Interactúa con ellos pulsando E para ver las opciones disponibles.');
+
+        addHeader('🏪  TIENDA');
+        addTextEntry('Cómo comprar', 'Acércate al tendero y pulsa E para abrir la tienda. Puedes comprar armas, pociones y objetos especiales a cambio de pan. Los objetos rotan, así que vuelve a visitarla.');
 
         this.guideContent.add(guideItems);
-
-        this.guideMaxScrollY = 0;
-        this.guideMinScrollY = Math.min(0, viewportHeight - currentY - 24);
+        const contentHeight = currentY + 30;
+        this.guideMaxScrollY = viewportY + 8;
+        this.guideMinScrollY = Math.min(this.guideMaxScrollY, viewportY + viewportH - contentHeight);
         this.guideScrollY = this.guideMaxScrollY;
         this.guideContent.y = this.guideScrollY;
 
-        const scrollHint = this.add.text(W / 2, H - 38, 'Rueda del ratón para desplazarte', {
-            fontFamily: 'Arial',
-            fontSize: '18px',
-            color: '#ffffff',
-            stroke: '#000000',
-            strokeThickness: 3
+        const scrollHint = this.add.text(W / 2, H / 2 + 310, '▲▼ Rueda del ratón para hacer scroll', {
+            fontFamily: 'ReturnOfTheBoss', fontSize: '18px', color: '#f4d97b', stroke: '#000000', strokeThickness: 4
         }).setOrigin(0.5).setScrollFactor(0).setDepth(20012);
 
-        const goBack = () => {
-            this.closeGuide();
-            this.openPauseMenu();
-        };
-
+        const goBack = () => { this.closeGuide(); this.openPauseMenu(); };
         closeButton.on('pointerup', goBack);
         closeText.on('pointerup', goBack);
 
         this._guideObjects = [bg, parchment, title, closeButton, closeText, this.guideContent, scrollHint];
+
         this.guideOverlay = {
-            setVisible: (v) => this._guideObjects.forEach(o => o.setVisible(v)),
+            setVisible: (v) => {
+                this._guideObjects.forEach(o => o.setVisible(v));
+                if (v) { this.guideScrollY = this.guideMaxScrollY; this.guideContent.y = this.guideScrollY; }
+            },
             get visible() { return bg.visible; }
         };
+
         this._guideObjects.forEach(o => o.setVisible(false));
 
-        this._guideResizeHandler = (gameSize) => {
-            const w = gameSize.width;
-            const h = gameSize.height;
+        if (this._guideWheelHandler) this.input.off('wheel', this._guideWheelHandler, this);
+        this._guideWheelHandler = (pointer, gameObjects, deltaX, deltaY) => {
+            if (!this.guideOverlay?.visible) return;
+            this.guideScrollY = Phaser.Math.Clamp(this.guideScrollY - deltaY * 0.6, this.guideMinScrollY, this.guideMaxScrollY);
+            this.guideContent.y = this.guideScrollY;
+        };
+        this.input.on('wheel', this._guideWheelHandler, this);
 
+        this._guideResizeHandler = (gameSize) => {
+            const { width: w, height: h } = gameSize;
             bg.setSize(w, h);
             parchment.setPosition(w / 2, h / 2);
-            title.setPosition(w / 2, 72);
-            closeButton.setPosition(w - 90, 60);
-            closeText.setPosition(w - 90, 60);
-            scrollHint.setPosition(w / 2, h - 38);
+            title.setPosition(w / 2, h / 2 - 268);
+            closeButton.setPosition(w / 2, h / 2 + 255);
+            closeText.setPosition(w / 2, h / 2 + 255);
+            scrollHint.setPosition(w / 2, h / 2 + 310);
         };
-
         this.scale.on('resize', this._guideResizeHandler, this);
     }
 
@@ -1927,6 +1973,10 @@ export default class AlcantarillasScene extends Phaser.Scene {
 
         if (this._exitResizeHandler) {
             this.scale.off('resize', this._exitResizeHandler, this);
+        }
+
+        if (this._guideWheelHandler) {
+            this.input.off('wheel', this._guideWheelHandler, this);
         }
 
         this.input?.off?.('wheel');
