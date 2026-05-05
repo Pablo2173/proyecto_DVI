@@ -424,7 +424,7 @@ export default class ConsumableBar {
 
         const leftDown = this.isGamepadButtonDown(pad, 14);
         const rightDown = this.isGamepadButtonDown(pad, 15);
-        const useDown = this.isGamepadButtonDown(pad, 2) || this.isGamepadButtonDown(pad, 3);
+        const useDown = this.isGamepadButtonDown(pad, 2);
         let handled = false;
 
         if (leftDown && !this._previousGamepadButtons.left) {
@@ -646,7 +646,7 @@ export default class ConsumableBar {
         if (!this.controlsText) return;
 
         if (this.controlMode === 'gamepad') {
-            this.controlsText.setText('MODO MANDO : D-PAD IZQ/DER SELECCIONAR · X USAR · CLICK ATACAR · C CUACK');
+            this.controlsText.setText('MODO MANDO : D-PAD IZQ/DER SELECCIONAR · CUADRADO USAR · CLICK ATACAR · C CUACK');
         } else {
             this.controlsText.setText('MODO TECLADO : WASD MOVER · ESPACIO DASH · E INTERACTUAR · CLICK ATACAR · C CUACK');
         }

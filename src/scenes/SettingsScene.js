@@ -212,6 +212,22 @@ export default class SettingsScene extends Phaser.Scene {
     this.backButton.on("pointerup", goBack);
     this.backLabel.on("pointerup", goBack);
 
+    this._onSettingsGamepadDown = (pad, button, index) => {
+      if (index === 9) {
+        goBack();
+      }
+    };
+
+    if (this.input.gamepad) {
+      this.input.gamepad.on("down", this._onSettingsGamepadDown);
+    }
+
+    this.events.once("shutdown", () => {
+      if (this.input?.gamepad && this._onSettingsGamepadDown) {
+        this.input.gamepad.off("down", this._onSettingsGamepadDown);
+      }
+    });
+
     this.updateMenuVolumeBoxes();
     this.updateGameVolumeBoxes();
     this.updateFontBoxes();
