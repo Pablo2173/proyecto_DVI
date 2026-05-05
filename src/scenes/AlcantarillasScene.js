@@ -47,6 +47,7 @@ import crocoSpritePath from '../../assets/sprites/croco/croco_idle.png';
 import crocoAttackPath from '../../assets/sprites/croco/croco_attack.png';
 import crocoSubmergePath from '../../assets/sprites/croco/croco_submerge.png';
 import crocoBubblePath from '../../assets/sprites/croco/croco_bubble.png';
+import crocoLife from '../../assets/sprites/croco/Corazon.png';
 
 import zorro_idle from '../../assets/sprites/Zorro/zorro_idle.png';
 import zorro_run from '../../assets/sprites/Zorro/zorro_run.png';
@@ -197,6 +198,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
         this.load.image('croco_attack', crocoAttackPath);
         this.load.image('croco_submerge', crocoSubmergePath);
         this.load.image('croco_bubble', crocoBubblePath);
+        this.load.image('croco_life', crocoLife);
 
         // Cargar spritesheets de zorro (4 frames cada uno, 32x32)
         this.load.spritesheet('zorro_idle', zorro_idle, {
