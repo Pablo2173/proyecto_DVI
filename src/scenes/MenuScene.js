@@ -218,7 +218,7 @@ export default class MenuScene extends Phaser.Scene {
       { label: "JUGAR", fn: () => this.startGameTransition() },
       { label: "CONFIGURACIÓN", fn: () => this.scene.start("SettingsScene") },
       { label: "CRÉDITOS", fn: () => console.log("CREDITOS") },
-      { label: "SALIR", fn: () => console.log("SALIR") },
+      { label: "SALIR", fn: () => window.close() },
     ];
 
     this._buttonObjs = items.map((it, i) => this._makeButton(it.label, it.fn, i));

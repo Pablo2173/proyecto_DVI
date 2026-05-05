@@ -70,7 +70,15 @@ import rana_idle from '../../assets/sprites/Rana/rana_idle.png';
 
 //Sounds
 import cuackSound from '../../assets/sounds/cuack.mp3';
-import deathSound from '../../assets/sounds/YouDied.mp3';
+import enemyDeathSoundFile from '../../assets/sounds/death.mp3'; 
+import playerDeathSoundFile from '../../assets/sounds/YouDied.mp3'; 
+
+import crocoMusic from '../../assets/sounds/croco_music.mp3';
+import crocoRoar from '../../assets/sounds/croco_roar.mp3';
+import crocoBubbles from '../../assets/sounds/croco_bubbles.mp3';
+import swimmingCroco from '../../assets/sounds/swimming_croco.mp3';
+import crocoDeath from '../../assets/sounds/croco_death.mp3';
+
 // Weapon bar
 import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
 import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
@@ -251,7 +259,14 @@ export default class AlcantarillasScene extends Phaser.Scene {
         });
 
         this.load.audio('cuack', cuackSound);
-        this.load.audio('death_sound', deathSound);
+        this.load.audio('enemy_death', enemyDeathSoundFile);
+        this.load.audio('player_death', playerDeathSoundFile); 
+
+        this.load.audio('croco_music', crocoMusic);
+        this.load.audio('croco_roar', crocoRoar);
+        this.load.audio('croco_bubbles', crocoBubbles);
+        this.load.audio('swimming_croco', swimmingCroco);
+        this.load.audio('croco_death', crocoDeath);
 
         // Preload de todas las armas (cambiar)
         Arco.preload(this);
@@ -583,7 +598,10 @@ export default class AlcantarillasScene extends Phaser.Scene {
             // AUDIO
             // ─────────────────────────────────────────
             this.cuackSound = this.sound.add('cuack', { volume: 1 });
-            this.deathSound = this.sound.add('death_sound', { volume: 1 });
+            this.playerDeathSound = this.sound.add('player_death', { volume: 1 }); 
+            this.enemyDeathSound = this.sound.add('enemy_death', { volume: 0.8 });
+
+            this._startCrocoMusic();
 
             // ─────────────────────────────────────────
             // GRUPOS
@@ -664,6 +682,11 @@ export default class AlcantarillasScene extends Phaser.Scene {
             // Limpieza segura al reiniciar/destruir la escena
             this.events.once('shutdown', () => this._cleanupScene());
             this.events.once('destroy', () => this._cleanupScene());
+
+            this.events.on('resume', () => {
+                this.applyGameAudioSettings();
+                this.openPauseMenu();
+            });
         } catch (err) {
             console.error('[AlcantarillasScene] Error en create():', err);
             try {
@@ -2131,11 +2154,12 @@ export default class AlcantarillasScene extends Phaser.Scene {
 
     confirmExitToMenu() {
         this.isPaused = false;
-
+        
         if (this.scene.isActive('SettingsScene')) {
             this.scene.stop('SettingsScene');
         }
 
+        this.crocoMusic?.stop();
         this.scene.start('MenuScene');
     }
 
@@ -2183,11 +2207,66 @@ export default class AlcantarillasScene extends Phaser.Scene {
         }
 
         this.showDeathScreen();
-        this.deathSound?.play();
+        this.sound.stopAll();
 
-        this.time.delayedCall(2500, () => {
+        this.sound.play('player_death', {
+            volume: 1.2
+        });
+
+        this.time.delayedCall(5000, () => {
             this.scene.restart();
         });
+    }
+
+    _startCrocoMusic() {
+        const settings = JSON.parse(localStorage.getItem('settings')) ?? {};
+
+        const musicEnabled = settings.gameMusicEnabled ?? true;
+        const volume = settings.gameVolume ?? 1;
+
+        // Para cualquier música anterior, incluida la de MainScene
+        const gameMusic = this.sound.get('game_sound');
+        if (gameMusic) gameMusic.stop();
+
+        const menuMusic = this.sound.get('menu_music');
+        if (menuMusic) menuMusic.stop();
+
+        let crocoMusic = this.sound.get('croco_music');
+
+        if (!crocoMusic) {
+            crocoMusic = this.sound.add('croco_music', {
+                loop: true,
+                volume: musicEnabled ? volume : 0
+            });
+        } else {
+            crocoMusic.setLoop(true);
+            crocoMusic.setVolume(musicEnabled ? volume : 0);
+        }
+
+        this.crocoMusic = crocoMusic;
+
+        if (musicEnabled && !crocoMusic.isPlaying) {
+            crocoMusic.play();
+        }
+    }
+
+    applyGameAudioSettings() {
+        const settings = JSON.parse(localStorage.getItem('settings')) ?? {};
+
+        this.sound.mute = settings.mute ?? false;
+
+        const musicEnabled = settings.gameMusicEnabled ?? true;
+        const volume = settings.gameVolume ?? 1;
+
+        const crocoMusic = this.sound.get('croco_music');
+
+        if (crocoMusic) {
+            crocoMusic.setVolume(musicEnabled ? volume : 0);
+
+            if (musicEnabled && !crocoMusic.isPlaying) {
+                crocoMusic.play();
+            }
+        }
     }
 
     _cleanupScene() {
@@ -2238,6 +2317,11 @@ export default class AlcantarillasScene extends Phaser.Scene {
 
         if (this._guideWheelHandler) {
             this.input.off('wheel', this._guideWheelHandler, this);
+        }
+
+        if (this.crocoMusic) {
+            this.crocoMusic.stop();
+            this.crocoMusic = null;
         }
 
         this.input?.off?.('wheel');

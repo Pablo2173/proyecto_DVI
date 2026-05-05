@@ -238,6 +238,13 @@ export default class Duck extends BaseCharacter {
     afterTakeDamage(amount, previousHealth, newHealth) {
         console.log(`Vida ahora: ${newHealth}`);
 
+        this.updateFeathersFromHealth();
+
+        // Si el pato ha muerto, NO reproducir damage_hit ni otros sonidos
+        if (newHealth <= 0 || this.scene?.isPlayerDead || !this.scene?.time) {
+            return;
+        }
+
         if (!this._lastDamageSound || this.scene.time.now > this._lastDamageSound + 120) {
             this.scene.sound.play('damage_hit', {
                 volume: 0.6,
@@ -247,12 +254,6 @@ export default class Duck extends BaseCharacter {
         }
 
         this.scene?.cameras?.main?.shake?.(120, 0.005);
-
-        this.updateFeathersFromHealth();
-
-        if (newHealth <= 0 || this.scene?.isPlayerDead || !this.scene?.time) {
-            return;
-        }
 
         this.scene.time.delayedCall(1000, () => {
             if (this.active && !this.scene?.isPlayerDead) {

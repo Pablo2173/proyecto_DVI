@@ -789,7 +789,7 @@ export default class Enemy extends BaseCharacter {
         this._visionAlertFlashUntil = 0;
         console.log(`${this._nombre} ha muerto`);
 
-        this.scene.sound.play('death_sound', {
+        this.scene.sound.play('enemy_death', {
             volume: 0.7,
             rate: Phaser.Math.FloatBetween(0.92, 1.08)
         });

@@ -67,7 +67,9 @@ import rana_idle from '../../assets/sprites/Rana/rana_idle.png';
 
 //Sounds
 import cuackSound from '../../assets/sounds/cuack.mp3';
-import deathSound from '../../assets/sounds/YouDied.mp3';
+import enemyDeathSoundFile from '../../assets/sounds/death.mp3'; 
+import playerDeathSoundFile from '../../assets/sounds/YouDied.mp3'; 
+
 // Weapon bar
 import bar from '../../assets/sprites/Weapons/weaponBar/weapon_bar_border.png';
 import bar_fill from '../../assets/sprites/Weapons/weaponBar/weapon_bar_fill.png';
@@ -275,7 +277,8 @@ export default class MainScene extends Phaser.Scene {
         });
 
         this.load.audio('cuack', cuackSound);
-        this.load.audio('death_sound', deathSound);
+        this.load.audio('enemy_death', enemyDeathSoundFile);
+        this.load.audio('player_death', playerDeathSoundFile);
 
         // Preload de todas las armas (cambiar)
         Arco.preload(this);
@@ -629,7 +632,8 @@ export default class MainScene extends Phaser.Scene {
             // AUDIO
             // ─────────────────────────────────────────
             this.cuackSound = this.sound.add('cuack', { volume: 1 });
-            this.deathSound = this.sound.add('death_sound', { volume: 1 });
+            this.playerDeathSound = this.sound.add('player_death', { volume: 1 }); // Pato (YouDied)
+            this.enemyDeathSound = this.sound.add('enemy_death', { volume: 0.8 });
 
             // ─────────────────────────────────────────
             // GRUPOS
@@ -1126,6 +1130,12 @@ export default class MainScene extends Phaser.Scene {
                         if (checkpoint?.puddleName) {
                             this.registry.set('duckCheckpointSpawn', null);
                         }
+
+                        const mainMusic = this.sound.get('game_sound') ?? this.gameMusic;
+                        if (mainMusic) {
+                            mainMusic.stop();
+                        }
+
                         this.scene.start('AlcantarillasScene');
                         return;
                     }
@@ -1752,20 +1762,17 @@ export default class MainScene extends Phaser.Scene {
             this.duck.weapon.releaseAttack();
         }
 
-        // Detener todos los enemigos
-        /*
-        this.enemies.forEach(enemy => {
-            if (enemy?.body) {
-                enemy.body.setVelocity(0, 0);
-                enemy.body.enable = false;
-            }
+        this.sound.stopAll();
+
+        this.sound.play('player_death', {
+            volume: 1.2
         });
-        */
 
-        this.showDeathScreen();
-        this.deathSound?.play();
-
-        this.time.delayedCall(2500, () => {
+        if (this.deathOverlay) {
+            this.deathOverlay.setVisible(true);
+        }
+        
+        this.time.delayedCall(5000, () => {
             this.scene.restart();
         });
     }

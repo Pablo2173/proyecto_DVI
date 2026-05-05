@@ -113,6 +113,9 @@ export default class Crocodile extends BaseCharacter {
             case this.states.SWIMMING:
                 this.setTexture('croco_submerge');
                 this._swimStrafeAngle = 0;
+                this.scene?.sound?.play('swimming_croco', {
+                    volume: 0.8
+                });
                 break;
             case this.states.ALERTED:
                 break;
@@ -417,6 +420,10 @@ export default class Crocodile extends BaseCharacter {
         this.isAttacking = true;
         this.body?.setVelocity(0, 0);
         this._attackSprite();
+
+        this.scene?.sound?.play('croco_roar', {
+            volume: 0.9
+        });
         player.takeDamage(this.damage);
         this.scene?.cameras?.main?.shake?.(160, 0.006);
 
@@ -429,7 +436,11 @@ export default class Crocodile extends BaseCharacter {
 
     _fireBubble(player) {
         if (!player || typeof player.x !== 'number') return;
-
+        
+        this.scene?.sound?.play('croco_bubbles', {
+            volume: 0.75
+        });
+        
         const bubble = new BubblesCroco(this.scene, this.x, this.y, {
             team: TEAM.ENEMY,
             damage: this.damage,
@@ -509,6 +520,12 @@ export default class Crocodile extends BaseCharacter {
 
     _handleDeath() {
         console.log(`${this._nombre} ha muerto`);
+
+        this.scene?.sound?.stopByKey?.('croco_music');
+
+        this.scene?.sound?.play('croco_death', {
+            volume: 1
+        });
 
         this.body?.setVelocity(0, 0);
         if (this.body) {

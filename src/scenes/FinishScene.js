@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
 
+
+import finalSceneSound from '../../assets/sounds/final_scene.mp3';
+
 const FINISH_DISPLAY_MS = 15000;
 const FADE_IN_DURATION = 1000;
 const FADE_OUT_DURATION = 900;
@@ -9,10 +12,28 @@ export default class FinishScene extends Phaser.Scene {
         super({ key: 'FinishScene' });
     }
 
+    preload() {
+        this.load.audio('final_scene', finalSceneSound);
+    }
+
     create() {
+        
         const W = this.scale.width;
         const H = this.scale.height;
 
+        this.sound.stopAll();
+
+        this.finalSceneSound = this.sound.add('final_scene', {
+            volume: 1
+        });
+
+        this.finalSceneSound.play();
+
+        this.events.once('shutdown', () => {
+            if (this.finalSceneSound) {
+                this.finalSceneSound.stop();
+            }
+        });
         // ─────────────────────────────────────────
         // FONDO — base oscura con viñeta radial
         // ─────────────────────────────────────────
@@ -28,13 +49,16 @@ export default class FinishScene extends Phaser.Scene {
         // TEXTO DE VICTORIA — aparece por líneas con fade in
         // ─────────────────────────────────────────
         const lines = [
-            '¡ENHORABUENA!',
-            'HAS CONSEGUIDO VENGARTE',
-            'EL PARQUE VUELVE A ESTAR A SALVO'
+            'EL DUCKLER HA VENCIDO',
+            'BAJO LAS SOMBRAS DE LA ALCANTARILLA, EL PATO RECORDÓ QUIÉN ERA',
+            'NO SOLO UNA PRESA. NO SOLO UN SUPERVIVIENTE.',
+            'SINO EL GUARDIÁN DEL PARQUE.',
+            'Y CUANDO EL ÚLTIMO ECO SE APAGÓ...',
+            'EL PARQUE VOLVIÓ A RESPIRAR.'
         ];
 
-        const lineSpacing = 110;
-        const startY = H / 2 - lineSpacing;
+        const lineSpacing = 58;
+        const startY = H / 2 - 150; 
 
         this._textLines = lines.map((line, i) => {
             const t = this.add.text(
@@ -43,11 +67,15 @@ export default class FinishScene extends Phaser.Scene {
                 line,
                 {
                     fontFamily: 'ReturnOfTheBoss',
-                    fontSize: i === 0 ? '82px' : '58px',
-                    color: i === 0 ? '#ff2222' : '#ff6666',
+                    fontSize: i === 0 ? '64px' : '30px',
+                    color: i === 0 ? '#ff2222' : '#ffdddd',
                     stroke: '#000000',
-                    strokeThickness: 7,
-                    align: 'center'
+                    strokeThickness: i === 0 ? 7 : 5,
+                    align: 'center',
+                    wordWrap: {
+                        width: W * 0.86,
+                        useAdvancedWrap: true
+                    }
                 }
             )
                 .setOrigin(0.5)
@@ -90,7 +118,7 @@ export default class FinishScene extends Phaser.Scene {
             this.bgGlow.clear();
             this._drawBgGlow(nW, nH);
 
-            const nStartY = nH / 2 - lineSpacing;
+            const nStartY = nH / 2 - 150;
             this._textLines.forEach((t, i) => {
                 t.setPosition(nW / 2, nStartY + i * lineSpacing);
             });
@@ -167,7 +195,7 @@ export default class FinishScene extends Phaser.Scene {
             targets: this.divider,
             alpha: 1,
             duration: 400,
-            delay: FADE_IN_DURATION * 0.4 + 2 * 350 + 300,
+            delay: FADE_IN_DURATION * 0.4 + (this._textLines.length - 1) * 350 + 300,
             ease: 'Power1'
         });
 
