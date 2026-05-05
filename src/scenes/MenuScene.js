@@ -490,7 +490,7 @@ export default class MenuScene extends Phaser.Scene {
       onUpdate: draw,
       onComplete: () => {
         // Cambia a tu escena del juego y pásale spawn si quieres
-        this.scene.start("AlcantarillasScene", { spawnX: 200, spawnY: 200 });
+        this.scene.start("MainScene", { spawnX: 200, spawnY: 200 });
       },
     });
   }

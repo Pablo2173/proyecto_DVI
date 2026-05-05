@@ -26,16 +26,16 @@ export default class Crocodile extends BaseCharacter {
         this.damage = 2;
 
         this.attackRadius = 200;
-        this.alertRadius = 400;
-        this.contactRadius = 52;
+        this.alertRadius = 800;
+        this.contactRadius = 100;
 
         this._swimAttackRadius = 800;
         this._swimAlertRadius = 400;
-        this._swimContactRadius = 80;
+        this._swimContactRadius = 140;
         this._swimChaseSpeedMultiplier = 1.6;
 
-        this._shootingBurstCooldownMs = 10000;
-        this._shootingShotIntervalMs = 280;
+        this._shootingBurstCooldownMs = 7000;
+        this._shootingShotIntervalMs = 500;
         this._shootingMaxShots = 5;
         this._shootingBurstShots = 0;
         this._shootingNextShotTime = 0;
