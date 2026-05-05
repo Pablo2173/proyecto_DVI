@@ -690,6 +690,9 @@ export default class ConsumableBar {
             case 'fox_tail':
                 this.useFoxTailEffect(duck);
                 return true;
+            case 'mask':
+                duck.activateInvisibility();
+                return true;
             default:
                 console.log(`Efecto de uso no definido para: ${type}`);
                 return true;

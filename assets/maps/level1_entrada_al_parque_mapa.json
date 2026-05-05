@@ -70,7 +70,6 @@
                  "height":82,
                  "id":112,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"texture",
@@ -89,7 +88,6 @@
                  "height":66.3333333333332,
                  "id":113,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"texture",
@@ -108,7 +106,6 @@
                  "height":64.6666666666667,
                  "id":114,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"texture",
@@ -127,7 +124,6 @@
                  "height":112,
                  "id":115,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"texture",
@@ -146,7 +142,6 @@
                  "height":98.333333333333,
                  "id":116,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"texture",
@@ -329,7 +324,6 @@
                  "height":0,
                  "id":91,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -382,7 +376,6 @@
                  "height":0,
                  "id":36,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -419,7 +412,6 @@
                  "height":24,
                  "id":38,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"enemyType",
@@ -442,7 +434,6 @@
                  "height":403.333333333333,
                  "id":39,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"enemyType",
@@ -465,7 +456,6 @@
                  "height":372,
                  "id":44,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"enemyType",
@@ -488,7 +478,6 @@
                  "height":0,
                  "id":47,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -528,7 +517,6 @@
                  "height":0,
                  "id":50,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -563,7 +551,6 @@
                  "height":0,
                  "id":54,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -599,7 +586,6 @@
                  "height":0,
                  "id":55,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -635,7 +621,6 @@
                  "height":0,
                  "id":57,
                  "name":"",
-                 "opacity":1,
                  "polygon":[
                         {
                          "x":0,
@@ -671,7 +656,6 @@
                  "height":0,
                  "id":58,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -695,7 +679,6 @@
                  "height":0,
                  "id":62,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -719,7 +702,6 @@
                  "height":0,
                  "id":63,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -743,7 +725,6 @@
                  "height":0,
                  "id":64,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -767,7 +748,6 @@
                  "height":0,
                  "id":66,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -796,7 +776,6 @@
                  "height":0,
                  "id":71,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -825,7 +804,6 @@
                  "height":0,
                  "id":74,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -849,7 +827,6 @@
                  "height":0,
                  "id":75,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -878,7 +855,6 @@
                  "height":0,
                  "id":76,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -907,7 +883,6 @@
                  "height":0,
                  "id":95,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -936,7 +911,6 @@
                  "height":0,
                  "id":96,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -965,7 +939,6 @@
                  "height":0,
                  "id":97,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -994,7 +967,6 @@
                  "height":0,
                  "id":98,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -1023,7 +995,6 @@
                  "height":0,
                  "id":99,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -1052,7 +1023,6 @@
                  "height":0,
                  "id":100,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -1081,7 +1051,6 @@
                  "height":0,
                  "id":105,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -1105,7 +1074,6 @@
                  "height":0,
                  "id":117,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -1134,7 +1102,6 @@
                  "height":0,
                  "id":118,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -1163,7 +1130,6 @@
                  "height":0,
                  "id":119,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -1192,7 +1158,6 @@
                  "height":0,
                  "id":120,
                  "name":"",
-                 "opacity":1,
                  "point":true,
                  "properties":[
                         {
@@ -1239,7 +1204,6 @@
                  "height":16,
                  "id":31,
                  "name":"duck",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"name",
@@ -1258,8 +1222,8 @@
                  "x":415,
                  "y":1865
                 }],
-         "offsetx":792.363636363637,
-         "offsety":-1070.48484848485,
+         "offsetx":-4.30303030302952,
+         "offsety":1.5151515151498,
          "opacity":1,
          "type":"objectgroup",
          "visible":true,
@@ -1276,7 +1240,6 @@
                  "height":16,
                  "id":88,
                  "name":"rana",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -1300,7 +1263,6 @@
                  "height":16,
                  "id":83,
                  "name":"objeto",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -1313,7 +1275,6 @@
                  "height":16,
                  "id":84,
                  "name":"objeto",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -1326,7 +1287,6 @@
                  "height":16,
                  "id":85,
                  "name":"objeto",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -1339,7 +1299,6 @@
                  "height":16,
                  "id":86,
                  "name":"objeto",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -1352,7 +1311,6 @@
                  "height":16,
                  "id":87,
                  "name":"objeto",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -1365,7 +1323,6 @@
                  "height":16,
                  "id":125,
                  "name":"reroll",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"name",
@@ -1395,7 +1352,6 @@
                  "height":16,
                  "id":93,
                  "name":"key",
-                 "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
@@ -1408,7 +1364,6 @@
                  "height":16,
                  "id":101,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"name",
@@ -1427,7 +1382,6 @@
                  "height":16,
                  "id":102,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"name",
@@ -1446,7 +1400,6 @@
                  "height":16,
                  "id":103,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"name",
@@ -1465,7 +1418,6 @@
                  "height":16,
                  "id":104,
                  "name":"",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"name",
@@ -1484,7 +1436,6 @@
                  "height":16,
                  "id":122,
                  "name":"pocion de ataque",
-                 "opacity":1,
                  "properties":[
                         {
                          "name":"name",
@@ -1514,7 +1465,7 @@
  "nextobjectid":130,
  "orientation":"orthogonal",
  "renderorder":"right-down",
- "tiledversion":"1.12.0",
+ "tiledversion":"1.11.2",
  "tileheight":16,
  "tilesets":[
         {
