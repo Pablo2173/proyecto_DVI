@@ -359,6 +359,9 @@ export default class AlcantarillasScene extends Phaser.Scene {
             this.faseSegundaJefeLayer = this.map.createLayer('Fase segunda jefe', tilesets, 0, 0);
             this.faseSegundaJefeLayer.setScale(SCALE);
 
+            this.puertaJefeLayer = this.map.createLayer('puerta_jefe', tilesets, 0, 0);
+            this.puertaJefeLayer.setScale(SCALE);
+
             this.sombreado1Layer = this.map.createLayer('Sombreado1', tilesets, 0, 0);
             this.sombreado1Layer.setScale(SCALE);
 
@@ -447,6 +450,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
             if (this.colisionLayer) this.colisionLayer.setCollisionByExclusion([-1], true);
             if (this.vallaLayer) this.vallaLayer.setCollisionByExclusion([-1], true);
             if (this.zonasAcuaticasLayer) this.zonasAcuaticasLayer.setCollisionByExclusion([-1], true);
+            if (this.puertaJefeLayer) this.puertaJefeLayer.setCollisionByExclusion([-1], true);
 
             const worldWidth = this.map.widthInPixels * SCALE;
             const worldHeight = this.map.heightInPixels * SCALE;
@@ -743,8 +747,8 @@ export default class AlcantarillasScene extends Phaser.Scene {
         // Velocidad que tendrán los coches creados (anula BASE_STATS.speed)
         this.carSpawner.carSpeed = 2200;
 
-        if (this.map.getObjectLayer('consumables') || this.map.getObjectLayer('consummable') || this.map.getObjectLayer('consumable')) {
-            this.setupConsumablesFromLayer(SCALE);
+        if (this.map.getObjectLayer('layerWeapon')) {
+            this.setupWeaponDropsFromLayer(SCALE);
         }
         if (this.map.getObjectLayer('store')) {
             this.setupStoreFromLayer(SCALE);
@@ -796,6 +800,16 @@ export default class AlcantarillasScene extends Phaser.Scene {
                 if (!projectile || !projectile.active) return;
                 projectile.destroy();
             });
+        }
+
+        if (this.puertaJefeLayer) {
+            this.physics.add.collider(
+                this.duck,
+                this.puertaJefeLayer,
+                null,
+                (duck) => duck?.body?.velocity?.y > 0,
+                this
+            );
         }
 
         this.cameras.main.centerOn(this.playerSpawn.x, this.playerSpawn.y);
@@ -1217,6 +1231,49 @@ export default class AlcantarillasScene extends Phaser.Scene {
         this.duck.consumables = JSON.parse(JSON.stringify(storedConsumables));
     }
 
+    setupWeaponDropsFromLayer(scale) {
+        const weaponLayer = this.map.getObjectLayer('layerWeapon');
+
+        if (!weaponLayer || !Array.isArray(weaponLayer.objects)) {
+            console.warn('No se encontró una capa layerWeapon en Tiled.');
+            return;
+        }
+
+        const weaponDropMap = {
+            arco: { weaponClass: Arco, texture: 'arco' },
+            mcuaktro: { weaponClass: Mcuaktro, texture: 'mcuaktro' },
+            cuchillo: { weaponClass: Cuchillo, texture: 'cuchillo' },
+            mazo: { weaponClass: Mazo, texture: 'mazo' },
+            ramita: { weaponClass: Ramita, texture: 'ramita' },
+            escoba: { weaponClass: Escoba, texture: 'escoba' }
+        };
+
+        weaponLayer.objects.forEach((obj) => {
+            const weaponKey = String(obj?.name || '')
+                .trim()
+                .toLowerCase()
+                .replace(/\s+/g, '_')
+                .replace(/-/g, '_');
+
+            const weaponDrop = weaponDropMap[weaponKey];
+            if (!weaponDrop) {
+                console.warn('Objeto de layerWeapon ignorado por nombre desconocido:', obj);
+                return;
+            }
+
+            this.createWeaponDrop(weaponDrop.weaponClass, obj.x * scale, obj.y * scale, weaponDrop.texture);
+        });
+    }
+
+    createWeaponDrop(weaponClass, x, y, texture) {
+        if (!weaponClass || !texture) {
+            console.warn('DropWeapon sin clase o textura válida:', { weaponClass, texture, x, y });
+            return;
+        }
+
+        new DropWeapon(this, x, y, weaponClass, texture);
+    }
+
     _setCheckpointFromPuddle(puddle) {
         const spawnPoint = puddle?.getSpawnPoint?.();
         if (!spawnPoint) return;
@@ -1386,6 +1443,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
             if (this.colisionLayer) this.physics.add.collider(enemy, this.colisionLayer);
             if (this.vallaLayer) this.physics.add.collider(enemy, this.vallaLayer);
             if (this.zonasAcuaticasLayer) this.physics.add.collider(enemy, this.zonasAcuaticasLayer);
+            if (this.puertaJefeLayer) this.physics.add.collider(enemy, this.puertaJefeLayer);
         }
 
         this.physics.add.overlap(this.projectiles, enemy, (projectile, en) => {
