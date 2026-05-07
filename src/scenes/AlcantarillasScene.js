@@ -156,6 +156,21 @@ import feather_icon from '../../assets/sprites/UI/pluma.png';
 
 // InputManager
 import InputManager from '../managers/InputManager.js';
+import {
+    applyStoredCheckpointSpawn,
+    applyStoredRespawnWeapon,
+    getActiveInputMode,
+    getCurrentCheckpointData,
+    getPadAxis,
+    getPrimaryGamepad,
+    isPadButtonDown,
+    resolveRespawnWeaponKey,
+    restoreCheckpoint,
+    setupPuddlesFromLayer,
+    syncActiveInputModeFeedback,
+    updateAimAssistCross,
+    updatePauseGamepadMenu
+} from './shared/sceneSharedHelpers.js';
 
 export default class AlcantarillasScene extends Phaser.Scene {
     constructor() {
@@ -1113,57 +1128,15 @@ export default class AlcantarillasScene extends Phaser.Scene {
     }
 
     _getActiveInputMode() {
-        return this.registry?.get('activeInputMode') || 'keyboard';
+        return getActiveInputMode(this);
     }
 
     _syncActiveInputModeFeedback() {
-        const activeInputMode = this._getActiveInputMode();
-
-        if (activeInputMode === this._lastActiveInputMode) return;
-
-        this._lastActiveInputMode = activeInputMode;
-
-        if (this.input?.setDefaultCursor) {
-            this.input.setDefaultCursor(activeInputMode === 'gamepad' ? 'none' : 'default');
-        }
-
-        if (this.aimAssistCross) {
-            this.aimAssistCross.setVisible(activeInputMode === 'gamepad');
-        }
+        syncActiveInputModeFeedback(this);
     }
 
     _updateAimAssistCross(pointer) {
-        if (!this.aimAssistCross) return;
-
-        const activeInputMode = this._getActiveInputMode();
-        const isGamepadMode = activeInputMode === 'gamepad';
-
-        this.aimAssistCross.setVisible(isGamepadMode);
-        if (!isGamepadMode || !pointer) return;
-
-        this.aimAssistCross.clear();
-        this.aimAssistCross.setPosition(pointer.x, pointer.y);
-
-        this.aimAssistCross.lineStyle(3, 0x5a0000, 0.22);
-        this.aimAssistCross.strokeCircle(0, 0, 8);
-        this.aimAssistCross.lineStyle(2, 0xff3b3b, 0.78);
-        this.aimAssistCross.strokeCircle(0, 0, 14);
-        this.aimAssistCross.lineStyle(10, 0x5a0000, 0.22);
-        this.aimAssistCross.beginPath();
-        this.aimAssistCross.moveTo(-25, 0);
-        this.aimAssistCross.lineTo(25, 0);
-        this.aimAssistCross.moveTo(0, -25);
-        this.aimAssistCross.lineTo(0, 25);
-        this.aimAssistCross.strokePath();
-        this.aimAssistCross.lineStyle(5, 0xff3b3b, 0.78);
-        this.aimAssistCross.beginPath();
-        this.aimAssistCross.moveTo(-23, 0);
-        this.aimAssistCross.lineTo(23, 0);
-        this.aimAssistCross.moveTo(0, -23);
-        this.aimAssistCross.lineTo(0, 23);
-        this.aimAssistCross.strokePath();
-        this.aimAssistCross.fillStyle(0xff5555, 0.85);
-        this.aimAssistCross.fillCircle(0, 0, 4);
+        updateAimAssistCross(this, pointer);
     }
 
     _updateDuckSwimmingState() {
@@ -1190,75 +1163,19 @@ export default class AlcantarillasScene extends Phaser.Scene {
     }
 
     _getCurrentCheckpointData() {
-        const checkpoint = this.registry?.get('duckCheckpointSpawn');
-        const checkpointX = Number(checkpoint?.x);
-        const checkpointY = Number(checkpoint?.y);
-
-        if (Number.isFinite(checkpointX) && Number.isFinite(checkpointY)) {
-            return {
-                x: checkpointX,
-                y: checkpointY,
-                puddleName: checkpoint?.puddleName || ''
-            };
-        }
-
-        const spawnX = Number(this.playerSpawn?.x);
-        const spawnY = Number(this.playerSpawn?.y);
-        if (!Number.isFinite(spawnX) || !Number.isFinite(spawnY)) return null;
-
-        return {
-            x: spawnX,
-            y: spawnY,
-            puddleName: ''
-        };
+        return getCurrentCheckpointData(this);
     }
 
     _restoreCheckpoint(checkpointData) {
-        if (!checkpointData) return;
-
-        const checkpointX = Number(checkpointData.x);
-        const checkpointY = Number(checkpointData.y);
-        if (!Number.isFinite(checkpointX) || !Number.isFinite(checkpointY)) return;
-
-        this.playerSpawn = { x: checkpointX, y: checkpointY };
-
-        this.registry?.set('duckCheckpointSpawn', {
-            x: checkpointX,
-            y: checkpointY,
-            puddleName: checkpointData.puddleName || ''
-        });
-
-        if (this.duck?.setCheckpoint) {
-            this.duck.setCheckpoint({
-                x: checkpointX,
-                y: checkpointY,
-                puddleName: checkpointData.puddleName || ''
-            });
-        }
+        restoreCheckpoint(this, checkpointData);
     }
 
     _applyStoredCheckpointSpawn() {
-        const checkpoint = this.registry?.get('duckCheckpointSpawn');
-        if (!checkpoint) return;
-
-        const checkpointX = Number(checkpoint.x);
-        const checkpointY = Number(checkpoint.y);
-        if (!Number.isFinite(checkpointX) || !Number.isFinite(checkpointY)) return;
-
-        this.playerSpawn = { x: checkpointX, y: checkpointY };
+        applyStoredCheckpointSpawn(this);
     }
 
     _applyStoredRespawnWeapon() {
-        const storedWeapon = this.registry?.get('duckRespawnWeapon');
-        if (typeof storedWeapon !== 'string') return;
-
-        const normalizedWeapon = storedWeapon.trim().toLowerCase();
-        if (!normalizedWeapon) return;
-
-        const allowedWeapons = new Set(['arco', 'mcuaktro', 'cuchillo', 'mazo', 'ramita', 'escoba']);
-        if (!allowedWeapons.has(normalizedWeapon)) return;
-
-        this.playerWeapon = normalizedWeapon;
+        applyStoredRespawnWeapon(this);
     }
 
     _applyStoredConsumables() {
@@ -1341,25 +1258,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
     }
 
     _resolveRespawnWeaponKey() {
-        const weapon = this.duck?.weapon;
-        if (!weapon) return 'ramita';
-
-        const byConstructorName = {
-            arco: 'arco',
-            mcuaktro: 'mcuaktro',
-            cuchillo: 'cuchillo',
-            mazo: 'mazo',
-            ramita: 'ramita',
-            escoba: 'escoba'
-        };
-
-        const constructorName = String(weapon.constructor?.name || '').trim().toLowerCase();
-        if (byConstructorName[constructorName]) return byConstructorName[constructorName];
-
-        const textureKey = String(weapon?.texture?.key || '').trim().toLowerCase();
-        if (byConstructorName[textureKey]) return byConstructorName[textureKey];
-
-        return 'ramita';
+        return resolveRespawnWeaponKey(this);
     }
 
     _updateCharquitoState() {
@@ -1392,30 +1291,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
     }
 
     setupPuddlesFromLayer(scale) {
-        const puddleLayer = this.map.getObjectLayer('charquito');
-
-        this.puddles = [];
-
-        if (!puddleLayer || !Array.isArray(puddleLayer.objects) || puddleLayer.objects.length === 0) {
-            console.log('[AlcantarillasScene] No se encontró la capa "charquito" o está vacía.');
-            return;
-        }
-
-        puddleLayer.objects.forEach((obj, index) => {
-            if (!Array.isArray(obj.polygon) || obj.polygon.length < 3) {
-                return;
-            }
-
-            const points = obj.polygon.map(point => ({
-                x: (obj.x + point.x) * scale,
-                y: (obj.y + point.y) * scale
-            }));
-
-            const puddle = new Puddle(this, points, obj.name || `charco_${index + 1}`);
-            this.puddles.push(puddle);
-        });
-
-        console.log(`[AlcantarillasScene] Capa charquito encontrada con ${this.puddles.length} charco(s).`);
+        setupPuddlesFromLayer(this, scale, 'AlcantarillasScene', Puddle);
     }
 
     _updateCrowSpawnTimer(time) {
@@ -1659,28 +1535,15 @@ export default class AlcantarillasScene extends Phaser.Scene {
     }
 
     _getPrimaryGamepad() {
-        if (!this.input?.gamepad) return null;
-
-        const gamepads = this.input.gamepad.getAll();
-        if (!gamepads || gamepads.length === 0) return null;
-
-        return gamepads.find((pad) => pad && pad.connected) || gamepads[0];
+        return getPrimaryGamepad(this);
     }
 
     _getPadAxis(pad, axisIndex) {
-        if (!pad || !Array.isArray(pad.axes) || !pad.axes[axisIndex]) return 0;
-
-        const axis = pad.axes[axisIndex];
-        if (typeof axis.getValue === 'function') return axis.getValue();
-        if (typeof axis.value === 'number') return axis.value;
-        return 0;
+        return getPadAxis(pad, axisIndex);
     }
 
     _isPadButtonDown(pad, buttonIndex) {
-        if (!pad || !pad.buttons || !pad.buttons[buttonIndex]) return false;
-
-        const button = pad.buttons[buttonIndex];
-        return !!(button.pressed || (typeof button.value === 'number' && button.value > 0.5));
+        return isPadButtonDown(pad, buttonIndex);
     }
 
     _getPauseMenuButtonsForCurrentContext() {
@@ -1715,91 +1578,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
     }
 
     updatePauseGamepadMenu() {
-        const pad = this._getPrimaryGamepad();
-        if (!pad) {
-            this._pauseMenuActionHeld = false;
-            this._pauseMenuBackHeld = false;
-            this._lastPauseMenuNavAt = -Infinity;
-            return;
-        }
-
-        const now = this.time.now;
-        const deadzone = 0.35;
-        const leftY = this._getPadAxis(pad, 1);
-        const dpadUp = this._isPadButtonDown(pad, 12);
-        const dpadDown = this._isPadButtonDown(pad, 13);
-        const confirmPressed = this._isPadButtonDown(pad, 0);
-        const backPressed = this._isPadButtonDown(pad, 1);
-        const navUp = leftY < -deadzone || dpadUp;
-        const navDown = leftY > deadzone || dpadDown;
-        const buttons = this._getPauseMenuButtonsForCurrentContext();
-
-        if (buttons.length && now - this._lastPauseMenuNavAt >= this._pauseMenuNavRepeatMs) {
-            if (navUp && !navDown) {
-                this._movePauseMenuSelection(-1);
-                this._lastPauseMenuNavAt = now;
-            } else if (navDown && !navUp) {
-                this._movePauseMenuSelection(1);
-                this._lastPauseMenuNavAt = now;
-            }
-        }
-
-        if (this._pauseMenuContext === 'guide') {
-            if (backPressed && !this._pauseMenuBackHeld) {
-                this.closeGuide();
-                this.openPauseMenu();
-            }
-            this._pauseMenuBackHeld = backPressed;
-            this._pauseMenuActionHeld = confirmPressed;
-            return;
-        }
-
-        if (this._pauseMenuContext === 'exit') {
-            const navLeft = this._isPadButtonDown(pad, 14);
-            const navRight = this._isPadButtonDown(pad, 15);
-
-            if (now - this._lastPauseMenuNavAt >= this._pauseMenuNavRepeatMs) {
-                if (navLeft && !navRight) {
-                    this._movePauseMenuSelection(-1);
-                    this._lastPauseMenuNavAt = now;
-                } else if (navRight && !navLeft) {
-                    this._movePauseMenuSelection(1);
-                    this._lastPauseMenuNavAt = now;
-                }
-            }
-
-            if (backPressed && !this._pauseMenuBackHeld) {
-                this.closeExitConfirm();
-                this.openPauseMenu();
-                this._pauseMenuBackHeld = backPressed;
-                this._pauseMenuActionHeld = confirmPressed;
-                return;
-            }
-
-            if (confirmPressed && !this._pauseMenuActionHeld) {
-                const button = buttons[this._pauseMenuSelectedIndex] ?? buttons[0];
-                button?.onClick?.();
-            }
-
-            this._pauseMenuActionHeld = confirmPressed;
-            this._pauseMenuBackHeld = backPressed;
-            return;
-        }
-
-        if (backPressed && !this._pauseMenuBackHeld) {
-            this.closePauseMenu();
-            this._pauseMenuBackHeld = backPressed;
-            this._pauseMenuActionHeld = confirmPressed;
-            return;
-        }
-
-        if (confirmPressed && !this._pauseMenuActionHeld) {
-            const button = buttons[this._pauseMenuSelectedIndex] ?? buttons[0];
-            button?.onClick?.();
-        }
-
-        this._pauseMenuActionHeld = confirmPressed;
-        this._pauseMenuBackHeld = backPressed;
+        updatePauseGamepadMenu(this);
     }
 
     createGuideUI() {
