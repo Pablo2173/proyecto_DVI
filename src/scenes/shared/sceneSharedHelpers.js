@@ -1,9 +1,13 @@
 const ALLOWED_RESPAWN_WEAPONS = new Set(['arco', 'mcuaktro', 'cuchillo', 'mazo', 'ramita', 'escoba']);
 
+// Devuelve el modo de entrada activo, mando o teclado
+// Se asume teclado como valor por defecto.
 export function getActiveInputMode(scene) {
     return scene.registry?.get('activeInputMode') || 'keyboard';
 }
 
+// Sincroniza la UI y el cursor
+// Esto te evita trabajo repetido si el modo no cambia desde la ultima comprobacion
 export function syncActiveInputModeFeedback(scene) {
     const activeInputMode = getActiveInputMode(scene);
 
@@ -20,6 +24,8 @@ export function syncActiveInputModeFeedback(scene) {
     }
 }
 
+// Dibuja o actualiza la mira de asistencia cuando se juega con mando
+// Con teclado solo se oculta la ayuda visual
 export function updateAimAssistCross(scene, pointer) {
     if (!scene.aimAssistCross) return;
 
@@ -32,6 +38,7 @@ export function updateAimAssistCross(scene, pointer) {
     scene.aimAssistCross.clear();
     scene.aimAssistCross.setPosition(pointer.x, pointer.y);
 
+    // Dibujo de la mira
     scene.aimAssistCross.lineStyle(3, 0x5a0000, 0.22);
     scene.aimAssistCross.strokeCircle(0, 0, 8);
     scene.aimAssistCross.lineStyle(2, 0xff3b3b, 0.78);
@@ -54,6 +61,8 @@ export function updateAimAssistCross(scene, pointer) {
     scene.aimAssistCross.fillCircle(0, 0, 4);
 }
 
+// Primero intenta usar el checkpoint
+// Si no hay, cae al spawn original del jugador
 export function getCurrentCheckpointData(scene) {
     const checkpoint = scene.registry?.get('duckCheckpointSpawn');
     const checkpointX = Number(checkpoint?.x);
@@ -67,6 +76,7 @@ export function getCurrentCheckpointData(scene) {
         };
     }
 
+    // Si no hay checkpoint, solo usamos el spawn base
     const spawnX = Number(scene.playerSpawn?.x);
     const spawnY = Number(scene.playerSpawn?.y);
     if (!Number.isFinite(spawnX) || !Number.isFinite(spawnY)) return null;
@@ -78,6 +88,7 @@ export function getCurrentCheckpointData(scene) {
     };
 }
 
+// Actualiza spawn, registro y estado del duck
 export function restoreCheckpoint(scene, checkpointData) {
     if (!checkpointData) return;
 
@@ -102,6 +113,7 @@ export function restoreCheckpoint(scene, checkpointData) {
     }
 }
 
+// Aplica al spawn de la escena el checkpoint almacenado en el registro, si existe
 export function applyStoredCheckpointSpawn(scene) {
     const checkpoint = scene.registry?.get('duckCheckpointSpawn');
     if (!checkpoint) return;
@@ -113,6 +125,7 @@ export function applyStoredCheckpointSpawn(scene) {
     scene.playerSpawn = { x: checkpointX, y: checkpointY };
 }
 
+// Recupera el arma que tenías anted de morir y la aplica si está en la pool de armas validas de respawn (Me rompe un poco la inmersión pero bueno...)
 export function applyStoredRespawnWeapon(scene) {
     const storedWeapon = scene.registry?.get('duckRespawnWeapon');
     if (typeof storedWeapon !== 'string') return;
@@ -124,6 +137,7 @@ export function applyStoredRespawnWeapon(scene) {
     scene.playerWeapon = normalizedWeapon;
 }
 
+// Resuelve que arma debe usarse al reaparecer
 export function resolveRespawnWeaponKey(scene, options = {}) {
     const weapon = scene.duck?.weapon;
     if (!weapon) return 'ramita';
@@ -142,6 +156,8 @@ export function resolveRespawnWeaponKey(scene, options = {}) {
     const constructorName = String(weapon.constructor?.name || '').trim().toLowerCase();
     if (byConstructorName[constructorName]) return byConstructorName[constructorName];
 
+    // Algunos objetos igual no conservan el nombre de clase esperado
+    // Para evitar que pete, se usa la textura como respaldo para reconstruir el arma correcta
     const textureKey = String(weapon?.texture?.key || '').trim().toLowerCase();
     if (byConstructorName[textureKey]) return byConstructorName[textureKey];
 
@@ -157,6 +173,8 @@ export function resolveRespawnWeaponKey(scene, options = {}) {
     return 'ramita';
 }
 
+// Crea los charcos definidos en la capa de objetos "charquito" del mapa
+// Convierte cada poligono del editor en un PuddleClass
 export function setupPuddlesFromLayer(scene, scale, sceneName, PuddleClass) {
     const puddleLayer = scene.map.getObjectLayer('charquito');
 
@@ -168,6 +186,7 @@ export function setupPuddlesFromLayer(scene, scale, sceneName, PuddleClass) {
     }
 
     puddleLayer.objects.forEach((obj, index) => {
+        // Cada charco DEBE venir como un poligonom, si no se ignora para no romper la carga
         if (!Array.isArray(obj.polygon) || obj.polygon.length < 3) {
             return;
         }
@@ -184,6 +203,7 @@ export function setupPuddlesFromLayer(scene, scale, sceneName, PuddleClass) {
     console.log(`[${sceneName}] Capa charquito encontrada con ${scene.puddles.length} charco(s).`);
 }
 
+// Devuelve el primer gamepad conectado, o el primero disponible si aún no marca conectado
 export function getPrimaryGamepad(scene) {
     if (!scene.input?.gamepad) return null;
 
@@ -193,6 +213,7 @@ export function getPrimaryGamepad(scene) {
     return gamepads.find((pad) => pad && pad.connected) || gamepads[0];
 }
 
+// Lee el valor de un eje del gamepad con compatibilidad para distintas APIs de Phaser
 export function getPadAxis(pad, axisIndex) {
     if (!pad || !Array.isArray(pad.axes) || !pad.axes[axisIndex]) return 0;
 
@@ -202,6 +223,7 @@ export function getPadAxis(pad, axisIndex) {
     return 0;
 }
 
+// Comprueba si un boton del mando esta pulsado, aceptando tanto pressed como value
 export function isPadButtonDown(pad, buttonIndex) {
     if (!pad || !pad.buttons || !pad.buttons[buttonIndex]) return false;
 
@@ -209,9 +231,11 @@ export function isPadButtonDown(pad, buttonIndex) {
     return !!(button.pressed || (typeof button.value === 'number' && button.value > 0.5));
 }
 
+// Gestiona la navegación del menu de pausa con mando
 export function updatePauseGamepadMenu(scene) {
     const pad = getPrimaryGamepad(scene);
     if (!pad) {
+        // Sin mando, se limpian los estados de pulsacion
         scene._pauseMenuActionHeld = false;
         scene._pauseMenuBackHeld = false;
         scene._lastPauseMenuNavAt = -Infinity;
@@ -229,6 +253,7 @@ export function updatePauseGamepadMenu(scene) {
     const navDown = leftY > deadzone || dpadDown;
     const buttons = scene._getPauseMenuButtonsForCurrentContext();
 
+    // La navegación vertical usa un "throttle" para evitar saltos multiples cuando mantienes el stick o la cruceta
     if (buttons.length && now - scene._lastPauseMenuNavAt >= scene._pauseMenuNavRepeatMs) {
         if (navUp && !navDown) {
             scene._movePauseMenuSelection(-1);
@@ -239,6 +264,7 @@ export function updatePauseGamepadMenu(scene) {
         }
     }
 
+    // En la pantalla de guia, el boton de volver cierra la guia y regresa al menú.
     if (scene._pauseMenuContext === 'guide') {
         if (backPressed && !scene._pauseMenuBackHeld) {
             scene.closeGuide();
@@ -249,6 +275,7 @@ export function updatePauseGamepadMenu(scene) {
         return;
     }
 
+    // En el submenu de salida, izquierda/derecha cambian la opcion activa
     if (scene._pauseMenuContext === 'exit') {
         const navLeft = isPadButtonDown(pad, 14);
         const navRight = isPadButtonDown(pad, 15);
@@ -281,6 +308,7 @@ export function updatePauseGamepadMenu(scene) {
         return;
     }
 
+    // En el menu principal de pausa, volver cierra el menu y confirmar ejecuta la opcion seleccionada en ese momento
     if (backPressed && !scene._pauseMenuBackHeld) {
         scene.closePauseMenu();
         scene._pauseMenuBackHeld = backPressed;
