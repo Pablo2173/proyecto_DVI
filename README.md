@@ -3,10 +3,10 @@
 **Primero está en informe de contribución y justo después está el GDD.**
 
 #### Links a la documentación:
- - Informe de contribucion: 
- - GDD: 
- - Informe datos playtest: 
- - Trailer del juego:
+ - Informe de contribucion: [Informe de contribución](./documentacion/informe_contribucion_The_Duckler.md)
+ - GDD: [GDD](./documentacion/gdd_The_Duckler.pdf)
+ - Informe datos playtest: [Informe de datos de la playtest](./documentacion/Informe_datos_playtest.pdf)
+ - Trailer del juego: [Trailer The Duckler](https://drive.google.com/file/d/1fy92E_wG8jW2w6Te0FHvdRoupvTTkQum/view?usp=drive_link)
  - Vídeo con partida completa comentada: 
 
 # 📄 Informe de Contribución: The Duckler
@@ -203,7 +203,7 @@ El jugador puede hacer “cuack” al pulsar la tecla c, esto alerta a todos los
 
 ### Controles
 
-Falta la imagen
+![](./documentacion/imagenes_para_el_readme/controles.png)
 
 Amarillo -> Controles de movimiento
 
@@ -577,7 +577,7 @@ Trampas poco visibles por el escenario las cuales pueden ser activadas tanto por
 ### Entrada al parque
 Primera zona del juego donde se enseñan y se ponen a prueba todas las mecánicas del juego, con variedad de enemigos y distintas zonas a explorar. (Éste es un plano en modo boceto)
 
-Falta imagen
+![](./documentacion/imagenes_para_el_readme/boceto_primera_zona.png)
 
 ### Bosque
 (finalmente no implementado)
