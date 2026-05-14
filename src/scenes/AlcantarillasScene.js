@@ -166,6 +166,7 @@ import {
     isPadButtonDown,
     resolveRespawnWeaponKey,
     restoreCheckpoint,
+    restoreDuckState,
     setupPuddlesFromLayer,
     syncActiveInputModeFeedback,
     updateAimAssistCross,
@@ -651,6 +652,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
             // UI
             // ─────────────────────────────────────────
             this.breadCount = 0;
+            restoreDuckState(this);
             this.consumableBar = new ConsumableBar(this, this.duck, this.inputManager);
             this.enemiesKilled = 0;
 

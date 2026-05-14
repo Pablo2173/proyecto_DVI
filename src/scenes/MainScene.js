@@ -154,6 +154,7 @@ import {
     isPadButtonDown,
     resolveRespawnWeaponKey,
     restoreCheckpoint,
+    saveDuckState,
     setupPuddlesFromLayer,
     syncActiveInputModeFeedback,
     updateAimAssistCross,
@@ -1141,6 +1142,7 @@ export default class MainScene extends Phaser.Scene {
                         this.registry.set('duckConsumables', JSON.parse(JSON.stringify(this.duck.consumables || [])));
                         const respawnWeapon = this._resolveRespawnWeaponKey();
                         this.registry.set('duckRespawnWeapon', respawnWeapon);
+                        saveDuckState(this);
                         const checkpoint = this.registry.get('duckCheckpointSpawn');
                         if (checkpoint?.puddleName) {
                             this.registry.set('duckCheckpointSpawn', null);

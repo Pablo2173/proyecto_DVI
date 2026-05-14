@@ -231,6 +231,29 @@ export function isPadButtonDown(pad, buttonIndex) {
     return !!(button.pressed || (typeof button.value === 'number' && button.value > 0.5));
 }
 
+export function saveDuckState(scene) {
+    if (!scene.duck) return;
+    scene.registry?.set('duckFeathers', scene.duck.feathers ?? scene.duck.health ?? null);
+    scene.registry?.set('duckBreadCount', scene.breadCount ?? 0);
+}
+
+export function restoreDuckState(scene) {
+    const feathers = scene.registry?.get('duckFeathers');
+    if (feathers !== null && feathers !== undefined && Number.isFinite(Number(feathers))) {
+        if (scene.duck?.setFeathers) {
+            scene.duck.setFeathers(Number(feathers));
+        } else if (scene.duck) {
+            scene.duck.feathers = Number(feathers);
+            scene.duck.health = Number(feathers);
+        }
+    }
+
+    const breadCount = scene.registry?.get('duckBreadCount');
+    if (breadCount !== null && breadCount !== undefined && Number.isFinite(Number(breadCount))) {
+        scene.breadCount = Number(breadCount);
+    }
+}
+
 // Gestiona la navegación del menu de pausa con mando
 export function updatePauseGamepadMenu(scene) {
     const pad = getPrimaryGamepad(scene);
