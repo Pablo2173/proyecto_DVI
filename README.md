@@ -30,47 +30,47 @@ Jugador empieza nueva zona con todas sus plumas -> pierde plumas al ser golpeado
 
 ## Mecánicas
 
- - Cambiar/equipar armas
- - 
+### Cambiar/equipar armas
+
 El jugador puede encontrar armas escondidas y repartidas por el mapa o estas pueden ser soltadas por los enemigos al ser derrotados. El jugador puede interactuar con estas armas para equiparlas, intercambiandolas con el arma que tenga equipada actualmente, si tiene ya una, soltando la anterior en el suelo.
 
- - Movimiento
+### Movimiento
 
 El jugador puede mover al personaje en los ejes x e y desde un punto de vista satelital. El jugador podrá hacer mover al personaje con el uso de las teclas de dirección o las teclas wasd.
 
- - Armas
+### Armas
 
 Existen múltiples tipos de armas que el jugador puede obtener y usar. Cada arma tiene un sistema único pero todas tienen estadísticas de velocidad de ataque, rango efectivo, duración y barra de carga. Cuando la duración del arma llega a 0 esta se rompe. 
 
- - Combate
+### Combate
 
 Tanto el jugador como los enemigos pueden usar su arma equipada. El jugador puede pulsar click izquierdo para usar el ataque definido por el arma equipada en la dirección del ratón. Los enemigos usan una IA que controla cómo comportarse en torno a la presencia del jugador según su estado de alerta y arma equipada. Al pegar a un enemigo la pantalla se tambalea muy levemente.
 
- - Sistema de plumas
+### Sistema de plumas
 
 El jugador comienza cada zona con 5 plumas, adicionales pueden encontrarse por el mapa o ser soltadas por enemigos específicos al ser derrotados. Recibir un golpe hace al jugador perder una pluma y, si no le quedan plumas, el jugador es derrotado y regresa al último charquito visitado. Las plumas pueden usarse para mejorar las estadísticas del personaje en un charquito.
 
- - Monedas panaderas
+### Monedas panaderas
 
 Éste es el sistema de compra del juego, son monedas de pan las cuales sueltan los enemigos o puedes encontrarlas dispersas por el mapa. Sirven para comprar cosas en la Ranita Comerciante la cual se explica más adelante, y para usar la “The Toaster” la cual también es explicada más adelante.
 
- - Charquitos
+### Charquitos
 
 Son zonas intermedias donde no hay enemigos y el jugador puede usar las plumas para mejorar sus estadísticas. Las estadísticas a mejorar son las contramuslo (cómo de rápido se mueve el jugador), alitas (como de fuerte pegan sus armas) y gracia patuna (duración de las armas). Un charquito puede ser vaciado a cambio de una pluma extra y de perderlo como punto de control.
 
- - Deja Vu
+### Deja Vu
 
 Así es como es conocida la mecánica de derrota de nuestro jugador. Como el jugador es derrotado al quedarse sin plumas, al reaparecer recuperas 5 plumas, y si regresas al lugar en el que has muerto previamente, recuperas 1 pluma adicional.
 
- - Jefe de zona
+### Jefe de zona
 
 Al final del recorrido delimitado de una zona, hay un enemigo especial que pone a prueba la habilidades que el jugador debe haber aprendido durante el recorrido.
 
- - Sistema de esquivas
+### Sistema de esquivas
 
 El jugador puede pulsar la barra espaciadora para realizar un movimiento rápido en la dirección en la que el jugador se está moviendo en ese momento. Durante el proceso de esquiva el jugador es inmune a todo tipo de daño durante un corto periodo de tiempo y tampoco puede usar armas durante un periodo de tiempo ligeramente superior. Esta esquiva tiene un periodo de recarga que es indicado visualmente en pantalla.
 
- - Cuack
+### Cuack
 
 El jugador puede hacer “cuack” al pulsar la tecla c, esto alerta a todos los enemigos del area para que vengan a atacar al jugador.
 
@@ -81,11 +81,11 @@ El jugador puede hacer “cuack” al pulsar la tecla c, esto alerta a todos los
 
 Falta la imagen
 
--> Controles de movimiento
+Amarillo -> Controles de movimiento
 
--> Dash
+Azul -> Dash
 
--> Cuack
+Verde -> Cuack
 
 ### Cámara
 
@@ -113,7 +113,7 @@ Menú en los charquitos que muestra tres cajas, cada una mostrando una de las tr
 
 El pato es el protagonista del juego y es la representación del jugador dentro del mismo. Su comportamiento se describe en la sección de mecánicas. Las dimensiones del pato son de proporción 64x64 pixeles.
 
-## Enemigos
+### Enemigos
 
 En el juego hay varios tipos de enemigos que pueden matar al jugador. Todos tienen comportamientos similares de base pero estos cambian según las armas que tengan equipadas y sus estadísticas propias. Los comportamientos compartidos:
 Si no han detectado al jugador, entran en estado idle. Algunos caminarán sin rumbo fijo, otros se quedarán quietos, etc.
@@ -121,123 +121,131 @@ Si han detectado al jugador, se moverán a su alrededor buscando la distancia id
 Los enemigos aparecen en posiciones predeterminadas en el mapa y su estado de inicio es idle. Existen excepciones si se cumplen requisitos específicos.
 Los enemigos tienen barras de salud invisibles para el jugador, estas barras pueden ser vaciadas al recibir ataques del jugador y una vez su salud alcanza 0 estos mueren y dejan un cadáver que desaparece al cabo de un tiempo.
 
- - **Pollito navajero**
+#### - **Pollito navajero**
 (finalmente no implementado)
 Enemigo introductorio, vida media y ataques básicos a melee.
 
-Preferencia de arma: A melee
-Puntos de salud: 11 
-Velocidad de movimiento: x1 
+ - Preferencia de arma: A melee
+ - Puntos de salud: 11 
+ - Velocidad de movimiento: x1 
+
 “pollo de barrio…”
 
- - **Zorro con antifaz**
+#### - **Zorro con antifaz**
 Enemigo introductorio, vida media y ataques básicos a melee y a distancia.
 
-Preferencia de arma: cualquiera
-Rango de visión: 750
-Puntos de salud: 60 
-Velocidad de movimiento: 140 
+ - Preferencia de arma: cualquiera
+ - Rango de visión: 750
+ - Puntos de salud: 60 
+ - Velocidad de movimiento: 140 
+
 “Le roba a los ricos y se lo da a sí mismo”
 
-
- - **Mapache con marcas de llantas**
+#### - **Mapache con marcas de llantas**
 Una vez su hp alcanza 0, éste resucita y necesita ser matado otra vez.
 
-Preferencia de arma: A melee
-Rango de visión: 750
-Puntos de salud: 65
-Velocidad de movimiento: 100
+ - Preferencia de arma: A melee
+ - Rango de visión: 750
+ - Puntos de salud: 65
+ - Velocidad de movimiento: 100
+
 “Se nota que el accidente le dejó secuelas”
 
- - **Cuervo**
+#### - **Cuervo**
 Este enemigo aparece sin armas.
 Si el cuervo alcanza al jugador, este robará su arma y modificará su comportamiento al predeterminado de ataque.
 Este enemigo no aparece de forma natural, solo spawnea si el jugador pasa más de 1 minuto sosteniendo la misma arma. Si el jugador cambia de arma mientras el cuervo está en pantalla, el cuervo saldrá volando y desaparecerá.
 
-Preferencia de arma: Todas
-Puntos de salud: 60
-Velocidad de movimiento: 150
+ - Preferencia de arma: Todas
+ - Puntos de salud: 60
+ - Velocidad de movimiento: 150
+
 “Le atraen las cosas de valor… valor emocional”
 
- - **Rata con sombrero de chef**
+#### - **Rata con sombrero de chef**
 (finalmente no implementado)
 Este enemigo tiene la habilidad especial de volverse invisible si se encuentra lo suficientemente alejado del jugador.
 Este enemigo puede detectar al jugador desde cualquier ángulo y más lejos de lo normal, pero cuando lo detecta hace un sonido característico.
 
-Rango de detección: x3
-Preferencia de arma: cuchillos
-Puntos de salud: 3 (muy frágil)
-Velocidad de movimiento: x1.25 (Rápido)
+ - Rango de detección: x3
+ - Preferencia de arma: cuchillos
+ - Puntos de salud: 3 (muy frágil)
+ - Velocidad de movimiento: x1.25 (Rápido)
+
 “Un día probó pato a la boloñesa y ya no hay quien lo pare”
 
- - **Águila**
+#### - **Águila**
 (finalmente no implementado)
 Suena un sonido (de águila) y lo siguiente es ver una sombra que pasa por la pantalla. Mientras está pasando la sombra tienes que estar en modo sigilo (con la cabeza dentro del suelo o en estado invisible) para que no te descubra. Si te descubre se lanza contra ti y mueres al instante.
 
- - **Pingüino defensor**
+#### - **Pingüino defensor**
 (finalmente no implementado)
 Este enemigo se caracteriza por tener 2 tipos diferentes de ataque:
 El barrido con lanza: El enemigo hace un giro sobre sí mismo haciendo un círculo de daño en área alrededor de él.
 Carga con lanza: El enemigo carga hacia la dirección del jugador, se multiplica su velocidad x3.5 y su daño x2, y se detiene al alcanzar cierta distancia o al encontrarse con un obstáculo.
 
-Rango de detección: x1
-Preferencia de arma: A melee
-Puntos de salud: 15 (normal)
-Velocidad de movimiento: x0.8 (Lento)
-Velocidad de movimiento con carga: x3.5
-Multiplicador de daño con carga: x2
+ - Rango de detección: x1
+ - Preferencia de arma: A melee
+ - Puntos de salud: 15 (normal)
+ - Velocidad de movimiento: x0.8 (Lento)
+ - Velocidad de movimiento con carga: x3.5
+ - Multiplicador de daño con carga: x2
 
 “Es un fiel defensor de sus territorios, y no dudará en atacar a todo aquel que ose entrar en ellos”
 
- - **General Palomo**
+#### - **General Palomo**
 (finalmente no implementado)
 Si este enemigo te detecta, todos los enemigos que se encuentren dentro del área también te detectarán e irán a por ti. Éste se caracteriza por siempre mantenerse a una distancia “prudente” e intenta siempre estar por detrás del resto de enemigos.
 
-Rango de detección: x2.5
-Preferencia de arma: A distancia
-Puntos de salud: 15 (normal)
-Velocidad de movimiento: x1 (Normal)
+ - Rango de detección: x2.5
+ - Preferencia de arma: A distancia
+ - Puntos de salud: 15 (normal)
+ - Velocidad de movimiento: x1 (Normal)
+
 “Manda siempre a sus súbditos a batalla para usarlos como escudo y así siempre poder salvarse…”
 
- - **Chinchilla cadete**
+#### - **Chinchilla cadete**
 (finalmente no implementado)
 Este enemigo está armado con una M.Cuacktro, y cuando te detecte, disparará en todas direcciones.
 
-Rango de detección: x2
-Preferencia de arma: A distancia
-Puntos de salud: 7 (Frágil)
-Velocidad de movimiento: x1 (Normal)
+ - Rango de detección: x2
+ - Preferencia de arma: A distancia
+ - Puntos de salud: 7 (Frágil)
+ - Velocidad de movimiento: x1 (Normal)
+
 “Este cadete se pone muy nervioso en situaciones de peligro y por ende hace lo único que le han enseñado a hacer, apretar el gatillo”
 
- - **Búho hechicero oscuro**
+#### - **Búho hechicero oscuro**
 (finalmente no implementado)
 Este enemigo puede disparar a sus aliados (otros enemigos que haya en la zona) para darles más vida y más ataque.
 
-Rango de detección: x2
-Preferencia de arma: A distancia mágicas
-Puntos de salud: 11 (Un poco frágil)
-Velocidad de movimiento: x1 (Normal)
+ - Rango de detección: x2
+ - Preferencia de arma: A distancia mágicas
+ - Puntos de salud: 11 (Un poco frágil)
+ - Velocidad de movimiento: x1 (Normal)
+
 “Este hechicero oscuro está licenciado en las artes del control de almas, pudiendo así fortalecer las de sus compañeros”
 
- - **Tortuga Necromante**
+#### - **Tortuga Necromante**
 (finalmente no implementado)
 Este enemigo se caracteriza por tener una gran cantidad de vida pero ser muy lenta.
 
-Rango de detección: x1,7
-Preferencia de arma: A distancia mágicas
-Puntos de salud: 17 (bastante vida)
-Velocidad de movimiento: x1 (Normal)
+ - Rango de detección: x1,7
+ - Preferencia de arma: A distancia mágicas
+ - Puntos de salud: 17 (bastante vida)
+ - Velocidad de movimiento: x1 (Normal)
+
 “Este hechicero oscuro está licenciado en las artes del control de almas, pudiendo así fortalecer las de sus compañeros”
 
-
- - **Gato lanzapociones**
+#### - **Gato lanzapociones**
 (finalmente no implementado)
 Éste enemigo es un enemigo a distancia el cual lanza pociones desde lejos las cuales hacen daño al jugador pero hay una pequeña probabilidad también de que le otorguen una pluma adicional en vez de hacer daño al jugador.
 
-Rango de detección: x1,3
-Preferencia de arma: A distancia mágicas
-Puntos de salud: 6 (débil)
-Velocidad de movimiento: x1 (Normal)
+ - Rango de detección: x1,3
+ - Preferencia de arma: A distancia mágicas
+ - Puntos de salud: 6 (débil)
+ - Velocidad de movimiento: x1 (Normal)
+
 “Éste lindo felino se caracteriza por robar pociones a los magos para usarlas en su propio beneficio”
 
 ### Jefes finales de zona
@@ -465,12 +473,19 @@ Zona final del juego con el jefe cocodrilo genocida.
 
 ## Referencias
  - Referencias de juegos
+
 DARK SOULS | Sitio Web Official (ES)
+
 Soul Knight
+
 HOTLINE MIAMI
+
 Nuclear Throne
+
  - Referencias de tipografía
+
 Tipografía menu : https://fonts.google.com/specimen/MedievalSharp
+
 Menu: https://opengameart.org/content/simple-natural-landscape-pixel-art-background
 
 
