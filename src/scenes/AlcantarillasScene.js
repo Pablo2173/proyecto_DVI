@@ -1200,6 +1200,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
             return;
         }
 
+        // Tampoco podemos quitar de aqui ya que se generan drops si el jugador intercambia su arma de la zona anterior con una del suelo)
         const weaponDropMap = {
             arco: { weaponClass: Arco, texture: 'arco' },
             mcuaktro: { weaponClass: Mcuaktro, texture: 'mcuaktro' },

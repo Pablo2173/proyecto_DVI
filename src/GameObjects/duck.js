@@ -17,8 +17,7 @@ export const DUCK_STATE = Object.freeze({
     WALKING: 1,
     DASHING: 2,
     QUACKING: 3,
-    SWIMMING: 4,
-    INVISIBLE: 5
+    SWIMMING: 4
 });
 
 export default class Duck extends BaseCharacter {
@@ -321,7 +320,6 @@ export default class Duck extends BaseCharacter {
             case DUCK_STATE.WALKING: this.play('duck-walk', true); break;
             case DUCK_STATE.QUACKING: this.play('duck-cuack', true); break;
             case DUCK_STATE.DASHING: this.play('duck-dash', true); break;
-            case DUCK_STATE.INVISIBLE: this.play('duck-idle', true); break;
             case DUCK_STATE.SWIMMING: this.play('duck-swimming', true); break;
         }
     }
@@ -349,7 +347,7 @@ export default class Duck extends BaseCharacter {
                 this.isDashInvisible = false;
 
                 // Restaurar alpha solo si no hay otra fuente de invisibilidad activa.
-                if (!this.isInvisible && this.state !== DUCK_STATE.INVISIBLE && this.invisibleUntil <= this.scene.time.now) {
+                if (!this.isInvisible && !this.isDashInvisible && this.invisibleUntil <= this.scene.time.now) {
                     this.setAlpha(1);
                 }
 
@@ -368,7 +366,6 @@ export default class Duck extends BaseCharacter {
 
         this.invisibleUntil = Math.max(this.invisibleUntil, now + duration);
         this.invisibleCooldownUntil = 0;
-        this.setState(DUCK_STATE.INVISIBLE);
         this.setAlpha(this.invisibleAlpha);
         this.weaponBar?.startCountdown(duration);
     }
@@ -388,20 +385,17 @@ export default class Duck extends BaseCharacter {
         if (!this.isInvisible && !this.isDashInvisible) {
             this.setAlpha(1);
         }
-        if (this.state === DUCK_STATE.INVISIBLE) {
-            this.setState(DUCK_STATE.IDLE);
-        }
         this.weaponBar?.startRecharge(10000);
     }
 
     isInvisibleState() {
         const now = this.scene?.time?.now ?? 0;
-        return now < this.invisibleUntil || this.state === DUCK_STATE.INVISIBLE || this.isInvisible === true || this.isDashInvisible === true;
+        return now < this.invisibleUntil || this.isInvisible === true || this.isDashInvisible === true;
     }
 
     canStartInvisible(time = this.scene?.time?.now ?? 0) {
         const invisibleActive = time < this.invisibleUntil;
-        return !invisibleActive && this.state !== DUCK_STATE.INVISIBLE && time >= this.invisibleCooldownUntil;
+        return !invisibleActive && time >= this.invisibleCooldownUntil;
     }
 
     // ─────────────────────────────────────────
@@ -428,7 +422,7 @@ export default class Duck extends BaseCharacter {
         this.scene.time.delayedCall(3000, () => {
             this.isInvisible = false;
             // Restaurar alpha solo si no hay otro estado de invisibilidad activo
-            if (this.state !== DUCK_STATE.INVISIBLE) {
+            if (!this.isDashInvisible && this.invisibleUntil <= this.scene.time.now) {
                 this.setAlpha(1);
             }
             console.log('Efecto de máscara terminado: player visible de nuevo');
@@ -511,7 +505,7 @@ export default class Duck extends BaseCharacter {
             if (!isDashing && (vx !== 0 || vy !== 0)) {
                 this.facingX = vx;
                 this.facingY = vy;
-                if (this.state !== DUCK_STATE.INVISIBLE && this.state !== DUCK_STATE.SWIMMING) {
+                if (this.state !== DUCK_STATE.SWIMMING) {
                     this.setState(DUCK_STATE.WALKING);
                 }
             }
@@ -523,16 +517,8 @@ export default class Duck extends BaseCharacter {
             if (this.body) {
                 this.body.setVelocity(0, 0);
             }
-            if (this.state !== DUCK_STATE.QUACKING && this.state !== DUCK_STATE.SWIMMING && this.state !== DUCK_STATE.INVISIBLE) {
+            if (this.state !== DUCK_STATE.QUACKING && this.state !== DUCK_STATE.SWIMMING) {
                 this.setState(DUCK_STATE.IDLE);
-            }
-        }
-
-        if (this.state === DUCK_STATE.INVISIBLE) {
-            if (isMoving) {
-                this.play('duck-walk', true);
-            } else {
-                this.play('duck-idle', true);
             }
         }
 

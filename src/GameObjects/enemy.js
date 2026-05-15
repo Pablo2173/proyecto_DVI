@@ -19,11 +19,11 @@ import DropTail from './Consumables/Drops/dropTail.js';
 //  ESTADOS
 // ─────────────────────────────────────────
 const StatusEnemy = {
-    IDLE:     0,
-    ALERTED:  1,
-    SEARCH:   2,
-    DEAD:     3,
-    STUNNED:  4
+    IDLE:     0,    // Siguen su patrón de patrulla o se mueven de forma aleatoria alrededor
+    ALERTED:  1,    // Entran en este estado al detectar al jugador, persiguen al jugador y lo atacan hasta que este sale de su rango de visión
+    SEARCH:   2,    // Al salir de ALERTED, entran en este estado donde miran alrededor brebemente antes de volver a IDLE
+    DEAD:     3,    // Al morir dejan su cuerpo detras por unos segundos antes de desaparecer
+    STUNNED:  4     // Al ser golpeados se estunead brebemente
 };
 
 export default class Enemy extends BaseCharacter {

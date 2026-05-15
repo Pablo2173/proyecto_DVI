@@ -116,7 +116,7 @@ export default class Puddle {
 
         // 5. SUBIR DE PRECIO LAS DEMÁS (Lógica de inflación)
         // Cada vez que compras algo, las que quedan disponibles suben, por ejemplo, +2 plumas
-        const inflacion = 2;
+        const inflacion = 1;
         this.upgrades.forEach(item => {
             if (!item.purchased) {
                 item.costFeathers += inflacion;
