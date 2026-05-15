@@ -284,7 +284,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
         this.load.audio('swimming_croco', swimmingCroco);
         this.load.audio('croco_death', crocoDeath);
 
-        // Preload de todas las armas (cambiar)
+        // Preload de todas las armas (No podemos quitar ninguna de la zona anterior porque el jugador se las puede traer)
         Arco.preload(this);
         Mcuaktro.preload(this);
         Cuchillo.preload(this);
@@ -342,7 +342,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
             // ─────────────────────────────────────────
             this.isPlayerDead = false;
             this.playerSpawn = null;
-            this.playerWeapon = 'cuchillo';
+            this.playerWeapon = 'ramita';
             this.positionText = null;
             this.puddles = [];
             this.currentPuddle = null;
@@ -423,6 +423,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
             this.techo1Layer.setDepth(202);
 
             // CAPA DE HINTS (PISTAS VISUALES)
+            /*
             const hintsLayer = this.map.getObjectLayer('hints');
             if (hintsLayer && hintsLayer.objects) {
                 hintsLayer.objects.forEach(obj => {
@@ -444,6 +445,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
                     }
                 });
             }
+            */
 
             const duckLayer = this.map.getObjectLayer('duck');
             if (!duckLayer || duckLayer.objects.length === 0) {
@@ -547,6 +549,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
                 });
             }
 
+            /*
             if (!this.anims.exists('zorro-idle') && this.textures.exists('zorro_idle')) {
                 this.anims.create({
                     key: 'zorro-idle',
@@ -609,6 +612,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
                     repeat: -1
                 });
             }
+            */
 
             // ─────────────────────────────────────────
             // AUDIO
@@ -786,7 +790,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
             this.setupEnemiesFromRoutes(SCALE);
         }
 
-        // Spawner de coches en la carretera
+        /*
         this.carSpawner = {
             enabled: false,
             lastSpawn: 0,
@@ -798,17 +802,18 @@ export default class AlcantarillasScene extends Phaser.Scene {
         // Velocidad que tendrán los coches creados (anula BASE_STATS.speed)
         this.carSpawner.carSpeed = 2200;
 
-        if (this.map.getObjectLayer('layerWeapon')) {
-            this.setupWeaponDropsFromLayer(SCALE);
-        }
         if (this.map.getObjectLayer('store')) {
             this.setupStoreFromLayer(SCALE);
         }
         if (this.map.getObjectLayer('rana')) {
             this.setupFrogFromLayer(SCALE);
         }
+        */
         if (this.map.getObjectLayer('charquito')) {
             this.setupPuddlesFromLayer(SCALE);
+        }
+        if (this.map.getObjectLayer('layerWeapon')) {
+            this.setupWeaponDropsFromLayer(SCALE);
         }
 
         this.puddleUpgradePanel = new PuddleUpgradePanel(this, (puddle, upgradeId) => {

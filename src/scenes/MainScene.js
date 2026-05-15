@@ -296,7 +296,9 @@ export default class MainScene extends Phaser.Scene {
         this.load.audio('enemy_death', enemyDeathSoundFile);
         this.load.audio('player_death', playerDeathSoundFile);
 
-        // Preload de todas las armas (cambiar)
+
+
+        // Preload de las armas y proyectiles
         Arco.preload(this);
         Mcuaktro.preload(this);
         Cuchillo.preload(this);
@@ -304,7 +306,7 @@ export default class MainScene extends Phaser.Scene {
         Ramita.preload(this);
         Flecha.preload(this);
         Bala.preload(this);
-        BubblesCroco.preload(this);
+        // BubblesCroco.preload(this);
         Escoba.preload(this);
 
         Bread.preload(this);
@@ -354,7 +356,7 @@ export default class MainScene extends Phaser.Scene {
             // ─────────────────────────────────────────
             this.isPlayerDead = false;
             this.playerSpawn = null;
-            this.playerWeapon = 'cuchillo';
+            this.playerWeapon = 'ramita';
             this.positionText = null;
             this.puddles = [];
             this.currentPuddle = null;
