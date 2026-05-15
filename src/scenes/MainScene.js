@@ -2273,9 +2273,6 @@ export default class MainScene extends Phaser.Scene {
         const H = this.scale.height;
         const SF = 0; // scrollFactor 0 = fijo en pantalla
 
-        // Usamos un array en lugar de un Container para que setScrollFactor(0)
-        // se aplique individualmente a cada objeto y los hitboxes de input
-        // coincidan con la posición visual en pantalla.
         this._pauseObjects = [];
 
         const bg = this.add.rectangle(0, 0, W, H, 0x000000, 0.65)
@@ -2345,7 +2342,6 @@ export default class MainScene extends Phaser.Scene {
             this.openExitConfirm();
         });
 
-        // Panel más alto para acomodar 4 botones
         panel.setSize(430, 430);
 
         this._pauseObjects = [bg, panel, title, ...resumeBtn, ...settingsBtn, ...guideBtn, ...exitBtn];

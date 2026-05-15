@@ -41,10 +41,10 @@ export default class Boot extends Phaser.Scene {
     const W = this.cameras.main.width;
     const H = this.cameras.main.height;
 
-    // 🖤 Fondo negro
+    // Fondo negro
     this.add.rectangle(0, 0, W, H, 0x000000).setOrigin(0);
 
-    // 📝 Texto LOADING
+    // Texto LOADING
     const loadingText = this.add.text(W / 2, H / 2, "LOADING", {
       fontFamily: "ReturnOfTheBoss",
       fontSize: "72px",
@@ -53,7 +53,7 @@ export default class Boot extends Phaser.Scene {
       strokeThickness: 6
     }).setOrigin(0.5);
 
-    // ✨ Animación de puntos
+    // Animación de puntos
     let dots = 0;
 
     this.time.addEvent({

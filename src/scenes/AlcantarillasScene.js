@@ -2121,8 +2121,6 @@ export default class AlcantarillasScene extends Phaser.Scene {
 
     this._bossDeathHandled = true;
 
-    // Espera 3 segundos (tiempo de animación de muerte del jefe) y luego
-    // hace un fade out suave antes de cambiar a FinishScene
     this.time.delayedCall(3000, () => {
         if (!this.scene.isActive('AlcantarillasScene')) return;
 
@@ -2130,13 +2128,13 @@ export default class AlcantarillasScene extends Phaser.Scene {
         const H = this.scale.height;
         const FADE_DURATION = 1000;
 
-        // Overlay negro para el fade out — se dibuja encima de todo
+        // Overlay negro para el fade out
         const fadeRect = this.add.rectangle(0, 0, W, H, 0x000000, 0)
             .setOrigin(0, 0)
             .setScrollFactor(0)
             .setDepth(99999);
 
-        // Bloquear input durante la transición
+        // Bloquea input durante la transición
         this.input.enabled = false;
 
         this.tweens.add({
@@ -2154,12 +2152,10 @@ export default class AlcantarillasScene extends Phaser.Scene {
     }
 
     createBossUI() {
-        // 1. Posición bajada a 230 para estar debajo del ConsumableBar (que llega hasta ~164)
-        // Centramos en X y bajamos en Y
+     
         this.bossUI = this.add.container(this.cameras.main.centerX, 230).setScrollFactor(0);
         this.bossUI.setDepth(1000); // Un valor muy alto para asegurar que esté por encima de todo
 
-        // 2. Nombre del Jefe (Un poco más grande: fontSize 32px y escala 1.2)
         this.bossNameText = this.add.text(0, -50, "Tito The Cocodrile", {
             fontFamily: 'ReturnOfTheBoss', 
             fontSize: '28px',
@@ -2168,14 +2164,12 @@ export default class AlcantarillasScene extends Phaser.Scene {
             strokeThickness: 6   
         }).setOrigin(0.5).setScale(1.2);
 
-        // 3. Icono del Cocodrilo (Escala aumentada a 1.5)
-        // Lo movemos un poco más a la izquierda para que no choque con los corazones grandes
         this.bossIcon = this.add.image(-160, 0, 'croco_icon').setScale(1.5); 
 
-        // 4. Crear los 5 corazones (Aumentamos escala a 1.5 y separación a 55)
+        // Crea los 5 corazones 
         this.bossHearts = [];
         for (let i = 0; i < 5; i++) {
-            // Usamos exactamente 'croco_Life' (ojo con la L mayúscula)
+          
             let heart = this.add.image(-80 + (i * 55), 0, 'croco_Life').setScale(1.5); 
             this.bossHearts.push(heart);
             this.bossUI.add(heart);
@@ -2213,10 +2207,7 @@ export default class AlcantarillasScene extends Phaser.Scene {
                 
             } else if (currentHealth >= heartHalfThreshold) {
                 this.bossHearts[i].setTexture('croco_HalfLife');
-                
-                // ---> AQUÍ ESTÁ LA SOLUCIÓN <---
-                // Baja este número hasta que coincida con el tamaño del corazón entero. 
-                // Prueba con 0.8, 1.0, o 1.2 dependiendo de qué tan grande sea tu imagen original.
+         
                 this.bossHearts[i].setScale(0.1); 
                 
                 this.bossHearts[i].setVisible(true);

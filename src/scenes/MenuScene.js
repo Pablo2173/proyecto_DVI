@@ -259,11 +259,7 @@ export default class MenuScene extends Phaser.Scene {
     });
   }
 
-  // -----------------------------
-  // BOTÓN (mejorado)
-  // - Texto blanco con borde negro
-  // - Hover/selección: borde y glow sutil
-  // -----------------------------
+
   _makeButton(text, onClick, index) {
     const bg = this.add
       .rectangle(0, 0, 380, 56, 0x000000, 0.35)
@@ -291,7 +287,7 @@ export default class MenuScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // Interacción: haz clickable tanto el fondo como el texto
+
     const makeSelected = () => {
       this._selectedIndex = index;
       this.updateButtonSelection();

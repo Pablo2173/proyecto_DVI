@@ -78,7 +78,7 @@
 * **Rol:** Diseño de Audio / Diseño de UI / Programadora Principal
 * **Tareas Realizadas:**
   * Implementación de los sonidos del juego, incluyendo efectos de sonido y música para mejorar la ambientación.
-  * Creación, integración y ajuste de objetos consumibles, como el sistema de plumas/items.
+  * Creación, integración y ajuste de objetos consumibles, como el sistema de plumas/items/guia.
   * Desarrollo y mejora de varias escenas del juego, incluyendo menú principal, escena final, escena de muerte y segunda escena.
   * Implementación de la lógica de muerte del jugador y ajustes necesarios para su correcto funcionamiento.
   * Creación y mejora de la interfaz del juego, incluyendo barra superior, menús, menú final, menú de configuración, menú pop-up y guía del juego.

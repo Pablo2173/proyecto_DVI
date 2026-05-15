@@ -325,7 +325,7 @@ export default class ConsumableBar {
         this.controlsText.setDepth(9102);
         this.controlsText.setAlpha(0.92);
 
-        // ── Botón de ajustes (⚙) en la esquina superior derecha del HUD ──
+        // ── Botón de ajustes en la esquina superior derecha del HUD ──
         const btnX = this.divider.x - 50; // a la izquierda del separador
         const btnY = this.panelY + this.panelHeight / 2; // centrado vertical
 

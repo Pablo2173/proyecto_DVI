@@ -18,7 +18,7 @@ export default class WeaponBar {
         this.timerEndTime = 0;
         this.timerDuration = 0;
 
-        // Solo crear sprites si no es un enemigo (enemigos tienen barra invisible)
+        // Solo crear sprites si no es un enemigo 
         if (!isEnemy) {
             this.border = scene.add.sprite(0, 0, 'weapon_bar_border')
                 .setOrigin(0.5)
@@ -30,7 +30,7 @@ export default class WeaponBar {
                 .setDepth(9)
                 .setScale(3);
 
-            // Mantener cursor ancho total para crop en lugar de cambiar el displayWidth
+            // Mantiene cursor ancho total para crop en lugar de cambiar el displayWidth
             this.fillWidth = this.fill.displayWidth;
             this.fillHeight = this.fill.displayHeight;
         } else {
