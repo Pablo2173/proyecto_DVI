@@ -22,8 +22,13 @@
     * Implementación del coche.
     * Corrección de bugs varios.
     * Arreglo del GitHub Actions todas las veces que se rompió.
+    * Actualización de todo el contenido del GDD, creación del informe de contribución, y carpeta de documentación del proyecto
+    * Actualización de todo el readme con todo lo necesario
 * **Valoración General:**
-    
+
+  Trabajo constante, capacidad de liderazgo, ha sido el más implicado en el proyecto. Ha aportado en todas las fases de la implemntación.
+  Ha hecho tanto que es dificil expresarlo con palabras. Ha comunicado a todo el equipo (ha sido el babysitter del equipo) y se ha encargado de
+  resolver problemas que surgían.
 * **Puntuación:** ⭐⭐⭐⭐⭐ (5/5)
 
 ---
@@ -43,6 +48,8 @@
     * Implementación del dash con la barrita de carga
 * **Valoración General:**
 
+  Se ha encargado de todo el apartado creativo dibujandolo tódo él (sin ia, muerte a la ia) y lo ha hecho genial, terminando los diferentes sprites en el tiempo justo.
+    También ha aportado en la parte de programación. Ha trabajado de manera constante y satisfactoria.
 * **Puntuación:** ⭐⭐⭐⭐⭐ (5/5)
 
 ---
@@ -58,7 +65,9 @@
     * Implementación parcial de la lógica del jefe final
     * Creación de la pantalla final del juego
 * **Valoración General:**
-	
+
+  Ha aportado mucho para la implementación de muchas mecánicas clave del juego, ha trabajado de manera constante y cuando había algo importante que implementar
+    o arreglar él siempre se ofrecía fuese lo que fuese (menos cuando se fue al pueblo y se le olvidó el cargador) Te queremos Rodri.
 * **Puntuación:** ⭐⭐⭐⭐⭐ (5/5)
 
 ---
@@ -76,7 +85,9 @@
   * Implementación y ajustes relacionados con el jefe final/cocodrilo.
   * Mejora de la progresión del jugador y ajustes generales del gameplay.
 * **Valoración General:**
-	
+
+Se ha encargado de todo el apartado de interfaz de usuario, puliendo todas las opciones visibles en pantalla y haciendo un trabajo magnífico con los menús.
+    También ha sido DJ Katty implementando todos los sonidos y músicas que hay en el juego (simplemente cine)
 * **Puntuación:** ⭐⭐⭐⭐⭐ (5/5)
 
 ---
@@ -94,7 +105,10 @@
     * Implementación de la segunda escena del juego
     * Implementación parcial de la lógica del jefe final
 * **Valoración General:**
-	
+
+	Ha aportado mucho con la implementación de características importantes del juego, y también se encargó de hacer toda la página web e implementar la
+plantilla de phaser en el proyecto. Aunque ha venido a muy pocas clases (es medio fantasma) ha trabajado muy bien en el proyecto, y se llevó un cuchillo a la
+presentación del hito 3.
 * **Puntuación:** ⭐⭐⭐⭐⭐ (5/5)
 
 ---
