@@ -1704,19 +1704,20 @@ export default class AlcantarillasScene extends Phaser.Scene {
 
         const addTextEntry = (name, description) => addEntry(name, description, null);
 
-        addHeader('❤️  RECURSOS — VIDA Y MONEDA');
-        addEntry('Plumas — TUS VIDAS', 'Las plumas son la vida del pato. Cada golpe que recibes te quita plumas. Si se agotan, el pato muere. Recógelas del suelo (caen de enemigos derrotados) y gástalas en mejoras de los charcos.', 'feather_icon', false, 0.12, 0, 20);
-        addEntry('Pan — LA MONEDA', 'El pan es la moneda del juego. Úsalo para comprar armas, pociones y objetos especiales en la tienda. Recoge todo el pan que veas por el escenario.', 'bread_item', false, 4, 0, 0);
+        addHeader('❤️  RECURSOS — VIDA Y MONEDAS');
+        // Para ajustar imágenes: (Nombre, Desc, TextureKey, isSheet, Scale, OffsetX, OffsetY)
+        addEntry('Plumas — TUS VIDAS', 'Las plumas son la vida del pato. Cada golpe que recibes te quita plumas, y si te quedas sin ellas, morirás. Las pueden soltar los enemigos o se pueden encontrar en zonas ocultas, recoge todas las que puedas y gástalas en mejoras de los charcos.', 'feather_icon', false, 0.12, 0, 20);
+        addEntry('Panes — TUS MONEDAS', 'El pan es la moneda del juego. Úsalo para comprar armas, pociones y objetos especiales en la tienda. ¡Derrota a los enemigos para obtener panes!', 'bread_item', false, 4, 0, 0);
 
         addHeader('⚔️  ARMAS DE MELÉ');
-        addEntry('Ramita', 'El arma inicial. Daño muy bajo pero ataque rápido. Cámbiala en cuanto encuentres algo mejor.', null);
-        addEntry('Cuchillo', 'Arma equilibrada. Buen daño y velocidad de ataque. Ideal para el combate cuerpo a cuerpo ágil.', null);
-        addEntry('Escoba', 'Algo más de alcance que el cuchillo. Buena para mantener a los enemigos a distancia mientras atacas.', null);
-        addEntry('Mazo', 'Daño alto pero golpe lento. Úsalo contra enemigos con mucha vida o cuando necesites un golpe contundente.', null);
+        addEntry('Ramita', 'El arma inicial, con poco daño pero con mucha velocidad de ataque. Cámbiala en cuanto encuentres algo mejor.', null);
+        addEntry('Cuchillo', 'Arma con buen daño y velocidad de ataque. Ideal para el combate cuerpo a cuerpo ágil. Si haces dash con él, te volverás invisible unos instantes', null);
+        addEntry('Escoba', 'Tiene más alcance que el cuchillo y es buena para mantener a los enemigos a distancia mientras atacas. ¡Carga su ataque para empujar más lejos!', null);
+        addEntry('Mazo', 'Mucho daño pero golpea muy lento. Úsalo contra enemigos con mucha vida o cuando necesites un golpe contundente. Cuanto más cargues su ataque, más radio de ataque tendrá', null);
 
         addHeader('🏹  ARMAS DE DISTANCIA');
-        addEntry('Arco', 'Dispara flechas hacia el cursor. Mantén pulsado el botón para cargar un disparo más potente. Bueno contra enemigos rápidos.', null);
-        addEntry('Mcuaktro', 'Metralleta de balas rápidas. Alta cadencia de fuego. Arrasa con grupos de enemigos pero gasta munición deprisa.', null);
+        addEntry('Arco', 'Dispara flechas hacia donde apunta tu cursor. Mantén pulsado el botón para cargar un disparo más potente que puede perforar enemigos.', null);
+        addEntry('Mcuaktro', 'Metralleta de balas rápidas con mucha cadencia de fuego, aunque cuanto más la uses, menos cadencia tendrás. Arrasa con grupos de enemigos con cuidado de no usarla demasiado o se romperá.', null);
 
         addHeader('🧪  CONSUMIBLES');
         addEntry('Poción de ataque', 'Duplica tu daño durante 30 segundos. Úsala justo antes de un jefe o una horda de enemigos.', 'attack_potion', false, 3.2, 0, 0);
@@ -1727,18 +1728,18 @@ export default class AlcantarillasScene extends Phaser.Scene {
         addEntry('Llave', 'Abre puertas cerradas. Acércate a una puerta con la llave en el inventario y se abrirá sola. Úsala para acceder a zonas secretas.', null);
 
         addHeader('👾  ENEMIGOS');
-        addEntry('Zorro', 'Rápido y ágil. Persigue al pato en línea recta. Poco HP. Usa el dash para esquivarlo y atácalo por la espalda.', 'zorro_idle', true, 2.9, 0, 0);
-        addEntry('Mapache', 'Más lento que el zorro pero más resistente. A veces se detiene y te tira objetos. Mantén la distancia.', 'mapache_idle', true, 2.9, 0, 0);
-        addEntry('Cuervo', 'Aparece si llevas demasiado tiempo con la misma arma sin cambiarla. Vuela por encima de obstáculos. Cambia de arma para evitar que aparezca.', 'cuervo_idle', true, 2.9, 0, 10);
-        addEntry('Rana', 'Se queda quieta y de repente da saltos enormes. Muy difícil de predecir. Atácala cuando esté posada en el suelo.', 'rana_idle', true, 2.5, 0, 0);
-        addEntry('Cocodrilo — JEFE', 'El boss del nivel. Se sumerge en el agua y ataca desde debajo lanzando burbujas. Atácalo cuando emerja. La Cola de Zorro destruye sus proyectiles.', 'croco_idle', false, 1, 0, 10);
+        addEntry('Zorro', 'Rápido, ágil y con poca vida. Usa el dash para esquivarlo y atácalo por la espalda.', 'zorro_idle', true, 2.9, 0, 0);
+        addEntry('Mapache', 'Más lento que el zorro pero más resistente. Al derrotarlo ten cuidado, ya que resucitará buscando revancha...', 'mapache_idle', true, 2.9, 0, 0);
+        addEntry('Cuervo', 'Aparece volando por encima de obstáculos si llevas demasiado tiempo con el misma arma. Cambia de arma para evitar que venga a por ti, ¡si te roba el arma te atacará con ella!', 'cuervo_idle', true, 2.9, 0, 10);
+        addEntry('Rana', 'Dueña de la tienda de objetos, si la ves, significa que estás en la tienda, donde podrás encontrar muchos objetos útiles.', 'rana_idle', true, 2.5, 0, 0);
+        addEntry('Cocodrilo — JEFE', 'El boss del nivel. Lanza una ráfaga de burbujas y si estás muy cerca te dará un coletazo. Te perseguirá muy rápido por el agua, y si te alcanza te quitará vida. Aprovecha las zonas de tierra para poder atacarlo con más eficacia.', 'croco_idle', false, 1, 0, 10);
 
         addHeader('💧  CHARCOS Y AGUA');
-        addTextEntry('Natación', 'Entrar en agua activa el modo natación: te mueves más lento pero puedes sumergirte para esquivar ataques. Útil contra el cocodrilo.');
-        addTextEntry('Mejoras de charco', 'Algunos charcos tienen mejoras desbloqueables a cambio de plumas. Interactúa con ellos pulsando E para ver las opciones disponibles.');
+        addTextEntry('Natación', 'Entrar en el agua te hará nadar, lo que cambia tu movimiento y te hace vulnerable a ciertos enemigos ya que no puedes atacar. Ten cuidado con el cocodrilo, es muy rápido en el agua.');
+        addTextEntry('Mejoras de charco', 'Algunos charcos tienen mejoras desbloqueables a cambio de plumas. Entra en ellos para mejorar al pato, pero cuidado no te quedes sin plumas o podrás morir más rápido.');
 
         addHeader('🏪  TIENDA');
-        addTextEntry('Cómo comprar', 'Acércate al tendero y pulsa E para abrir la tienda. Puedes comprar armas, pociones y objetos especiales a cambio de pan. Los objetos rotan, así que vuelve a visitarla.');
+        addTextEntry('Cómo comprar', 'Las pociones, plumas y armas se encuentran en el suelo, ponte encima de lo que quieras comprar y pulsa E para comprarlo si tienes panes suficientes. La tienda también tiene un objeto especial de reroll que, al comprarlo, cambiará todos los objetos de la tienda por otros nuevos, ¡pero ten cuidado, que su precio sube cada vez que lo compras!');
 
         this.guideContent.add(guideItems);
         const contentHeight = currentY + 30;
